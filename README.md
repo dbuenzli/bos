@@ -3,7 +3,7 @@ Bos — Light, basic OS interaction for OCaml
 Release %%VERSION%%
 
 Bos is an OCaml library providing basic tools for interacting with the
-operating system. It provides tools to manipulate file paths and
+operating system. It provides tools to manipulate file paths,
 execute commands and handle errors. Bos can be seen as an enhanced
 `Sys` module for scripts and command line programs with light OS
 interaction requirements. 
