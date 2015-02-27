@@ -1,0 +1,4 @@
+<**/*.{ml,mli}> : bin_annot
+<src> : include
+<src/bos_unix*> : package(unix)
+<test> : include
