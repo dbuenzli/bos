@@ -310,14 +310,38 @@ type ('a, 'b) result = [ `Ok of 'a | `Error of 'b ]
 (** Result combinators *)
 module R : sig
 
+  (** {1 Results} *)
+
   type ('a, 'b) t = [ `Ok of 'a | `Error of 'b ]
   (** The type for results. *)
 
   val ret : 'a -> ('a, 'b) result
   (** [ret v] is [`Ok v]. *)
 
-  val error : string -> ('a, string) result
+  val error : 'b -> ('a, 'b) result
   (** [error e] is [`Error e]. *)
+
+  val get_ok : ('a, 'b) result -> 'a
+  (** [get r] is [v] if [r = `Ok v] and @raise Invalid_argument otherwise. *)
+
+  val get_error : ('a, 'b) result -> 'b
+  (** [get_error r] is [e] if [r = `Error e] and @raise Invalid_argument
+      otherwise. *)
+
+  val reword_err : ('b -> 'c) -> ('a, 'b) result -> ('a, 'c) result
+  (** [reword_err reword r] is:
+      {ul
+      {- [v] if [r = `Ok v]}
+      {- [`Error (reword e)] if [r = `Error e]}} *)
+
+  val pp :
+    pp_ok:(Format.formatter -> 'a -> unit) ->
+    pp_err:(Format.formatter -> 'b -> unit) -> Format.formatter ->
+    ('a, 'b) result -> unit
+  (** [pp pp_ok pp_err ppf r] prints [r] on [ppf] using [pp_ok] and
+      [pp_err]. *)
+
+  (** {1 Composing results} *)
 
   val bind : ('a, 'b) result -> ('a -> ('a, 'b) result) -> ('a, 'b) result
   (** [bind r f] is [f v] if [r = `Ok v] and [r] if [r = `Error _]. *)
@@ -325,48 +349,123 @@ module R : sig
   val map : ('a, 'b) result -> ('a -> 'c) -> ('c, 'b) result
   (** [map r f] is [bind r (fun v -> ret (f v))]. *)
 
-  val get : ('a, 'b) result -> 'a
-  (** [get r] is [v] if [r = `Ok v] and @raise Invalid_argument otherwise. *)
-
-  val on_error : ?level:Log.level -> use:'a -> ('a, string) result -> 'a
-  (** [on_error ~level ~use r] is:
-      {ul
-      {- [v] if [r = `Ok v]}
-      {- [use] if [r = `Error msg]. As a side effect [msg] is
-         {{!Log}logged} with level [level] (defaults to {!Log.Error})}} *)
-
-  val ignore_error : use:'a -> ('a, 'b) result -> 'a
-  (** [ignore_error ~use r] is like {!on_error} but the error
-      is not logged. *)
-
-  val reword_error : ?replace:bool -> string -> ('a, string) result ->
-    ('a, string) result
-  (** [reword_error msg r] uses [msg] for the error message in case of
-      [`Error]. If replace is [false] (default), [msg] is stacked on
-      top of the old message. *)
-
-  val exn_error : ?msg:(Printexc.raw_backtrace -> exn -> 'a -> string) ->
-    (('a -> 'b) -> ('a -> ('b, string) result))
+  val join : (('a, 'b) result, 'b) result -> ('a, 'b) result
+  (** [join r] is [v] if [r = `Ok v] and [r] otherwise. *)
 
   val ( >>= ) : ('a, 'b) result -> ('a -> ('c, 'b) result) -> ('c, 'b) result
-  (** [r >>= f] is [bind r f]. *)
+  (** [r >>= f] is {!bind}[ r f]. *)
 
   val ( >>| ) : ('a, 'b) result -> ('a -> 'c) -> ('c, 'b) result
-  (** [r >>| f] is [map r f]. *)
+  (** [r >>| f] is {!map}[ r f]. *)
 
   (** Infix operators.
 
-      Gathers {!Sysm}'s infix operators. *)
+      Gathers {!R}'s infix operators. *)
   module Infix : sig
 
-    (** {1 Infix operators} *)
+   (** {1 Infix operators} *)
 
     val ( >>= ) : ('a, 'b) result -> ('a -> ('c, 'b) result) -> ('c, 'b) result
-    (** [(>>=)] is {!Cmd.( >>= )}. *)
+    (** [(>>=)] is {!R.( >>= )}. *)
 
     val ( >>| ) : ('a, 'b) result -> ('a -> 'c) -> ('c, 'b) result
-    (** [(>>|)] is {!Cmd.( >>| )}. *)
+    (** [(>>|)] is {!R.( >>| )}. *)
   end
+
+  (** {1 Error messages} *)
+
+  type err_msg = [ `Msg of string ]
+  (** The type for error messages. *)
+
+  val pp_err_msg : Format.formatter -> err_msg -> unit
+  (** [pp_msg ppf m] prints [m] on [ppf]. *)
+
+  val err_msg : ('a, Format.formatter, unit, ('b, [> err_msg]) result)
+      format4 -> 'a
+  (** [err_msg fmt ...] is an error message formatter according to [fmt]. *)
+
+  val reword_err_msg : ?replace:bool ->
+    ('a, err_msg) result ->
+    ('b, Format.formatter, unit, ('a, [> err_msg]) result)
+      format4 -> 'b
+  (** [reword_err msg r] uses [msg] for the error message in case of
+      [`Error]. If replace is [false] (default), [msg] is stacked on
+      top of the old message. *)
+
+  val err_to_err_msg : pp:(Format.formatter -> 'b -> unit) ->
+    ('a, 'b) result -> ('a, [> err_msg]) result
+  (** [err_to_err_msg pp r] converts errors in [r] with [pp] to an error
+      message. *)
+
+  val err_msg_to_invalid_arg : ('a, err_msg) result -> 'a
+  (** [err_msg_to_invalid_arg r] is [v] if [r = `Ok v] and
+      @raise Invalid_argument with the error message otherwise. *)
+
+  (** {1 Handling unexpected exceptions}
+
+      {e Getting rid of [null] was not enough}. *)
+
+  type err_exn = [ `Exn of Printexc.raw_backtrace ]
+  (** The type for exception errors. *)
+
+  val pp_err_exn : Format.formatter -> err_exn -> unit
+  (** [pp_err_exn ppf e] prints [e] on [ppf]. *)
+
+  val trap_exn : ('a -> 'b) -> 'a -> ('b, [> err_exn]) result
+  (** [trap_exn f v] is [f v] and traps any exception that may
+      occur. *)
+
+  val err_exn_to_msg : ('a, err_exn) result -> ('a, [> err_msg]) result
+  (** [err_exn_to_msg r] converts exception errors in [r] to an error
+      message. *)
+
+  (** {1 Converting} *)
+
+  val to_option : ('a, 'b) result -> 'a option
+  (** [to_option r] is [Some v] if [r = `Ok v] and [None] otherwise. *)
+
+  val of_option : none:('a, 'b) result -> 'a option -> ('a, 'b) result
+  (** [of_option ~none r] is [`Ok v] if [r = Some v] and [none] otherwise. *)
+
+  (** {1 Ignoring errors}
+
+      {b Warning.} Using these functions is most of the time a bad idea. *)
+
+  val ignore_err : use:'a -> ('a, 'b) result -> 'a
+  (** [ignore_err ~use r] is [v] if [r = `Ok v] and [use] otherwise. *)
+
+  val ignore_errk : use:'a -> ('a, 'b) result -> ('a, 'b) result
+  (** [ignore_errk ~use r] is:
+      {ul
+      {- [r] if [r = `Ok v]}
+      {- [`Ok use] if [r = `Error _].}} *)
+
+  (** {1 Logging errors} *)
+
+  val on_err : ?log:Log.level -> pp:(Format.formatter -> 'b -> unit) ->
+    use:'a -> ('a, 'b) result -> 'a
+  (** [on_err ~log ~pp ~use r] is:
+      {ul
+      {- [v] if [r = `Ok v]}
+      {- [use] if [r = `Error msg]. As a side effect [msg] is
+         {{!Log}logged} with [pp] on  level [log]
+         (defaults to {!Log.Error})}} *)
+
+  val on_errk : ?log:Log.level -> pp:(Format.formatter -> 'b -> unit) ->
+    use:'a -> ('a, 'b) result -> ('a, 'c) result
+  (** [on_errk ~log ~pp ~use r] is:
+      {ul
+      {- [v] if [r = `Ok v]}
+      {- [`Ok use] if [r = `Error e]. As a side effect [e] is
+         {{!Log}logged} with [pp] on level [log]
+         (defaults to {!Log.Error})}} *)
+
+  val on_err_msg : ?log:Log.level -> use:'a -> ('a, err_msg) result -> 'a
+  (** [on_err_msg ~log ~use] is [on_err ~log ~pp:pp_msg ~use]. *)
+
+  val on_err_msgk : ?log:Log.level -> use:'a -> ('a, err_msg) result ->
+    ('a, 'c) result
+  (** [on_err_msgk ~log ~use] is [on_errk ~log ~pp:pp_msg ~use]. *)
 end
 
 (** {1 Paths}  *)
@@ -817,7 +916,7 @@ module OS : sig
 
       {1:io IO and file system operations and commands} *)
 
-  type 'a result = ('a, string) R.t
+  type 'a result = ('a, R.err_msg) R.t
 
   module Path : sig
     (** Path operations. *)
