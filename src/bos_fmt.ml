@@ -6,7 +6,7 @@
 
 (* Formatters *)
 
-type 'a formatter = Format.formatter -> 'a -> unit
+type 'a t = Format.formatter -> 'a -> unit
 
 let pp ppf fmt = Format.fprintf ppf fmt
 let rpp fmt ppf = Format.fprintf ppf fmt

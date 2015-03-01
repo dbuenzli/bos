@@ -18,7 +18,7 @@ end
 module Fmt : sig
   include module type of Bos.Fmt
 
-  val pp_now : ?rfc:bool -> unit formatter
+  val pp_now : ?rfc:bool -> unit t
   (** [pp_now space] formats the current time according to
       {{:https://tools.ietf.org/html/rfc3339}RFC3339} if [rfc] is
       [false] (default) date and time are separated by a space

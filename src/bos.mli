@@ -115,11 +115,12 @@ module Prelude : sig
   end
 end
 
-(** {!Formatter} helpers and shortcuts. *)
+(** {!Format} helpers and shortcuts. *)
 module Fmt : sig
+
   (** {1 Formatters} *)
 
-  type 'a formatter = Format.formatter -> 'a -> unit
+  type 'a t = Format.formatter -> 'a -> unit
   (** The type for formatters of values of type ['a]. *)
 
   val pp : Format.formatter -> ('a, Format.formatter, unit) Pervasives.format ->
@@ -130,51 +131,51 @@ module Fmt : sig
     Format.formatter -> 'a
   (** [rpp] is [pp fmt ppf] *)
 
-  val nop : 'a formatter
+  val nop : 'a t
   (** [nop] does nothing. *)
 
-  val pp_cut : unit formatter
+  val pp_cut : unit t
   (** [pp_cut] is {!Format.pp_print_cut}. *)
 
-  val pp_sp : unit formatter
+  val pp_sp : unit t
   (** [pp_sp] is {!Format.pp_print_space}. *)
 
-  val pp_str : string formatter
+  val pp_str : string t
   (** [pp_str] is {!Format.pp_print_string}. *)
 
-  val pp_int : int formatter
+  val pp_int : int t
   (** [pp_int] is {!Format.pp_print_int}. *)
 
-  val pp_bool : bool formatter
+  val pp_bool : bool t
   (** [pp_bool] is {!Format.pp_print_bool}. *)
 
-  val pp_larrow : unit formatter
+  val pp_larrow : unit t
   (** [pp_larrow] formats a left arrow. *)
 
-  val pp_rarrow : unit formatter
+  val pp_rarrow : unit t
   (** [pp_rarrow] formats a right arrow. *)
 
-  val pp_opt : ?pp_none:unit formatter -> 'a formatter -> 'a option formatter
+  val pp_opt : ?pp_none:unit t -> 'a t -> 'a option t
   (** [pp_opt pp_none pp_v] formats value of type ['a option]. The default
       value of [pp_none] prints nothing. *)
 
-  val pp_list : ?pp_sep:unit formatter -> 'a formatter -> 'a list formatter
+  val pp_list : ?pp_sep:unit t -> 'a t -> 'a list t
   (** [pp_list pp_sep pp_v] formats lists of type ['a]. Each value
       is printed with [pp_v] followed by [pp_sep] (defaults to {!pp_cut}).
       Empty lists never print anything. *)
 
-  val pp_text : string formatter
+  val pp_text : string t
   (** [pp_text] formats text by replacing spaces and newlines in the string
       with calls to {!Format.pp_print_space} and {!Format.pp_force_newline}. *)
 
-  val pp_lines : string formatter
+  val pp_lines : string t
   (** [pp_lines] formats lines by replacing newlines in the string
       with calls to {!Format.pp_force_newline}. *)
 
-  val pp_range : ((int * int) * (int * int)) formatter
+  val pp_range : ((int * int) * (int * int)) t
   (** [pp_range] formats a range. *)
 
-  val pp_doomed : string formatter
+  val pp_doomed : string t
   (** [pp_doomed] should be used for printing a message when reasonable
       assumptions are being violated. The string should be a short
       description of what is going on. *)
@@ -184,8 +185,8 @@ module Fmt : sig
       {b Note.} Since {!Format} is not UTF-8 aware using UTF-8 output
       may derail the pretty printing process. *)
 
-  val pp_if_utf_8 : 'a formatter -> 'a formatter -> 'a formatter
-  (** [pp_if_utf_8 pp_u pp] is a formatter that will use [pp_u] if UTF-8
+  val pp_if_utf_8 : 'a t -> 'a t -> 'a t
+  (** [pp_if_utf_8 pp_u pp] is a t that will use [pp_u] if UTF-8
       output is {{!utf_8_enabled}enabled} and [pp] otherwise. *)
 
   (** {2:utf8_cond Conditional UTF-8 formatting control} *)
@@ -212,10 +213,10 @@ module Fmt : sig
     | `None ]
   (** The type for styles. *)
 
-  val pp_styled : style -> 'a formatter -> 'a formatter
+  val pp_styled : style -> 'a t -> 'a t
   (** [pp_styled style pp] formats according to [pp] but styled with [style]. *)
 
-  val pp_styled_str : style -> string formatter
+  val pp_styled_str : style -> string t
   (** [pp_styled_str style] is [pp_styled_str style pp_str]. *)
 
   (** {2 Styled formatting control} *)
