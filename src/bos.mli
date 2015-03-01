@@ -1059,7 +1059,7 @@ module OS : sig
     (** [exec_read cmd args] execute [cmd] with arguments [args] and returns
         its standard output. If [cmd]'s return code is non zero returns
         an error message. If [trim] is [true] (default) the contents is
-        passed to {!String.trim} before being returned. *)
+        passed to {!Prelude.String.trim} before being returned. *)
 
     val exec_read_lines : string -> string list -> string list result
     (** [exec_readl_lines cmd args] is like [input ~trim:false cmd args] but
