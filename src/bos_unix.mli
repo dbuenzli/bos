@@ -45,8 +45,8 @@ module OS : sig
 
   type 'a result = 'a Bos.OS.result
 
-  module Path = Bos.OS.Path
-  module File = Bos.OS.File
+  module Path : module type of Bos.OS.Path
+  module File : module type of Bos.OS.File
 
   module Dir : sig
     include module type of Bos.OS.Dir
@@ -60,7 +60,7 @@ module OS : sig
         the directory already exists. *)
   end
 
-  module Cmd = Bos.OS.Cmd
+  module Cmd : module type of Bos.OS.Cmd
 end
 
 (*---------------------------------------------------------------------------

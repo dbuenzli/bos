@@ -1,4 +1,4 @@
-<**/*.{ml,mli}> : bin_annot
+<**/*.{ml,mli}> : bin_annot, package(bytes)
 <src> : include
 <src/bos*> : package(result)
 <src/bos_unix*> : package(unix)
