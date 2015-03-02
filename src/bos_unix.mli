@@ -11,9 +11,7 @@
 
 (** {1 Preliminaries, formatting and logging} *)
 
-module Prelude : sig
-  include module type of Bos.Prelude
-end
+module Prelude : module type of Bos.Prelude
 
 module Fmt : sig
   include module type of Bos.Fmt
@@ -26,22 +24,35 @@ module Fmt : sig
       that matches the [date-time] production of RFC3339. *)
 end
 
-module Log : sig
-  include module type of Bos.Log with type level = Bos.Log.level
-end
+module Log : module type of Bos.Log with type level = Bos.Log.level
 
 (** {1 Paths} *)
 
-type path
-
-module Path : sig
-  include module type of Bos.Path
-end
+type path = Bos.path
+module Path : module type of Bos.Path
 
 (** {1 OS interaction} *)
 
 module OS : sig
-  include module type of Bos.OS
+
+  type 'a result = 'a Bos.OS.result
+
+  module Path = Bos.OS.Path
+  module File = Bos.OS.File
+
+  module Dir : sig
+    include module type of Bos.OS.Dir
+
+    val create : ?err:bool -> ?path:bool -> ?mode:Unix.file_perm -> path ->
+      unit result
+    (** [create ~err ~path ~mode dir] creates the directory [dir] with
+        file permission [mode] (defaults [0o777]). If [path] is [true]
+        (defaults to [false]) intermediate directories are created
+        aswell. If [err] is [false] (default) no error is returned if
+        the directory already exists. *)
+  end
+
+  module Cmd = Bos.OS.Cmd
 end
 
 (*---------------------------------------------------------------------------

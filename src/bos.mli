@@ -776,7 +776,7 @@ end
 module OS : sig
   (** OS interaction
 
-      {1:io IO and file system operations and commands} *)
+      {1 File system operations and commands} *)
 
   type 'a result = ('a, R.err_msg) R.t
 

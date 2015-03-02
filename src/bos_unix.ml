@@ -4,6 +4,8 @@
    %%NAME%% release %%VERSION%%
   ---------------------------------------------------------------------------*)
 
+open Result_infix
+
 module Prelude = Bos.Prelude
 module Fmt = struct
   include Bos.Fmt
@@ -34,7 +36,35 @@ module Log = Bos.Log
 module Path = Bos.Path
 type path = Path.t
 
-module OS = Bos.OS
+module OS = struct
+  type 'a result = 'a Bos.OS.result
+  module Path = Bos.OS.Path
+  module File = Bos.OS.File
+  module Dir = struct
+    include Bos.OS.Dir
+
+    let mkdir err mode d =
+      try R.ret (Unix.mkdir (Bos.Path.to_string d) mode) with
+      | Unix.Unix_error (Unix.EEXIST, _, _) when not err -> R.ret ()
+      | Unix.Unix_error (e, f, a) ->
+          R.err_msg "%s %s: %s" f a (Unix.error_message e)
+
+    let create ?(err = false) ?(path = false) ?(mode = 0o777) d =
+      if not path then mkdir err mode d else
+      let rec todo p acc =
+        exists p >>= fun exists ->
+        if exists then R.ret acc else todo (Bos.Path.dirname p) (p :: acc)
+      in
+      let rec create_them = function
+      | d :: [] -> mkdir err mode d
+      | d :: ds -> mkdir false mode d >>= fun () -> create_them ds
+      | [] -> R.ret ()
+      in
+      todo d [] >>= create_them
+  end
+
+  module Cmd = Bos.OS.Cmd
+end
 
 
 (*---------------------------------------------------------------------------
