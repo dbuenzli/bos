@@ -32,8 +32,8 @@ module Fmt = struct
 end
 
 module Log = Bos.Log
-
 module Path = Bos.Path
+
 type path = Path.t
 
 module OS = struct

@@ -12,9 +12,12 @@
 (** {1 Preliminaries, formatting and logging} *)
 
 module Prelude : module type of Bos.Prelude
+  with type String.t = Bos.Prelude.String.t
+  and type String.Set.t = Bos.Prelude.String.Set.t
+  and type 'a String.Map.t = 'a Bos.Prelude.String.Map.t
 
 module Fmt : sig
-  include module type of Bos.Fmt
+  include module type of Bos.Fmt with type 'a t = 'a Bos.Fmt.t
 
   val pp_now : ?rfc:bool -> unit t
   (** [pp_now space] formats the current time according to
@@ -30,6 +33,11 @@ module Log : module type of Bos.Log with type level = Bos.Log.level
 
 type path = Bos.path
 module Path : module type of Bos.Path
+  with type rel = Bos.Path.rel
+  and type abs = Bos.Path.abs
+  and type t = Bos.Path.t
+  and type Set.t = Bos.Path.Set.t
+  and type 'a Map.t = 'a Bos.Path.Map.t
 
 (** {1 OS interaction} *)
 
