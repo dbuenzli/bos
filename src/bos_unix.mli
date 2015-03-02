@@ -30,14 +30,6 @@ module Log : sig
   include module type of Bos.Log with type level = Bos.Log.level
 end
 
-(** {1 Results and error handling} *)
-
-type ('a, 'b) result = [`Ok of 'a | `Error of 'b]
-
-module R : sig
-  include module type of Bos.R
-end
-
 (** {1 Paths} *)
 
 type path

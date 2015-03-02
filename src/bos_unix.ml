@@ -31,9 +31,6 @@ end
 
 module Log = Bos.Log
 
-type ('a, 'b) result = [`Ok of 'a | `Error of 'b]
-module R = Bos.R
-
 module Path = Bos.Path
 type path = Path.t
 

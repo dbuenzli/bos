@@ -5,8 +5,8 @@
   ---------------------------------------------------------------------------*)
 
 open Bos_prelude
-open Bos_r.Infix
-module R = Bos_r
+open Result_infix
+
 
 type 'a result = ('a, R.err_msg) R.t
 

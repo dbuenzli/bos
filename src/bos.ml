@@ -8,9 +8,6 @@ module Prelude = Bos_prelude
 module Fmt = Bos_fmt
 module Log = Bos_log
 
-type ('a, 'b) result = [`Ok of 'a | `Error of 'b]
-module R = Bos_r
-
 module Path = Bos_path
 type path = Path.t
 

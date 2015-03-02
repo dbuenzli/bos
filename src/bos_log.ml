@@ -67,6 +67,19 @@ let warn ?header fmt = msg ?header Warning fmt
 let info ?header fmt = msg ?header Info fmt
 let debug ?header fmt = msg ?header Debug fmt
 
+(* Logging errors *)
+
+let on_err ?(log = Error) ~pp ~use = function
+| `Ok v -> v
+| `Error e -> kmsg (fun () -> use) log "@[%a@]" pp e
+
+let on_errk ?(log = Error) ~pp ~use = function
+| `Ok _ as r -> r
+| `Error e -> kmsg (fun () -> `Ok use) log "@[%a@]" pp e
+
+let on_err_msg ?log ~use = on_err ?log ~pp:Result.R.pp_err_msg ~use
+let on_err_msgk ?log ~use = on_errk ?log ~pp:Result.R.pp_err_msg ~use
+
 (* Log monitoring *)
 
 let err_count () = !err_count
