@@ -18,3 +18,17 @@ package "unix" (
   archive(native, plugin) = "bos_unix.cmxs"
   exists_if = "bos_unix.cma"        
 )
+
+package "top" (
+  description = "Bos toplevel support"
+  version = "%%VERSION%%"
+  requires = "compiler-libs.toplevel bos"
+  archive(byte) = "bos_top.cma"
+  archive(byte, plugin) = "bos_top.cma"
+  archive(native) = "bos_top.cmxa"
+  archive(native, plugin) = "bos_top.cmxs"
+  exists_if = "bos_top.cma"        
+)
+
+
+
