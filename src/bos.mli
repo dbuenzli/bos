@@ -793,7 +793,30 @@ module OS : sig
     val move : ?force:bool -> path -> path -> unit result
     (** [move ~force src dst] moves path [src] to [dst]. If [force] is
         [false] (default) the operation fails if [dst] exists. *)
-  end
+
+    val matching : Path.t -> path list result
+    (** [matching pat] is the list of paths in the file
+        system that match the pattern [pat].
+
+        [pat] is a path whose segments are variables of the form
+        [$(VAR)] where [VAR] is any sequence of characters except ')',
+        use the sequence $$ for denoting a literal $. Each variable
+        greedily matches a segment or sub-segment.
+
+        For example the pattern:
+{[
+        Path.(base "data" / "$(dir)" / "$(file).txt")
+]}
+        will match any existing file of the form data/*/*.txt. *)
+
+    val matching_capture : Path.t ->
+      (path * string Prelude.String.Map.t) list result
+    (** [matching_capture pat] is like {!matching} except each
+        matching path is returned with an environment mapping pattern
+        variables to their matched part in the path. If a variable
+        appears more than once in [pat] the actual mapping for that
+        variable is unspecified. *)
+end
 
   module File : sig
     (** File operations. *)

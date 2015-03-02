@@ -4,9 +4,8 @@
    %%NAME%% release %%VERSION%%
   ---------------------------------------------------------------------------*)
 
-open Bos_prelude
 open Result_infix
-
+open Bos_prelude
 
 type 'a result = ('a, R.err_msg) R.t
 
@@ -16,7 +15,6 @@ let ret_exists ?(err = false) err_msg p b =
   if not err then R.ret b else
   if b then R.ret b else
   err_msg p
-
 
 module Path = struct   (* Renamed at the end of the module. *)
   let exists ?err p =
@@ -35,6 +33,128 @@ module Path = struct   (* Renamed at the end of the module. *)
     if don't then err_move src dst else
     try R.ret (Sys.rename (path_str src) (path_str dst)) with
     | Sys_error e -> R.err_msg "%s" e
+
+  module Pat = struct (* patterns with variables *)
+
+    let parse ?buf s =
+      try
+        let b = match buf with
+        | None -> Buffer.create 255 | Some buf -> Buffer.clear buf; buf
+        in
+        let acc = ref [] in
+        let flush b = let s = Buffer.contents b in (Buffer.clear b; s) in
+        let flush_lit b =
+          if Buffer.length b <> 0 then acc := `Lit (flush b) :: !acc
+        in
+        let state = ref `Lit in
+        for i = 0 to String.length s - 1 do match !state with
+        | `Lit ->
+            begin match s.[i] with
+            | '$' -> state := `Dollar
+            | c -> Buffer.add_char b c
+            end
+        | `Dollar ->
+            begin match s.[i] with
+            | '$' -> state := `Lit; Buffer.add_char b '$'
+            | '(' -> state := `Var; flush_lit b;
+            | _ -> raise Exit
+            end
+        | `Var ->
+          begin match s.[i] with
+          | ')' -> state := `Lit; acc := (`Var (flush b)) :: !acc;
+          | c -> Buffer.add_char b c
+          end
+        done;
+        if !state <> `Lit then raise Exit else
+        (flush_lit b; R.ret (List.rev !acc))
+      with Exit -> R.err_msg "malformed format: `%s`" s
+
+    (* Matching is not t.r. but stack is bounded by number of variables. *)
+
+    let match_literal start s lit =
+      let l_len = String.length lit in
+      let s_len = String.length s - start in
+      if l_len > s_len then None else
+      try
+        for i = 0 to l_len - 1 do
+          if lit.[i] <> s.[start + i] then raise Exit
+        done;
+        Some (start + l_len)
+      with Exit -> None
+
+    let rec matches map ~capture off s = function
+    | [] -> if off = String.length s then Some map else None
+    | `Lit lit :: pat ->
+        begin match (match_literal off s lit) with
+        | None -> None
+        | Some off -> matches map ~capture off s pat
+        end
+    | `Var n :: pat ->
+        let rec try_match next_off =
+          if next_off < off then None else
+          match matches map ~capture next_off s pat with
+          | None -> try_match (next_off - 1)
+          | Some m as r ->
+              if not capture then r else
+              Some (String.Map.add n (String.sub s off (next_off - off)) m)
+        in
+        try_match (String.length s) (* Longest match first. *)
+  end
+
+  let match_segment ~capture acc map path seg = match acc with
+  | `Error _ as e -> e
+  | `Ok acc ->
+      try
+        let occs =
+          if not (Sys.file_exists path) then [||] else
+          if Sys.is_directory path then (Sys.readdir path) else
+          [||]
+        in
+        let add_match acc f = match (Pat.matches map ~capture 0 f seg) with
+        | None -> acc
+        | Some m -> (str "%s%s%s" path Filename.dir_sep f, m) :: acc
+        in
+        R.ret (Array.fold_left add_match acc occs)
+      with Sys_error e ->
+        let err _ = R.msg "Unexpected error while matching `%s'" path in
+        R.err_msg "%s" e |> R.reword_err_msg err
+
+  let match_path ~capture p =
+    let parse_path_pat p =
+      let buf = Buffer.create 255 in
+      let parse_seg acc s =
+        acc
+        >>= fun acc -> Pat.parse ~buf s
+        >>= fun pat -> R.ret (pat :: acc)
+      in
+      let parse_segs ss = List.fold_left parse_seg (R.ret []) ss in
+      match Bos_path.to_segs p with
+      | `Rel ss -> parse_segs ss >>= fun ss -> R.ret (".", List.rev ss)
+      | `Abs ss -> parse_segs ss >>= fun ss -> R.ret ("/", List.rev ss)
+    in
+    let rec loop acc = function
+    | seg :: segs ->
+        let add_seg acc (p, m) = match_segment ~capture acc m p seg in
+        begin match acc with
+        | `Error _ as e -> e
+        | `Ok acc -> loop (List.fold_left add_seg (R.ret []) acc) segs
+        end
+    | [] -> acc
+    in
+    match parse_path_pat p with
+    | `Error _ as e -> e
+    | `Ok (root, segs) ->
+        match segs with
+        | [] -> R.ret []
+        | segs -> loop (R.ret [root, String.Map.empty]) segs
+
+  let matching p =
+    let pathify acc (p, _) = (Bos_path.of_string p) :: acc in
+    match_path ~capture:false p >>| List.fold_left pathify []
+
+  let matching_capture p =
+    let pathify acc (p, map) = (Bos_path.of_string p, map) :: acc in
+    match_path ~capture:true p >>| List.fold_left pathify []
 end
 
 (* File operations *)
