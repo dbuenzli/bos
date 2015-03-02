@@ -873,18 +873,18 @@ module OS : sig
     (** {1:dirops Directory operations}
 
         {b Note.} When paths are {{!Path.rel}relative} they are expressed
-        relative to the {{!Dir.getcwd}current working directory}. *)
+        relative to the {{!Dir.current}current working directory}. *)
 
     val exists : ?err:bool -> path -> bool result
     (** [exists dir] is [true] if directory [dir] exists.
         If [err] is [true] (defaults to [false]) an error is returned
         when the file doesn't exist. *)
 
-    val getcwd : unit -> path result
-    (** [getcwd ()] is the current working directory. *)
+    val current : unit -> path result
+    (** [current ()] is the current working directory. *)
 
-    val chdir : path -> unit result
-    (** [chdir dir] changes the current working directory to [dir]. *)
+    val set_current : path -> unit result
+    (** [set_current dir] sets the current working directory to [dir]. *)
 
     val contents : path -> path list result
     (** [contents dir] is the contents of [dir]. Resulting paths

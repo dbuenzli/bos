@@ -175,11 +175,11 @@ module Dir = struct
       ret_exists ?err err_msg dir exists
     with Sys_error e -> R.err_msg "%s" e
 
-  let getcwd () =
+  let current () =
     try R.ret (Bos_path.of_string (Sys.getcwd ())) with
     | Sys_error e -> R.err_msg "%s" e
 
-  let chdir dir =
+  let set_current dir =
     try R.ret (Sys.chdir (path_str dir)) with
     | Sys_error e -> R.err_msg "%s" e
 
