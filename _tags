@@ -1,6 +1,6 @@
 <**/*.{ml,mli}> : bin_annot, package(bytes)
 <src> : include
-<src/bos*> : package(result)
+<src/bos*> : package(resultv)
 <src/bos_unix*> : package(unix)
 <src/bos_top*> : package(compiler-libs.toplevel)
 <test> : include

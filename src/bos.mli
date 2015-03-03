@@ -13,7 +13,7 @@
 
 (** {1 Preliminaries, formatting and logging} *)
 
-open Result
+open Resultv
 
 (** A few extensions to the standard library.
 

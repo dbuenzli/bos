@@ -4,7 +4,7 @@
    %%NAME%% release %%VERSION%%
   ---------------------------------------------------------------------------*)
 
-open Result_infix
+open Resultv_infix
 open Bos_prelude
 
 type 'a result = ('a, R.err_msg) R.t

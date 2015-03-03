@@ -8,7 +8,7 @@ bug-reports: "https://github.com/dbuenzli/bos/issues"
 tags: [ "os" "system" "cli" "command" "file" "path" "log" "org:erratique" ]
 license: "BSD3"
 available: [ ocaml-version >= "4.01.0"]
-depends: [ "ocamlfind" "base-bytes" "result" ]
+depends: [ "ocamlfind" "base-bytes" "resultv" ]
 depopts: [ "base-unix" ]
 build:
 [
