@@ -31,6 +31,7 @@ module Fmt = struct
       (if tz < 0 then '-' else '+') (tz / 60) (tz mod 60)
 end
 
+module Pat = Bos.Pat
 module Log = Bos.Log
 module Path = Bos.Path
 module OS = struct

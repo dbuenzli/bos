@@ -27,6 +27,10 @@ module Fmt : sig
       that matches the [date-time] production of RFC3339. *)
 end
 
+module Pat : module type of Bos.Pat
+  with type t = Bos.Pat.t
+   and type env = Bos.Pat.env
+
 module Log : module type of Bos.Log with type level = Bos.Log.level
 
 (** {1 Paths} *)

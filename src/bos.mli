@@ -239,6 +239,73 @@ module Fmt : sig
       {!Fmt.pp_styled}. *)
 end
 
+(** Named string patterns.
+
+    Named string patterns are strings with variables of the form ["$(VAR)"]
+    where [VAR] is any sequence of characters except [')'] or [',']. In these
+    strings a ["$"] litteral must be written ["$$"].*)
+module Pat : sig
+
+  (** {1 Patterns} *)
+
+  type t = [ `Lit of string | `Var of string ] list
+  (** The type for patterns. A list of either a string literal or a
+      variable. *)
+
+  type env = string Prelude.String.Map.t
+  (** Type type for pattern environments. Maps pattern variable names
+      to string values. *)
+
+  val of_string : ?buf:Buffer.t -> string -> (t, R.err_msg) result
+  (** [of_string ?buf s] parses [s] according to the pattern syntax.
+      [buf] can specify the temporary buffer to use. *)
+
+  val to_string : ?buf:Buffer.t -> t -> string
+  (** [to_string p] converts [p] to a string according to the pattern
+      syntax. [buf] can specify the temporary buffer to use.  *)
+
+  val dom : t -> Prelude.String.Set.t
+  (** [dom p] is the set of variables in [p]. *)
+
+  val pp : Format.formatter -> t -> unit
+  (** [pp ppf p] prints [p] on [ppf] according ot the pattern syntax. *)
+
+  val equal : t -> t -> bool
+  (** [equal p p'] is [p = p']. *)
+
+  val compare : t -> t -> int
+  (** [compare p p'] is {!Pervasives.compare}[ p p']. *)
+
+  (** {1 Matching}
+
+      Pattern variables greedily match from zero to more characters (i.e.
+      [.*] in regexp speak). *)
+
+  val matches : t -> string -> bool
+  (** [matches p s] is [true] iff [s] matches [p]. *)
+
+  val unify : ?init:env -> t -> string -> env option
+  (** [unify ~init p s] is like {!matches} except that a matching
+      string returns an environment mapping each pattern variable to
+      its matched part in the string (mappings are added to [init],
+      defaults to {!Prelude.String.Map.empty}). If a variable appears
+      more than once in [pat] the actual mapping for the variable is
+      unspecified. *)
+
+  (** {1 Formatting} *)
+
+  val format : ?buf:Buffer.t -> t -> env -> string
+  (** [format p env] formats a string according to [p] and the bindings
+      of [env]. [buf] can specify the temporary buffer to use.
+
+      @raise Invalid_argument if [dom p] is not included in
+      [String.Map.dom env]. *)
+
+  val pp_format : t -> Format.formatter -> env -> unit
+  (** [pp_format p ppf env] is like {!format} but prints the result
+      on [ppf]. *)
+end
+
 (** Logging. *)
 module Log : sig
 
@@ -794,29 +861,25 @@ module OS : sig
     (** [move ~force src dst] moves path [src] to [dst]. If [force] is
         [false] (default) the operation fails if [dst] exists. *)
 
-    val matching : Path.t -> path list result
-    (** [matching pat] is the list of paths in the file
-        system that match the pattern [pat].
+    (** {1:pathmatch Matching paths} *)
 
-        [pat] is a path whose segments are variables of the form
-        [$(VAR)] where [VAR] is any sequence of characters except ')',
-        use the sequence $$ for denoting a literal $. Each variable
-        greedily matches a segment or sub-segment.
+    val matches : Path.t -> path list result
+    (** [matches pat] is the list of paths in the file system that
+        match the pattern [pat].
 
-        For example the pattern:
+        [pat] is a path whose segments are made of {{!Pat}named string
+        patterns}. Each variable of the pattern greedily matches a
+        segment or sub-segment. For example the pattern:
 {[
         Path.(base "data" / "$(dir)" / "$(file).txt")
 ]}
         will match any existing file of the form data/*/*.txt. *)
 
-    val matching_capture : Path.t ->
-      (path * string Prelude.String.Map.t) list result
-    (** [matching_capture pat] is like {!matching} except each
+    val unify : ?init:Pat.env -> Path.t -> (path * Pat.env) list result
+    (** [unify ~init pat] is like {!matches} except each
         matching path is returned with an environment mapping pattern
-        variables to their matched part in the path. If a variable
-        appears more than once in [pat] the actual mapping for that
-        variable is unspecified. *)
-end
+        variables to their matched part in the path. See {!Pat.unify}. *)
+  end
 
   module File : sig
     (** File operations. *)

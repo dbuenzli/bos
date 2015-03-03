@@ -1,5 +1,6 @@
 Bos_prelude
 Bos_fmt
+Bos_pat
 Bos_log
 Bos_path
 Bos_os

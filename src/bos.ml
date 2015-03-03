@@ -6,6 +6,7 @@
 
 module Prelude = Bos_prelude
 module Fmt = Bos_fmt
+module Pat = Bos_pat
 module Log = Bos_log
 module Path = Bos_path
 module OS = Bos_os

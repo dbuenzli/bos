@@ -1,4 +1,4 @@
-PKG result
+PKG resultv
 S src
 S test
 B _build/**
