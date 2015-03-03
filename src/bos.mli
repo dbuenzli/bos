@@ -279,16 +279,16 @@ module Log : sig
 
   (** {1 Logging result errors} *)
 
-  val on_err : ?log:level -> pp:(Format.formatter -> 'b -> unit) ->
+  val on_error : ?log:level -> pp:(Format.formatter -> 'b -> unit) ->
     use:'a -> ('a, 'b) result -> 'a
-  (** [on_err ~log ~pp ~use r] is:
+  (** [on_error ~log ~pp ~use r] is:
       {ul
       {- [v] if [r = `Ok v]}
       {- [use] if [r = `Error msg]. As a side effect [msg] is
          {{!Log}logged} with [pp] on  level [log]
          (defaults to {!Log.Error})}} *)
 
-  val on_errk : ?log:level -> pp:(Format.formatter -> 'b -> unit) ->
+  val on_errork : ?log:level -> pp:(Format.formatter -> 'b -> unit) ->
     use:'a -> ('a, 'b) result -> ('a, 'c) result
   (** [on_errk ~log ~pp ~use r] is:
       {ul
@@ -298,11 +298,11 @@ module Log : sig
          (defaults to {!Log.Error})}} *)
 
   val on_err_msg : ?log:level -> use:'a -> ('a, R.err_msg) result -> 'a
-  (** [on_err_msg ~log ~use] is [on_err ~log ~pp:pp_msg ~use]. *)
+  (** [on_err_msg ~log ~use] is [on_error ~log ~pp:pp_msg ~use]. *)
 
   val on_err_msgk : ?log:level -> use:'a -> ('a, R.err_msg) result ->
     ('a, 'c) result
-  (** [on_err_msgk ~log ~use] is [on_errk ~log ~pp:pp_msg ~use]. *)
+  (** [on_err_msgk ~log ~use] is [on_errork ~log ~pp:pp_msg ~use]. *)
 
   (** {1 Log level and output} *)
 

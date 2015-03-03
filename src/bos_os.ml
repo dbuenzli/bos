@@ -102,8 +102,8 @@ module Path = struct   (* Renamed at the end of the module. *)
   end
 
   let match_segment ~capture acc map path seg = match acc with
-  | `Error _ as e -> e
-  | `Ok acc ->
+  | Error _ as e -> e
+  | Ok acc ->
       try
         let occs =
           if not (Sys.file_exists path) then [||] else
@@ -136,14 +136,14 @@ module Path = struct   (* Renamed at the end of the module. *)
     | seg :: segs ->
         let add_seg acc (p, m) = match_segment ~capture acc m p seg in
         begin match acc with
-        | `Error _ as e -> e
-        | `Ok acc -> loop (List.fold_left add_seg (R.ret []) acc) segs
+        | Error _ as e -> e
+        | Ok acc -> loop (List.fold_left add_seg (R.ret []) acc) segs
         end
     | [] -> acc
     in
     match parse_path_pat p with
-    | `Error _ as e -> e
-    | `Ok (root, segs) ->
+    | Error _ as e -> e
+    | Ok (root, segs) ->
         match segs with
         | [] -> R.ret []
         | segs -> loop (R.ret [root, String.Map.empty]) segs
@@ -321,8 +321,8 @@ module Dir = struct
         let paths = List.find_all keep paths in
         let dirs, files = List.partition is_dir paths in
         begin match List.fold_left process acc files with
-        | `Error _ as e -> e
-        | `Ok _ as acc -> aux f acc (dirs :: ds :: up)
+        | Error _ as e -> e
+        | Ok _ as acc -> aux f acc (dirs :: ds :: up)
         end
     | [] :: [] -> acc
     | [] :: up -> aux f acc up
@@ -330,7 +330,7 @@ module Dir = struct
     in
     let paths = List.find_all keep paths in
     let dirs, files = List.partition is_dir paths in
-    let acc = List.fold_left process (`Ok acc) files in
+    let acc = List.fold_left process (Ok acc) files in
     aux f acc (dirs :: [])
 end
 
@@ -380,7 +380,7 @@ end
 
 module Env = struct
   let find var = try Some (Sys.getenv var) with Not_found -> None
-  let get var = try `Ok (Sys.getenv var) with
+  let get var = try Ok (Sys.getenv var) with
   | Not_found -> R.err_msg "environment variable `%s' undefined" var
 end
 
