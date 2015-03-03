@@ -261,7 +261,7 @@ module Pat : sig
       @raise Invalid_argument if [s] is not a valid pattern. Use
       {!of_string} to deal with errors. *)
 
-  val of_string : ?buf:Buffer.t -> string -> (t, R.err_msg) result
+  val of_string : ?buf:Buffer.t -> string -> (t, R.msg) result
   (** [of_string ?buf s] parses [s] according to the pattern syntax.
       [buf] can specify the temporary buffer to use. *)
 
@@ -367,30 +367,30 @@ module Log : sig
 
   (** {1 Log error {!Resultv}s} *)
 
-  val on_error : ?log:level -> pp:(Format.formatter -> 'b -> unit) ->
+  val on_error : ?level:level -> pp:(Format.formatter -> 'b -> unit) ->
     use:'a -> ('a, 'b) result -> 'a
-  (** [on_error ~log ~pp ~use r] is:
+  (** [on_error ~level ~pp ~use r] is:
       {ul
       {- [v] if [r = `Ok v]}
       {- [use] if [r = `Error msg]. As a side effect [msg] is
-         {{!Log}logged} with [pp] on  level [log]
+         {{!Log}logged} with [pp] on  level [level]
          (defaults to {!Log.Error})}} *)
 
-  val kon_error : ?log:level -> pp:(Format.formatter -> 'b -> unit) ->
+  val kon_error : ?level:level -> pp:(Format.formatter -> 'b -> unit) ->
     use:('a, 'c) result -> ('a, 'b) result -> ('a, 'c) result
   (** [kon_error ~log ~pp ~use r] is:
       {ul
       {- [v] if [r = `Ok v]}
       {- [use] if [r = `Error e]. As a side effect [e] is
-         {{!Log}logged} with [pp] on level [log]
+         {{!Log}logged} with [pp] on level [level]
          (defaults to {!Log.Error})}} *)
 
-  val on_err_msg : ?log:level -> use:'a -> ('a, R.err_msg) result -> 'a
-  (** [on_err_msg ~log ~use] is [on_error ~log ~pp:pp_msg ~use]. *)
+  val on_error_msg : ?level:level -> use:'a -> ('a, R.msg) result -> 'a
+  (** [on_error_msg ~level ~use] is [error ~log ~pp:pp_msg ~use]. *)
 
-  val kon_err_msg : ?log:level -> use:('a, 'c) result ->
-    ('a, R.err_msg) result -> ('a, 'c) result
-  (** [kon_err_msg ~log ~use] is [on_errork ~log ~pp:pp_msg ~use]. *)
+  val kon_error_msg : ?level:level -> use:('a, 'c) result ->
+    ('a, R.msg) result -> ('a, 'c) result
+  (** [kon_error_msg ~log ~use] is [errork ~log ~pp:pp_msg ~use]. *)
 
   (** {1 Log monitoring} *)
 
@@ -850,7 +850,7 @@ module OS : sig
 
       {1 File system operations and commands} *)
 
-  type 'a result = ('a, R.err_msg) R.t
+  type 'a result = ('a, R.msg) R.t
 
   module Path : sig
     (** Path operations. *)

@@ -7,7 +7,7 @@
 open Resultv_infix
 open Bos_prelude
 
-type 'a result = ('a, R.err_msg) R.t
+type 'a result = ('a, R.msg) R.t
 
 let path_str = Bos_path.to_string
 
@@ -23,19 +23,19 @@ module Path = struct   (* Renamed at the end of the module. *)
   let exists ?err p =
     try
       let p = path_str p in
-      let err_msg p = R.err_msg "%s: no such path" p in
+      let err_msg p = R.error_msgf "%s: no such path" p in
       ret_exists ?err err_msg p (Sys.file_exists p)
-    with Sys_error e -> R.err_msg "%s" e
+    with Sys_error e -> R.error_msg e
 
   let err_move src dst =
     let src, dst = (path_str src), (path_str dst) in
-    R.err_msg "move %s to %s: destination exists" src dst
+    R.error_msgf "move %s to %s: destination exists" src dst
 
   let move ?(force = false) src dst =
     (if force then R.ret false else exists dst) >>= fun don't ->
     if don't then err_move src dst else
     try R.ret (Sys.rename (path_str src) (path_str dst)) with
-    | Sys_error e -> R.err_msg "%s" e
+    | Sys_error e -> R.error_msg e
 
   (* Matching paths *)
 
@@ -66,8 +66,8 @@ module Path = struct   (* Renamed at the end of the module. *)
         in
         R.ret (Array.fold_left add_match acc occs)
       with Sys_error e ->
-        let err _ = R.msg "Unexpected error while matching `%s'" path in
-        R.err_msg "%s" e |> R.reword_err_msg err
+        let err _ = R.msgf "Unexpected error while matching `%s'" path in
+        R.error_msg e |> R.reword_error_msg err
 
   let match_path ~env p =
     let rec loop acc = function
@@ -120,16 +120,17 @@ module File = struct
   let exists ?err file =
     try
       let file = path_str file in
-      let err_msg file = R.err_msg "%s: no such file" file in
+      let err_msg file = R.error_msgf "%s: no such file" file in
       let exists = Sys.file_exists file && not (Sys.is_directory file) in
       ret_exists ?err err_msg file exists
     with
-    | Sys_error e -> R.err_msg "%s" e
+    | Sys_error e -> R.error_msg e
 
   let delete ?(maybe = false) file =
     exists file >>= fun exists ->
     if maybe && not exists then R.ret () else
-    try R.ret (Sys.remove (path_str file)) with Sys_error e -> R.err_msg "%s" e
+    try R.ret (Sys.remove (path_str file)) with
+    | Sys_error e -> R.error_msg e
 
   let temp ?dir suff =
     try
@@ -141,7 +142,7 @@ module File = struct
       let f = Bos_path.of_string f in
       at_exit (fun () -> ignore (delete f));
       R.ret f
-    with Sys_error e -> R.err_msg "%s" e
+    with Sys_error e -> R.error_msg e
 
   (* Input *)
 
@@ -151,7 +152,7 @@ module File = struct
       let close ic = if is_dash file then () else close_in ic in
       apply (f ic) v ~finally:close ic
     with
-    | Sys_error e -> R.err_msg "%s" e
+    | Sys_error e -> R.error_msg e
 
   let read file =
     let input ic () =
@@ -171,7 +172,7 @@ module File = struct
       let close oc = if is_dash file then () else close_out oc in
       apply (f oc) v ~finally:close oc
     with
-    | Sys_error e -> R.err_msg "%s" e
+    | Sys_error e -> R.error_msg e
 
   let write file contents =
     let write oc contents = output_string oc contents; R.ret () in
@@ -230,25 +231,25 @@ module Dir = struct
   let exists ?err dir =
     try
       let dir = path_str dir in
-      let err_msg file = R.err_msg "%s: no such directory" dir in
+      let err_msg file = R.error_msgf "%s: no such directory" dir in
       let exists = Sys.file_exists dir && Sys.is_directory dir in
       ret_exists ?err err_msg dir exists
-    with Sys_error e -> R.err_msg "%s" e
+    with Sys_error e -> R.error_msg e
 
   let current () =
     try R.ret (Bos_path.of_string (Sys.getcwd ())) with
-    | Sys_error e -> R.err_msg "%s" e
+    | Sys_error e -> R.error_msg e
 
   let set_current dir =
     try R.ret (Sys.chdir (path_str dir)) with
-    | Sys_error e -> R.err_msg "%s" e
+    | Sys_error e -> R.error_msg e
 
   let contents dir =
     try
       let files = Sys.readdir (path_str dir) in
       let add_file acc f = Bos_path.(dir / f) :: acc in
       R.ret (List.rev (Array.fold_left add_file [] files))
-    with Sys_error e -> R.err_msg "%s" e
+    with Sys_error e -> R.error_msg e
 
   let fold_files_rec ?(skip = []) f acc paths =
     let is_dir d = try Sys.is_directory d with Sys_error _ -> false in
@@ -284,10 +285,10 @@ module Cmd = struct
       let null = path_str File.dev_null in
       (* Using Sys.os_type, because that's really for the driver. *)
       let test = match Sys.os_type with "Win32" -> "where" | _ -> "type" in
-      let err_msg cmd = R.err_msg "%s: no such command" cmd in
+      let err_msg cmd = R.error_msgf "%s: no such command" cmd in
       let exists = Sys.command (str "%s %s 1>%s 2>%s" test cmd null null) = 0 in
       ret_exists ?err err_msg cmd exists
-    with Sys_error e -> R.err_msg "%s" e
+    with Sys_error e -> R.error_msg e
 
   let trace cmd = Bos_log.info ~header:"EXEC" "@[<2>%a@]" Bos_fmt.pp_text cmd
   let mk_cmd cmd args = String.concat " " (cmd :: args)
@@ -296,7 +297,7 @@ module Cmd = struct
   let exec_ret cmd args = execute (mk_cmd cmd args)
   let handle_ret cmd = match execute cmd with
   | 0 -> R.ret ()
-  | c -> R.err_msg "Exited with code: %d `%s'" c cmd
+  | c -> R.error_msgf "Exited with code: %d `%s'" c cmd
 
   let exec cmd args = handle_ret (mk_cmd cmd args)
   let exec_read ?(trim = true) cmd args =
@@ -321,7 +322,7 @@ end
 module Env = struct
   let find var = try Some (Sys.getenv var) with Not_found -> None
   let get var = try Ok (Sys.getenv var) with
-  | Not_found -> R.err_msg "environment variable `%s' undefined" var
+  | Not_found -> R.error_msgf "environment variable `%s' undefined" var
 end
 
 (*---------------------------------------------------------------------------

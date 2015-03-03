@@ -44,9 +44,9 @@ let of_string ?buf s =
     done;
     if !state <> `Lit then raise Exit else
     (flush_lit b; Resultv.R.ret (List.rev !acc))
-  with Exit -> Resultv.R.err_msg "malformed named string pattern: `%s`" s
+  with Exit -> Resultv.R.error_msgf "malformed named string pattern: `%s`" s
 
-let v s = Resultv.R.err_msg_to_invalid_arg (of_string s)
+let v s = Resultv.R.error_msg_to_invalid_arg (of_string s)
 
 let to_string ?buf p =
   let b = get_buf ?buf () in

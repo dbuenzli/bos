@@ -45,7 +45,7 @@ module OS = struct
       try R.ret (Unix.mkdir (Bos.Path.to_string d) mode) with
       | Unix.Unix_error (Unix.EEXIST, _, _) when not err -> R.ret ()
       | Unix.Unix_error (e, f, a) ->
-          R.err_msg "%s %s: %s" f a (Unix.error_message e)
+          R.error_msgf "%s %s: %s" f a (Unix.error_message e)
 
     let create ?(err = false) ?(path = false) ?(mode = 0o777) d =
       if not path then mkdir err mode d else
