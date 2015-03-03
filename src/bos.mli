@@ -256,6 +256,11 @@ module Pat : sig
   (** Type type for pattern environments. Maps pattern variable names
       to string values. *)
 
+  val v : string -> t
+  (** [v s] parses [s] according to the pattern syntax.
+      @raise Invalid_argument if [s] is not a valid pattern. Use
+      {!of_string} to deal with errors. *)
+
   val of_string : ?buf:Buffer.t -> string -> (t, R.err_msg) result
   (** [of_string ?buf s] parses [s] according to the pattern syntax.
       [buf] can specify the temporary buffer to use. *)
@@ -360,7 +365,7 @@ module Log : sig
   (** [debug info ...] logs a message with level [Debug]. [header] defaults
       to ["DEBUG"]. *)
 
-  (** {1 Log error {!Result}s} *)
+  (** {1 Log error {!Resultv}s} *)
 
   val on_error : ?log:level -> pp:(Format.formatter -> 'b -> unit) ->
     use:'a -> ('a, 'b) result -> 'a
