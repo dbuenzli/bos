@@ -31,7 +31,7 @@ let set_formatter spec ppf = match spec with
     show_ppf := ppf; err_ppf := ppf; warn_ppf := ppf; info_ppf := ppf;
     debug_ppf := ppf
 
-(* Logging *)
+(* Log messages *)
 
 let dumb = Format.err_formatter (* any will do *)
 let err_count = ref 0
@@ -67,18 +67,18 @@ let warn ?header fmt = msg ?header Warning fmt
 let info ?header fmt = msg ?header Info fmt
 let debug ?header fmt = msg ?header Debug fmt
 
-(* Logging errors *)
+(* Log error Results *)
 
 let on_error ?(log = Error) ~pp ~use = function
 | Result.Ok v -> v
 | Result.Error e -> kmsg (fun () -> use) log "@[%a@]" pp e
 
-let on_errork ?(log = Error) ~pp ~use = function
+let kon_error ?(log = Error) ~pp ~use = function
 | Result.Ok _ as r -> r
-| Result.Error e -> kmsg (fun () -> Result.Ok use) log "@[%a@]" pp e
+| Result.Error e -> kmsg (fun () -> use) log "@[%a@]" pp e
 
 let on_err_msg ?log ~use = on_error ?log ~pp:Result.R.pp_err_msg ~use
-let on_err_msgk ?log ~use = on_errork ?log ~pp:Result.R.pp_err_msg ~use
+let kon_err_msg ?log ~use = kon_error ?log ~pp:Result.R.pp_err_msg ~use
 
 (* Log monitoring *)
 

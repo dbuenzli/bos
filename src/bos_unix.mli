@@ -13,14 +13,14 @@
 
 module Prelude : module type of Bos.Prelude
   with type String.t = Bos.Prelude.String.t
-  and type String.Set.t = Bos.Prelude.String.Set.t
-  and type 'a String.Map.t = 'a Bos.Prelude.String.Map.t
+   and type String.Set.t = Bos.Prelude.String.Set.t
+   and type 'a String.Map.t = 'a Bos.Prelude.String.Map.t
 
 module Fmt : sig
   include module type of Bos.Fmt with type 'a t = 'a Bos.Fmt.t
 
   val pp_now : ?rfc:bool -> unit t
-  (** [pp_now space] formats the current time according to
+  (** [pp_now ~rfc] formats the current time according to
       {{:https://tools.ietf.org/html/rfc3339}RFC3339} if [rfc] is
       [false] (default) date and time are separated by a space
       character rather than a ['T']; use [true] if you need a timestamp
@@ -34,20 +34,18 @@ module Log : module type of Bos.Log with type level = Bos.Log.level
 type path = Bos.path
 module Path : module type of Bos.Path
   with type rel = Bos.Path.rel
-  and type abs = Bos.Path.abs
-  and type t = Bos.Path.t
-  and type Set.t = Bos.Path.Set.t
-  and type 'a Map.t = 'a Bos.Path.Map.t
+   and type abs = Bos.Path.abs
+   and type t = Bos.Path.t
+   and type Set.t = Bos.Path.Set.t
+   and type 'a Map.t = 'a Bos.Path.Map.t
 
 (** {1 OS interaction} *)
 
 module OS : sig
 
   type 'a result = 'a Bos.OS.result
-
   module Path : module type of Bos.OS.Path
   module File : module type of Bos.OS.File
-
   module Dir : sig
     include module type of Bos.OS.Dir
 

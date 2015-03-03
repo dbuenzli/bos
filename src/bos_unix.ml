@@ -33,9 +33,6 @@ end
 
 module Log = Bos.Log
 module Path = Bos.Path
-
-type path = Path.t
-
 module OS = struct
   type 'a result = 'a Bos.OS.result
   module Path = Bos.OS.Path
@@ -66,6 +63,7 @@ module OS = struct
   module Cmd = Bos.OS.Cmd
 end
 
+type path = Path.t
 
 (*---------------------------------------------------------------------------
    Copyright (c) 2015 Daniel C. Bünzli.

@@ -62,8 +62,7 @@ type style =
   [ `Bold | `Underline | `Black | `Red | `Green | `Yellow | `Blue | `Magenta
   | `Cyan | `White | `None ]
 
-let (style_tags : unit -> style_tags),
-    (set_style_tags : style_tags -> unit) =
+let (style_tags : unit -> style_tags), (set_style_tags : style_tags -> unit) =
   let style_tags = ref `None in
   (fun () -> !style_tags), (fun s -> style_tags := s)
 

@@ -242,10 +242,26 @@ end
 (** Logging. *)
 module Log : sig
 
-  (** {1 Log level} *)
+  (** {1 Log level and output} *)
 
   (** The type for log levels. *)
   type level = Show | Error | Warning | Info | Debug
+
+  val level : unit -> level option
+  (** [level ()] is the log level (if any). If the log level is [(Some l)]
+      any message whose level is [<= l] is logged. If level is [None]
+      no message is ever logged. Initially the level is [(Some Warning)]. *)
+
+  val set_level : level option -> unit
+  (** [set_level l] sets the log level to [l]. See {!level}. *)
+
+  val set_formatter : [`All | `Level of level ] -> Format.formatter -> unit
+  (** [set_formatter spec ppf] sets the formatter for a given level or
+      for all the levels according to [spec]. Initially the formatter
+      of level [Show] is {!Format.std_formatter} and all the other level
+      formatters are {!Format.err_formatter}. *)
+
+  (** {1 Log messages} *)
 
   val msg : ?header:string -> level ->
     ('a, Format.formatter, unit, unit) format4 -> 'a
@@ -277,7 +293,7 @@ module Log : sig
   (** [debug info ...] logs a message with level [Debug]. [header] defaults
       to ["DEBUG"]. *)
 
-  (** {1 Logging result errors} *)
+  (** {1 Log error {!Result}s} *)
 
   val on_error : ?log:level -> pp:(Format.formatter -> 'b -> unit) ->
     use:'a -> ('a, 'b) result -> 'a
@@ -288,37 +304,21 @@ module Log : sig
          {{!Log}logged} with [pp] on  level [log]
          (defaults to {!Log.Error})}} *)
 
-  val on_errork : ?log:level -> pp:(Format.formatter -> 'b -> unit) ->
-    use:'a -> ('a, 'b) result -> ('a, 'c) result
-  (** [on_errk ~log ~pp ~use r] is:
+  val kon_error : ?log:level -> pp:(Format.formatter -> 'b -> unit) ->
+    use:('a, 'c) result -> ('a, 'b) result -> ('a, 'c) result
+  (** [kon_error ~log ~pp ~use r] is:
       {ul
       {- [v] if [r = `Ok v]}
-      {- [`Ok use] if [r = `Error e]. As a side effect [e] is
+      {- [use] if [r = `Error e]. As a side effect [e] is
          {{!Log}logged} with [pp] on level [log]
          (defaults to {!Log.Error})}} *)
 
   val on_err_msg : ?log:level -> use:'a -> ('a, R.err_msg) result -> 'a
   (** [on_err_msg ~log ~use] is [on_error ~log ~pp:pp_msg ~use]. *)
 
-  val on_err_msgk : ?log:level -> use:'a -> ('a, R.err_msg) result ->
-    ('a, 'c) result
-  (** [on_err_msgk ~log ~use] is [on_errork ~log ~pp:pp_msg ~use]. *)
-
-  (** {1 Log level and output} *)
-
-  val level : unit -> level option
-  (** [level ()] is the log level (if any). If the log level is [(Some l)]
-      any message whose level is [<= l] is logged. If level is [None]
-      no message is ever logged. Initially the level is [(Some Warning)]. *)
-
-  val set_level : level option -> unit
-  (** [set_level l] sets the log level to [l]. See {!level}. *)
-
-  val set_formatter : [`All | `Level of level ] -> Format.formatter -> unit
-  (** [set_formatter spec ppf] sets the formatter for a given level or
-      for all the levels according to [spec]. Initially the formatter
-      of level [Show] is {!Format.std_formatter} and all the other level
-      formatters are {!Format.err_formatter}. *)
+  val kon_err_msg : ?log:level -> use:('a, 'c) result ->
+    ('a, R.err_msg) result -> ('a, 'c) result
+  (** [kon_err_msg ~log ~use] is [on_errork ~log ~pp:pp_msg ~use]. *)
 
   (** {1 Log monitoring} *)
 

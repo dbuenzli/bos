@@ -7,11 +7,9 @@
 module Prelude = Bos_prelude
 module Fmt = Bos_fmt
 module Log = Bos_log
-
 module Path = Bos_path
-type path = Path.t
-
 module OS = Bos_os
+type path = Path.t
 
 (*---------------------------------------------------------------------------
    Copyright 2014 Daniel C. Bünzli.
