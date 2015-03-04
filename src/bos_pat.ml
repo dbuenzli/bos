@@ -115,7 +115,7 @@ let unify ?(init = String.Map.empty) p s = match_pat ~env:(Some init) 0 s p
 
 (* Formatting *)
 
-let err_var s = str "variable `%s` undefined in environment" s
+let err_var s = strf "variable `%s` undefined in environment" s
 
 let format ?buf p env =
   let b = get_buf ?buf () in

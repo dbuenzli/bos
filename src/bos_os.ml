@@ -62,7 +62,7 @@ module Path = struct   (* Renamed at the end of the module. *)
         in
         let add_match acc f = match (Bos_pat.match_pat ~env 0 f seg) with
         | None -> acc
-        | Some _ as m -> (str "%s%s%s" path Filename.dir_sep f, m) :: acc
+        | Some _ as m -> (strf "%s%s%s" path Filename.dir_sep f, m) :: acc
         in
         R.ret (Array.fold_left add_match acc occs)
       with Sys_error e ->
@@ -286,7 +286,7 @@ module Cmd = struct
       (* Using Sys.os_type, because that's really for the driver. *)
       let test = match Sys.os_type with "Win32" -> "where" | _ -> "type" in
       let err_msg cmd = R.error_msgf "%s: no such command" cmd in
-      let exists = Sys.command (str "%s %s 1>%s 2>%s" test cmd null null) = 0 in
+      let exists = Sys.command (strf "%s %s 1>%s 2>%s" test cmd null null)= 0 in
       ret_exists ?err err_msg cmd exists
     with Sys_error e -> R.error_msg e
 
@@ -303,7 +303,7 @@ module Cmd = struct
   let exec_read ?(trim = true) cmd args =
     let cmd = mk_cmd cmd args in
     File.temp "cmd-read"
-    >>= fun file -> handle_ret (str "%s > %s" cmd (path_str file))
+    >>= fun file -> handle_ret (strf "%s > %s" cmd (path_str file))
     >>= fun () -> File.read file
     >>= fun v -> R.ret (if trim then String.trim v else v)
 
@@ -313,7 +313,7 @@ module Cmd = struct
   let exec_write cmd args file =
     let cmd = mk_cmd cmd args in
     File.temp "cmd-write"
-    >>= fun tmpf -> handle_ret (str "%s > %s" cmd (path_str tmpf))
+    >>= fun tmpf -> handle_ret (strf "%s > %s" cmd (path_str tmpf))
     >>= fun () -> Path.move ~force:true tmpf file
 end
 

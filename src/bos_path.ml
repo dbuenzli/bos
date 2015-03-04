@@ -12,7 +12,7 @@
 
 open Bos_prelude
 
-let err_no_ext p = str "no file extension in last segment (%s)" p
+let err_no_ext p = strf "no file extension in last segment (%s)" p
 
 (* File paths *)
 
@@ -195,8 +195,8 @@ let get_ext p = match ext p with
 let naked_add_ext ext segs =
   let suff = ext_to_string ext in
   match List.rev segs with
-  | [] -> [str ".%s" suff]
-  | seg :: rsegs -> List.rev (str "%s.%s" seg suff :: rsegs)
+  | [] -> [strf ".%s" suff]
+  | seg :: rsegs -> List.rev (strf "%s.%s" seg suff :: rsegs)
 
 let add_ext p ext = map (naked_add_ext ext) p
 
