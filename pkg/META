@@ -22,7 +22,7 @@ package "unix" (
 package "top" (
   description = "Bos toplevel support"
   version = "%%VERSION%%"
-  requires = "compiler-libs.toplevel bos"
+  requires = "bos"
   archive(byte) = "bos_top.cma"
   archive(byte, plugin) = "bos_top.cma"
   archive(native) = "bos_top.cmxa"
