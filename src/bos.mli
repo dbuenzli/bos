@@ -25,8 +25,8 @@ module Prelude : sig
 
   (** {1 Strings} *)
 
-  val str : ('a, Format.formatter, unit, string) format4 -> 'a
-  (** [str] is {!Format.asprintf}. *)
+  val strf : ('a, Format.formatter, unit, string) format4 -> 'a
+  (** [strf] is {!Format.asprintf}. *)
 
   (** Extended [String] module, string sets and maps. *)
   module String : sig

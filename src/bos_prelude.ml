@@ -4,7 +4,7 @@
    %%NAME%% release %%VERSION%%
   ---------------------------------------------------------------------------*)
 
-let str = Format.asprintf
+let strf = Format.asprintf
 
 module String = struct
   include String
