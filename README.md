@@ -8,10 +8,10 @@ execute commands and handle errors. Bos can be seen as an enhanced
 `Sys` module for scripts and command line programs with light OS
 interaction requirements. 
 
-Bos depends on [Resultv][1] and is distributed under the BSD3 license. The
+Bos depends on [Rresult][1] and is distributed under the BSD3 license. The
 optional Bos_unix library depends on OCaml's Unix library.
 
-[1]: http://erratique.ch/software/resultv
+[1]: http://erratique.ch/software/rresult
 
 Home page: http://erratique.ch/software/bos  
 Contact: Daniel Bünzli `<daniel.buenzl i@erratique.ch>`

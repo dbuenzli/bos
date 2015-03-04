@@ -13,7 +13,7 @@
 
 (** {1 Preliminaries, formatting and logging} *)
 
-open Resultv
+open Rresult
 
 (** A few extensions to the standard library.
 
@@ -365,7 +365,7 @@ module Log : sig
   (** [debug info ...] logs a message with level [Debug]. [header] defaults
       to ["DEBUG"]. *)
 
-  (** {1 Log error {!Resultv}s} *)
+  (** {1 Log error {!Rresult}s} *)
 
   val on_error : ?level:level -> pp:(Format.formatter -> 'b -> unit) ->
     use:'a -> ('a, 'b) result -> 'a
@@ -868,7 +868,7 @@ module OS : sig
 
     (** {1:pathmatch Matching paths} *)
 
-    val matches : path -> path list result
+    val matches : Path.t -> path list result
     (** [matches pat] is the list of paths in the file system that
         match the pattern [pat].
 
@@ -880,7 +880,7 @@ module OS : sig
 ]}
         will match any existing file of the form data/*/*.txt. *)
 
-    val unify : ?init:Pat.env -> path -> (path * Pat.env) list result
+    val unify : ?init:Pat.env -> Path.t -> (path * Pat.env) list result
     (** [unify ~init pat] is like {!matches} except each
         matching path is returned with an environment mapping pattern
         variables to their matched part in the path. See {!Pat.unify}. *)

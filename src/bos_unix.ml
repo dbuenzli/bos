@@ -4,7 +4,7 @@
    %%NAME%% release %%VERSION%%
   ---------------------------------------------------------------------------*)
 
-open Resultv_infix
+open Rresult_infix
 
 module Prelude = Bos.Prelude
 module Fmt = struct
