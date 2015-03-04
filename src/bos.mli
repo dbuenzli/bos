@@ -868,7 +868,7 @@ module OS : sig
 
     (** {1:pathmatch Matching paths} *)
 
-    val matches : Path.t -> path list result
+    val matches : path -> path list result
     (** [matches pat] is the list of paths in the file system that
         match the pattern [pat].
 
@@ -880,7 +880,7 @@ module OS : sig
 ]}
         will match any existing file of the form data/*/*.txt. *)
 
-    val unify : ?init:Pat.env -> Path.t -> (path * Pat.env) list result
+    val unify : ?init:Pat.env -> path -> (path * Pat.env) list result
     (** [unify ~init pat] is like {!matches} except each
         matching path is returned with an environment mapping pattern
         variables to their matched part in the path. See {!Pat.unify}. *)
