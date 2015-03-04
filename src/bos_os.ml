@@ -12,8 +12,8 @@ type 'a result = ('a, R.msg) R.t
 let path_str = Bos_path.to_string
 
 let ret_exists ?(err = false) err_msg p b =
-  if not err then R.ret b else
-  if b then R.ret b else
+  if not err then R.ok b else
+  if b then R.ok b else
   err_msg p
 
 module Path = struct   (* Renamed at the end of the module. *)
@@ -32,9 +32,9 @@ module Path = struct   (* Renamed at the end of the module. *)
     R.error_msgf "move %s to %s: destination exists" src dst
 
   let move ?(force = false) src dst =
-    (if force then R.ret false else exists dst) >>= fun don't ->
+    (if force then R.ok false else exists dst) >>= fun don't ->
     if don't then err_move src dst else
-    try R.ret (Sys.rename (path_str src) (path_str dst)) with
+    try R.ok (Sys.rename (path_str src) (path_str dst)) with
     | Sys_error e -> R.error_msg e
 
   (* Matching paths *)
@@ -44,12 +44,12 @@ module Path = struct   (* Renamed at the end of the module. *)
     let parse_seg acc s =
       acc
       >>= fun acc -> Bos_pat.of_string ~buf s
-      >>= fun pat -> R.ret (pat :: acc)
+      >>= fun pat -> R.ok (pat :: acc)
     in
-    let parse_segs ss = List.fold_left parse_seg (R.ret []) ss in
+    let parse_segs ss = List.fold_left parse_seg (R.ok []) ss in
     match Bos_path.to_segs p with
-    | `Rel ss -> parse_segs ss >>= fun ss -> R.ret (".", List.rev ss)
-    | `Abs ss -> parse_segs ss >>= fun ss -> R.ret ("/", List.rev ss)
+    | `Rel ss -> parse_segs ss >>= fun ss -> R.ok (".", List.rev ss)
+    | `Abs ss -> parse_segs ss >>= fun ss -> R.ok ("/", List.rev ss)
 
   let match_segment ~env acc path seg = match acc with
   | Error _ as e -> e
@@ -64,7 +64,7 @@ module Path = struct   (* Renamed at the end of the module. *)
         | None -> acc
         | Some _ as m -> (strf "%s%s%s" path Filename.dir_sep f, m) :: acc
         in
-        R.ret (Array.fold_left add_match acc occs)
+        R.ok (Array.fold_left add_match acc occs)
       with Sys_error e ->
         let err _ = R.msgf "Unexpected error while matching `%s'" path in
         R.error_msg e |> R.reword_error_msg err
@@ -75,14 +75,14 @@ module Path = struct   (* Renamed at the end of the module. *)
         let add_seg acc (p, env) = match_segment ~env acc p seg in
         begin match acc with
         | Error _ as e -> e
-        | Ok acc -> loop (List.fold_left add_seg (R.ret []) acc) segs
+        | Ok acc -> loop (List.fold_left add_seg (R.ok []) acc) segs
         end
     | [] -> acc
     in
     pats_of_path p >>= fun (root, segs) ->
     match segs with
-    | [] -> R.ret []
-    | segs -> loop (R.ret [root, env]) segs
+    | [] -> R.ok []
+    | segs -> loop (R.ok [root, env]) segs
 
   let matches p =
     let pathify acc (p, _) = (Bos_path.of_string p) :: acc in
@@ -128,8 +128,8 @@ module File = struct
 
   let delete ?(maybe = false) file =
     exists file >>= fun exists ->
-    if maybe && not exists then R.ret () else
-    try R.ret (Sys.remove (path_str file)) with
+    if maybe && not exists then R.ok () else
+    try R.ok (Sys.remove (path_str file)) with
     | Sys_error e -> R.error_msg e
 
   let temp ?dir suff =
@@ -141,7 +141,7 @@ module File = struct
       let f = Filename.temp_file ?temp_dir "bos" suff in
       let f = Bos_path.of_string f in
       at_exit (fun () -> ignore (delete f));
-      R.ret f
+      R.ok f
     with Sys_error e -> R.error_msg e
 
   (* Input *)
@@ -158,7 +158,7 @@ module File = struct
     let input ic () =
       let len = in_channel_length ic in
       let s = Bytes.create len in
-      really_input ic s 0 len; R.ret s
+      really_input ic s 0 len; R.ok s
     in
     with_inf input file ()
 
@@ -175,7 +175,7 @@ module File = struct
     | Sys_error e -> R.error_msg e
 
   let write file contents =
-    let write oc contents = output_string oc contents; R.ret () in
+    let write oc contents = output_string oc contents; R.ok () in
     if is_dash file then with_outf write file contents else
     temp ~dir:(Bos_path.dirname file) "write"
     >>= fun tmpf -> with_outf write tmpf contents
@@ -217,7 +217,7 @@ module File = struct
           done
         end
       done;
-      Pervasives.output oc s !start (len - !start); R.ret ()
+      Pervasives.output oc s !start (len - !start); R.ok ()
     in
     if is_dash file then with_outf write_subst file contents else
     temp ~dir:(Bos_path.dirname file) "write"
@@ -237,18 +237,18 @@ module Dir = struct
     with Sys_error e -> R.error_msg e
 
   let current () =
-    try R.ret (Bos_path.of_string (Sys.getcwd ())) with
+    try R.ok (Bos_path.of_string (Sys.getcwd ())) with
     | Sys_error e -> R.error_msg e
 
   let set_current dir =
-    try R.ret (Sys.chdir (path_str dir)) with
+    try R.ok (Sys.chdir (path_str dir)) with
     | Sys_error e -> R.error_msg e
 
   let contents dir =
     try
       let files = Sys.readdir (path_str dir) in
       let add_file acc f = Bos_path.(dir / f) :: acc in
-      R.ret (List.rev (Array.fold_left add_file [] files))
+      R.ok (List.rev (Array.fold_left add_file [] files))
     with Sys_error e -> R.error_msg e
 
   let fold_files_rec ?(skip = []) f acc paths =
@@ -296,7 +296,7 @@ module Cmd = struct
   let execute cmd = trace cmd; Sys.command cmd
   let exec_ret cmd args = execute (mk_cmd cmd args)
   let handle_ret cmd = match execute cmd with
-  | 0 -> R.ret ()
+  | 0 -> R.ok ()
   | c -> R.error_msgf "Exited with code: %d `%s'" c cmd
 
   let exec cmd args = handle_ret (mk_cmd cmd args)
@@ -305,7 +305,7 @@ module Cmd = struct
     File.temp "cmd-read"
     >>= fun file -> handle_ret (strf "%s > %s" cmd (path_str file))
     >>= fun () -> File.read file
-    >>= fun v -> R.ret (if trim then String.trim v else v)
+    >>= fun v -> R.ok (if trim then String.trim v else v)
 
   let exec_read_lines cmd args =
     exec_read cmd args >>| String.split ~sep:"\n"

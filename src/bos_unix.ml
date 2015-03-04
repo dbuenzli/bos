@@ -42,8 +42,8 @@ module OS = struct
     include Bos.OS.Dir
 
     let mkdir err mode d =
-      try R.ret (Unix.mkdir (Bos.Path.to_string d) mode) with
-      | Unix.Unix_error (Unix.EEXIST, _, _) when not err -> R.ret ()
+      try R.ok (Unix.mkdir (Bos.Path.to_string d) mode) with
+      | Unix.Unix_error (Unix.EEXIST, _, _) when not err -> R.ok ()
       | Unix.Unix_error (e, f, a) ->
           R.error_msgf "%s %s: %s" f a (Unix.error_message e)
 
@@ -51,12 +51,12 @@ module OS = struct
       if not path then mkdir err mode d else
       let rec todo p acc =
         exists p >>= fun exists ->
-        if exists then R.ret acc else todo (Bos.Path.dirname p) (p :: acc)
+        if exists then R.ok acc else todo (Bos.Path.dirname p) (p :: acc)
       in
       let rec create_them = function
       | d :: [] -> mkdir err mode d
       | d :: ds -> mkdir false mode d >>= fun () -> create_them ds
-      | [] -> R.ret ()
+      | [] -> R.ok ()
       in
       todo d [] >>= create_them
   end
