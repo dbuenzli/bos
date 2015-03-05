@@ -153,6 +153,9 @@ module String = struct
 
   module Set = struct
     include Set.Make (String)
+    let min_elt s = try Some (min_elt s) with Not_found -> None
+    let choose s = try Some (choose s) with Not_found -> None
+    let find k s = try Some (find k s) with Not_found -> None
     let of_list = List.fold_left (fun acc s -> add s acc) empty
   end
 
@@ -174,6 +177,9 @@ module String = struct
 
   module Map = struct
     include Map.Make (String)
+    let min_binding m = try Some (min_binding m) with Not_found -> None
+    let choose m = try Some (choose m) with Not_found -> None
+    let find k m = try Some (find k m) with Not_found -> None
     let dom m = fold (fun k _ acc -> Set.add k acc) m Set.empty
   end
 end

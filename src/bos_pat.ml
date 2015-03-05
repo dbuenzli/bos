@@ -122,8 +122,9 @@ let format ?buf p env =
   let add = function
   | `Lit l -> Buffer.add_string b l
   | `Var v ->
-      try Buffer.add_string b (String.Map.find v env)
-      with Not_found -> invalid_arg (err_var v)
+      match String.Map.find v env with
+      | None -> invalid_arg (err_var v)
+      | Some s -> Buffer.add_string b s
   in
   List.iter add p;
   Buffer.contents b
@@ -132,8 +133,9 @@ let rec pp_format p ppf env = match p with
 | [] -> ()
 | `Lit l :: p -> Format.pp_print_string ppf l; pp_format p ppf env
 | `Var v :: p ->
-    try Format.fprintf ppf "%s" (String.Map.find v env); pp_format p ppf env
-    with Not_found -> invalid_arg (err_var v)
+    match String.Map.find v env with
+    | None -> invalid_arg (err_var v)
+    | Some s -> Format.pp_print_string ppf s; pp_format p ppf env
 
 (*---------------------------------------------------------------------------
    Copyright (c) 2015 Daniel C. Bünzli.

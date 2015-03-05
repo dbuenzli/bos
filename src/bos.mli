@@ -95,7 +95,17 @@ module Prelude : sig
     (** {1 String sets and maps} *)
 
     module Set : sig
-      include Set.S with type elt = string
+      include Set.S with type elt := string
+
+      val min_elt : t -> string option
+      (** Exceptionless {!Set.S.min_binding}. *)
+
+      val choose : t -> string option
+      (** Exceptionless {!Set.S.choose}. *)
+
+      val find : string -> t -> string option
+      (** Exceptionless {!Set.S.find}. *)
+
       val of_list : string list -> t
       (** [of_list ss] is a set from the list [ss]. *)
     end
@@ -109,7 +119,17 @@ module Prelude : sig
         positive numbers were exhausted. *)
 
     module Map : sig
-      include Map.S with type key = string
+      include Map.S with type key := string
+
+      val min_binding : 'a t -> (string * 'a) option
+      (** Exceptionless {!Map.S.min_binding}. *)
+
+      val choose : 'a t -> (string * 'a) option
+      (** Exceptionless {!Map.S.choose}. *)
+
+      val find : string -> 'a t -> 'a option
+      (** Exceptionless {!Map.S.find}. *)
+
       val dom : 'a t -> Set.t
       (** [dom m] is the domain of [m]. *)
     end
@@ -261,7 +281,7 @@ module Pat : sig
       @raise Invalid_argument if [s] is not a valid pattern. Use
       {!of_string} to deal with errors. *)
 
-  val of_string : ?buf:Buffer.t -> string -> (t, R.msg) result
+  val of_string : ?buf:Buffer.t -> string -> (t, [> R.msg]) result
   (** [of_string ?buf s] parses [s] according to the pattern syntax.
       [buf] can specify the temporary buffer to use. *)
 
@@ -707,12 +727,32 @@ module Path : sig
     (** {1:sets_maps Path sets and maps} *)
 
     module Set : sig
-      include Set.S with type elt = rel
-      val of_list : elt list -> t
+      include Set.S with type elt := rel
+
+      val min_elt : t -> rel option
+      (** Exceptionless {!Set.S.min_binding}. *)
+
+      val choose : t -> rel option
+      (** Exceptionless {!Set.S.choose}. *)
+
+      val find : rel -> t -> rel option
+      (** Exceptionless {!Set.S.find}. *)
+
+      val of_list : rel list -> t
     end
 
     module Map : sig
-      include Map.S with type key = rel
+      include Map.S with type key := rel
+
+      val min_binding : 'a t -> (rel * 'a) option
+      (** Exceptionless {!Map.S.min_binding}. *)
+
+      val choose : 'a t -> (rel * 'a) option
+      (** Exceptionless {!Map.S.choose}. *)
+
+      val find : rel -> 'a t -> 'a option
+      (** Exceptionless {!Map.S.find}. *)
+
       val dom : 'a t -> Set.t
       (** [dom m] is the domain of [m]. *)
     end
@@ -818,12 +858,32 @@ module Path : sig
     (** {1:sets_maps Path sets and maps} *)
 
     module Set : sig
-      include Set.S with type elt = abs
-      val of_list : elt list -> t
+      include Set.S with type elt := abs
+
+      val min_elt : t -> abs option
+      (** Exceptionless {!Set.S.min_binding}. *)
+
+      val choose : t -> abs option
+      (** Exceptionless {!Set.S.choose}. *)
+
+      val find : abs -> t -> abs option
+      (** Exceptionless {!Set.S.find}. *)
+
+      val of_list : abs list -> t
     end
 
     module Map : sig
-      include Map.S with type key = abs
+      include Map.S with type key := abs
+
+      val min_binding : 'a t -> (abs * 'a) option
+      (** Exceptionless {!Map.S.min_binding}. *)
+
+      val choose : 'a t -> (abs * 'a) option
+      (** Exceptionless {!Map.S.choose}. *)
+
+      val find : abs -> 'a t -> 'a option
+      (** Exceptionless {!Map.S.find}. *)
+
       val dom : 'a t -> Set.t
       (** [dom m] is the domain of [m]. *)
     end
@@ -832,12 +892,32 @@ module Path : sig
   (** {1:sets_maps Path sets and maps} *)
 
   module Set : sig
-    include Set.S with type elt = t
-    val of_list : elt list -> t
+    include Set.S with type elt = path
+
+    val min_elt : t -> path option
+    (** Exceptionless {!Set.S.min_binding}. *)
+
+    val choose : t -> path option
+    (** Exceptionless {!Set.S.choose}. *)
+
+    val find : path -> t -> path option
+    (** Exceptionless {!Set.S.find}. *)
+
+    val of_list : path list -> t
   end
 
   module Map : sig
-    include Map.S with type key = t
+    include Map.S with type key := path
+
+    val min_binding : 'a t -> (path * 'a) option
+    (** Exceptionless {!Map.S.min_binding}. *)
+
+    val choose : 'a t -> (path * 'a) option
+    (** Exceptionless {!Map.S.choose}. *)
+
+    val find : path -> 'a t -> 'a option
+    (** Exceptionless {!Map.S.find}. *)
+
     val dom : 'a t -> Set.t
     (** [dom m] is the domain of [m]. *)
   end
