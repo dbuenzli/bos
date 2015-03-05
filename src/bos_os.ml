@@ -320,9 +320,28 @@ end
 (* Environment variables lookup *)
 
 module Env = struct
-  let find var = try Some (Sys.getenv var) with Not_found -> None
-  let get var = try Ok (Sys.getenv var) with
-  | Not_found -> R.error_msgf "environment variable `%s' undefined" var
+  let var name = try Some (Sys.getenv name) with Not_found -> None
+
+  let value ?(log = Bos_log.Error) name parse ~absent = match var name with
+  | None -> absent
+  | Some s ->
+      match parse s with
+      | Ok v -> v
+      | Error (`Msg m) ->
+          Bos_log.msg log "environment variable %s: %s" name m; absent
+
+  let parser kind k_of_string =
+    fun s -> match k_of_string s with
+    | None -> R.error_msgf "could not parse %s value from %S" kind s
+    | Some v -> Ok v
+
+  let bool =
+    let of_string s = match String.lowercase s with
+    | "" | "false" | "no" | "n" | "0" -> Some false
+    | "true" | "yes" | "y" | "1" -> Some true
+    | _ -> None
+    in
+    parser "bool" of_string
 end
 
 (*---------------------------------------------------------------------------

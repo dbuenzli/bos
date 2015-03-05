@@ -63,6 +63,22 @@ module OS : sig
   end
 
   module Cmd : module type of Bos.OS.Cmd
+
+  module Env : sig
+    include module type of Bos.OS.Env
+
+    val set_var : string -> string option -> unit result
+    (** [set_var name v] sets the environment variable [name] to [v].
+
+        {b BUG.} The {!Unix} module doesn't bind to [unsetenv(3)],
+        hence for now using [None] will not unset the variable, it
+        will set it to [""]. This behaviour may change in future
+        versions of the library. *)
+
+    val vars : unit -> string Prelude.String.Map.t result
+    (** [vars ()] is a map corresponding to the process environment. *)
+  end
+
 end
 
 (*---------------------------------------------------------------------------

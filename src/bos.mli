@@ -1104,21 +1104,54 @@ module OS : sig
         is non zero returns an error message and [file] is left intact. *)
   end
 
-  (** {1:env_lookup Environment variables lookup} *)
+  (** {1:env Environment variables} *)
 
+  (** Environment variables.
 
+      To determine the process environment or set variables
+      use {!Bos_unix.OS.Env}. *)
   module Env : sig
-    (** Environment variables lookup.
 
-        TODO, review with parsers/default values. *)
+    (** {1 Lookup} *)
 
-    val find : string -> string option
-    (** [find var] is the value if the environment variable [var], if
+    val var : string -> string option
+    (** [var name] is the value of the environment variable [name], if
         defined. *)
 
-    val get : string -> string result
-    (** [get_env var] is like {!find} but returns an error if [var] is
-        undefined. *)
+    (** {1 Typed lookup}
+
+        See the {{!examples}examples}. *)
+
+    val value : ?log:Log.level -> string ->
+      (string -> ('a, R.msg) Rresult.result) -> absent:'a -> 'a
+    (** [value ~log name parse ~absent] is:
+        {ul
+        {- [v] if [(Env.value name) = Some s] and [(parse s) = Ok v].}
+        {- [absent] if [(Env.var name) = None] or if it is [Some s]
+           and [(parse s) = Error _]. In the latter case the error
+           message is logged with level [log] (defaults to
+           {!Log.Error}).}} *)
+
+    val bool : string -> (bool, R.msg) Rresult.result
+    (** [bool s] is a boolean parser. The string is lowercased and
+        any of [""], ["false"], ["no"], ["n"] and ["0"] is mapped
+        to [false] while any if ["true"], ["yes"], ["y"] and ["1"]
+        is mapped to [true]. Other string values error. *)
+
+    val parser : string -> (string -> 'a option) ->
+      (string -> ('a, R.msg) Rresult.result)
+    (** [parser kind k_of_string] is an environment variable parser
+        for {!value} from the [k_of_string] function.  [kind] is used
+        for error reports. *)
+
+     (** {1:examples Example}
+{[
+let debug = OS.Env.(value "DEBUG" bool ~absent:false)
+let timeout =
+  let int = OS.Env.parser "int" R.int_of_string in
+  OS.Env.value "TIMEOUT" int ~absent:60
+]}
+*)
   end
 end
 

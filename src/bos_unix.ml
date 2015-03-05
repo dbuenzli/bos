@@ -5,6 +5,7 @@
   ---------------------------------------------------------------------------*)
 
 open Rresult_infix
+open Bos.Prelude
 
 module Prelude = Bos.Prelude
 module Fmt = struct
@@ -62,6 +63,34 @@ module OS = struct
   end
 
   module Cmd = Bos.OS.Cmd
+
+  module Env = struct
+    include Bos.OS.Env
+
+    let set_var name v =
+      let v = match v with None -> "" | Some v -> v in
+      try R.ok (Unix.putenv name v) with
+      | Unix.Unix_error (e, _, _) ->
+          R.error_msgf "environment variable %s: %s" name (Unix.error_message e)
+
+    let vars () =
+      try
+        let env = Unix.environment () in
+        let add acc assign = match acc with
+        | Error _ as e -> e
+        | Ok m ->
+            match String.cut ~sep:"=" assign with
+            | Some (var, value) -> R.ok (String.Map.add var value m)
+            | None ->
+                R.error_msgf
+                  "could not parse process environment variable (%S)" assign
+        in
+        Array.fold_left add (R.ok String.Map.empty) env
+      with
+      | Unix.Unix_error (e, _, _) ->
+          R.error_msgf
+            "could not get process environment: %s" (Unix.error_message e)
+  end
 end
 
 type path = Path.t
