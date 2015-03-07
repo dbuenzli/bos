@@ -244,11 +244,12 @@ module Dir = struct
     try R.ok (Sys.chdir (path_str dir)) with
     | Sys_error e -> R.error_msg e
 
-  let contents dir =
+  let contents ?(path = true) dir =
     try
+      let name = if path then Bos_path.add dir else Bos_path.file in
       let files = Sys.readdir (path_str dir) in
-      let add_file acc f = Bos_path.(dir / f) :: acc in
-      R.ok (List.rev (Array.fold_left add_file [] files))
+      let add_file acc f = name f :: acc in
+      R.ok (Array.fold_left add_file [] files)
     with Sys_error e -> R.error_msg e
 
   let fold_files_rec ?(skip = []) f acc paths =

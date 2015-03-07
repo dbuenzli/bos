@@ -1057,10 +1057,10 @@ module OS : sig
     val set_current : path -> unit result
     (** [set_current dir] sets the current working directory to [dir]. *)
 
-    val contents : path -> path list result
-    (** [contents dir] is the contents of [dir]. Resulting paths
-        are prefixed by [dir]. *)
-
+    val contents : ?path:bool -> path -> path list result
+    (** [contents dir] is the contents of [dir] if [path] is
+        [true] (default) the basenames are prefixed by [dir].
+        Elements are returned according to [kind]. *)
     val fold_files_rec : ?skip:string list -> (string -> 'a -> 'a result) ->
       'a -> string list -> 'a result
     (** [fold_files_rec skip f acc paths] folds [f] over the files
