@@ -10,8 +10,7 @@
    the path. The functions should then be reviewed with that normal
    form in mind. *)
 
-open Bos_prelude
-
+let strf = Format.asprintf
 let err_no_ext p = strf "no file extension in last segment (%s)" p
 
 (* File paths *)
@@ -134,7 +133,7 @@ let to_string = function
 
 let of_string s =                                (* N.B. collapses // to / *)
   (* FIXME unquote ? *)
-  match String.split ~sep:Filename.dir_sep s with
+  match Bos_string.split ~sep:Filename.dir_sep s with
   | "" :: segs -> of_segs (`Abs segs)   (* FIXME windows ?? *)
   | segs -> of_segs (`Rel segs)
 

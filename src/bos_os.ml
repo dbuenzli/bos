@@ -5,7 +5,8 @@
   ---------------------------------------------------------------------------*)
 
 open Rresult_infix
-open Bos_prelude
+
+let strf = Format.asprintf
 
 type 'a result = ('a, R.msg) R.t
 
@@ -105,7 +106,7 @@ module Path = struct
     let pathify acc (p, _) = (Bos_path.of_string p) :: acc in
     match_path ~env:None p >>| List.fold_left pathify []
 
-  let unify ?(init = String.Map.empty) p =
+  let unify ?(init = Bos_string.Map.empty) p =
     let env = Some init in
     let pathify acc (p, map) = match map with
     | None -> assert false
@@ -246,7 +247,7 @@ module File = struct
     in
     with_inf input file ()
 
-  let read_lines file = read file >>| (String.split ~sep:"\n")
+  let read_lines file = read file >>| (Bos_string.split ~sep:"\n")
 
   (* Output *)
 
@@ -371,7 +372,7 @@ module Cmd = struct
     >>= fun v -> R.ok (if trim then String.trim v else v)
 
   let exec_read_lines cmd args =
-    exec_read cmd args >>| String.split ~sep:"\n"
+    exec_read cmd args >>| Bos_string.split ~sep:"\n"
 
   let exec_write cmd args file =
     let cmd = mk_cmd cmd args in
