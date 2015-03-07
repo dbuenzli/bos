@@ -1039,12 +1039,12 @@ module OS : sig
   end
 
   module Dir : sig
-    (** Directory operations. *)
-
-    (** {1:dirops Directory operations}
+    (** Directory operations.
 
         {b Note.} When paths are {{!Path.rel}relative} they are expressed
         relative to the {{!Dir.current}current working directory}. *)
+
+    (** {1:dirops Directory operations} *)
 
     val exists : ?err:bool -> path -> bool result
     (** [exists dir] is [true] if directory [dir] exists.
@@ -1061,12 +1061,48 @@ module OS : sig
     (** [contents dir] is the contents of [dir] if [path] is
         [true] (default) the basenames are prefixed by [dir].
         Elements are returned according to [kind]. *)
-    val fold_files_rec : ?skip:string list -> (string -> 'a -> 'a result) ->
-      'a -> string list -> 'a result
-    (** [fold_files_rec skip f acc paths] folds [f] over the files
-        found in [paths]. Files and directories whose suffix matches an
-        element of [skip] are skipped. {b FIXME} this should be using
-        {!Path.t} and {!Path.ext}. *)
+
+    (** {1:fold Folding over directories} *)
+
+    type traverse = [`All | `None | `If of path -> bool result ]
+    (** The type for controlling directory folds. The predicate of
+        [`If] will only be called with directory paths (but there may
+        be OS races). *)
+
+    type elements = [ `Any | `Files | `Dirs | `Is of path -> bool result ]
+    (** The type for specifying elements being folded over. *)
+
+    type 'a fold_error = path -> 'a result -> unit result
+    (** The type for managing fold errors.
+
+        During the fold errors may be generated at different points. Examples
+        are determining traversal with {!traverse}, folded {!elements}
+        or trying to [readdir(3)] a directory without having permissions.
+
+        These errors are given to a function of this type. If the
+        function returns [Error _] the fold stops and returns that
+        error. If the function returns [`Ok ()] the path is ignored
+        for the operation and the fold continues. *)
+
+    val log_fold_error : level:Log.level -> 'a fold_error
+    (** [log_fold_error level] is a {!fold_error} function that logs
+        error with level [level] and always returns [`Ok ()]. *)
+
+    val fold : ?err:'b fold_error -> ?over:elements -> ?traverse:traverse ->
+        ('a -> path -> 'a) -> 'a -> path -> 'a result
+    (** [fold err over traverse f acc d] folds [f] over the contents of
+        [d], traversing directories according to [traverse] (defaults
+        to [`All]) and selecting elements to fold over according to
+        [over] (defaults to [`Any]).
+
+        [err] manages fold errors (see {!fold_error}), defaults to
+        {!log_fold_error}[ ~level:Log.Error]. Note that errors on the
+        path [d] itself are returned from [fold] and not given to [err]. *)
+
+    val descendants : ?err:'b fold_error -> ?over:elements ->
+      ?traverse:traverse -> path -> path list result
+    (** [descendants err over traverse p] is
+        [fold err over traverse List.cons []] *)
   end
 
   module Cmd : sig
