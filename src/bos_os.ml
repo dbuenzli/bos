@@ -16,7 +16,24 @@ let ret_exists ?(err = false) err_msg p b =
   if b then R.ok b else
   err_msg p
 
-module Path = struct   (* Renamed at the end of the module. *)
+let file_exists ?err file =
+  try
+    let file = path_str file in
+    let err_msg file = R.error_msgf "%s: no such file" file in
+    let exists = Sys.file_exists file && not (Sys.is_directory file) in
+    ret_exists ?err err_msg file exists
+  with
+  | Sys_error e -> R.error_msg e
+
+let dir_exists ?err dir =
+  try
+    let dir = path_str dir in
+    let err_msg file = R.error_msgf "%s: no such directory" dir in
+    let exists = Sys.file_exists dir && Sys.is_directory dir in
+    ret_exists ?err err_msg dir exists
+  with Sys_error e -> R.error_msg e
+
+module Path = struct
 
   (* Path operations *)
 
@@ -95,6 +112,80 @@ module Path = struct   (* Renamed at the end of the module. *)
     | Some map -> (Bos_path.of_string p, map) :: acc
     in
     match_path ~env p >>| List.fold_left pathify []
+
+  (* Folding over file system hierarchies *)
+
+  type traverse = [`All | `None | `If of Bos_path.t -> bool result ]
+  type elements = [ `Any | `Files | `Dirs | `Is of Bos_path.t -> bool result ]
+  type 'a fold_error = Bos_path.t -> 'a result -> unit result
+
+  let log_fold_error ~level =
+    fun p -> function
+    | Error (`Msg m) -> Bos_log.msg level "%s" m; R.ok ()
+    | Ok _ -> assert false
+
+  exception Fold_stop of R.msg
+
+  let err_fun err f ~backup_value = (* handles path function errors in folds *)
+    fun p -> match f p with
+    | Ok v -> v
+    | Error _ as e ->
+        match err p e with
+        | Ok () -> backup_value   (* use backup value and continue the fold. *)
+        | Error m -> raise (Fold_stop m)                  (* the fold stops. *)
+
+  let err_predicate_fun err p = err_fun err p ~backup_value:false
+
+  let do_traverse_fun err = function
+  | `All -> fun _ -> true
+  | `None -> fun _ -> false
+  | `If pred -> err_predicate_fun err pred
+
+  let is_element_fun err = function
+  | `Any -> fun _ -> true
+  | `Files -> err_predicate_fun err file_exists
+  | `Dirs -> err_predicate_fun err dir_exists
+  | `Is pred -> err_predicate_fun err pred
+
+  let is_dir_fun err =
+    let is_dir p = try Ok (Sys.is_directory (path_str p)) with
+    | Sys_error e -> R.error_msg e
+    in
+    err_predicate_fun err is_dir
+
+  let readdir_fun err =
+    let readdir d = try Ok (Sys.readdir (path_str d)) with
+    | Sys_error e -> R.error_msg e
+    in
+    err_fun err readdir ~backup_value:[||]
+
+  let fold
+      ?(err = log_fold_error ~level:Bos_log.Error) ?(over = `Any)
+      ?(traverse = `All) f acc paths
+    =
+    try
+      let do_traverse = do_traverse_fun err traverse in
+      let is_element = is_element_fun err over in
+      let is_dir = is_dir_fun err in
+      let readdir =  readdir_fun err in
+      let process dir (acc, to_traverse) bname =
+        let p = Bos_path.(dir / bname) in
+        (if is_element p then (f acc p) else acc),
+        (if is_dir p && do_traverse p then p :: to_traverse else to_traverse)
+      in
+      let rec loop acc = function
+      | (d :: ds) :: up ->
+          let childs = readdir d in
+          let acc, to_traverse = Array.fold_left (process d) (acc, []) childs in
+          loop acc (to_traverse :: ds :: up)
+      | [] :: [] -> acc
+      | [] :: up -> loop acc up
+      | _ -> assert false
+      in
+      let init acc p = process (Bos_path.dirname p) acc (Bos_path.basename p) in
+      let acc, to_traverse = List.fold_left init (acc, []) paths in
+      Ok (loop acc (to_traverse :: []))
+    with Fold_stop e -> Error e
 end
 
 (* File operations *)
@@ -117,14 +208,7 @@ module File = struct
   | "Win32" -> Bos_path.file "NUL"
   |  _ -> Bos_path.(root / "dev" / "null")
 
-  let exists ?err file =
-    try
-      let file = path_str file in
-      let err_msg file = R.error_msgf "%s: no such file" file in
-      let exists = Sys.file_exists file && not (Sys.is_directory file) in
-      ret_exists ?err err_msg file exists
-    with
-    | Sys_error e -> R.error_msg e
+  let exists = file_exists
 
   let delete ?(maybe = false) file =
     exists file >>= fun exists ->
@@ -228,14 +312,7 @@ end
 (* Directory operations *)
 
 module Dir = struct
-  let exists ?err dir =
-    try
-      let dir = path_str dir in
-      let err_msg file = R.error_msgf "%s: no such directory" dir in
-      let exists = Sys.file_exists dir && Sys.is_directory dir in
-      ret_exists ?err err_msg dir exists
-    with Sys_error e -> R.error_msg e
-
+  let exists = dir_exists
   let current () =
     try R.ok (Bos_path.of_string (Sys.getcwd ())) with
     | Sys_error e -> R.error_msg e
@@ -254,83 +331,11 @@ module Dir = struct
 
   (* Directory folding *)
 
-  type traverse = [`All | `None | `If of Bos_path.t -> bool result ]
-  type elements = [ `Any | `Files | `Dirs | `Is of Bos_path.t -> bool result ]
-  type 'a fold_error = Bos_path.t -> 'a result -> unit result
-
-  let log_fold_error ~level =
-    fun p -> function
-    | Error (`Msg m) -> Bos_log.msg level "%s" m; R.ok ()
-    | Ok _ -> assert false
-
-  exception Fold_stop of R.msg
-
-  let err_fun err f ~backup_value = (* handles path function errors in folds *)
-    fun p -> match f p with
-    | Ok v -> v
-    | Error _ as e ->
-        match err p e with
-        | Ok () -> backup_value   (* use backup value and continue the fold. *)
-        | Error m -> raise (Fold_stop m)                  (* the fold stops. *)
-
-  let err_predicate_fun err p = err_fun err p ~backup_value:false
-
-  let do_traverse_fun err = function
-  | `All -> fun _ -> true
-  | `None -> fun _ -> false
-  | `If pred -> err_predicate_fun err pred
-
-  let is_element_fun err = function
-  | `Any -> fun _ -> true
-  | `Files -> err_predicate_fun err File.exists
-  | `Dirs -> err_predicate_fun err (* Dir. *) exists
-  | `Is pred -> err_predicate_fun err pred
-
-  let is_dir_fun err =
-    let is_dir p = try Ok (Sys.is_directory (path_str p)) with
-    | Sys_error e -> R.error_msg e
-    in
-    err_predicate_fun err is_dir
-
-  let readdir_fun err =
-    let readdir d = try Ok (Sys.readdir (path_str d)) with
-    | Sys_error e -> R.error_msg e
-    in
-    err_fun err readdir ~backup_value:[||]
-
-  let fold_paths
-      ?(err = log_fold_error ~level:Bos_log.Error) ?(over = `Any)
-      ?(traverse = `All) f acc paths
-    =
-    try
-      let do_traverse = do_traverse_fun err traverse in
-      let is_element = is_element_fun err over in
-      let is_dir = is_dir_fun err in
-      let readdir =  readdir_fun err in
-      let process dir (acc, to_traverse) bname =
-        let p = Bos_path.(dir / bname) in
-        (if is_element p then (f acc p) else acc),
-        (if is_dir p && do_traverse p then p :: to_traverse else to_traverse)
-      in
-      let rec loop acc = function
-      | (d :: ds) :: up ->
-          let childs = readdir d in
-          let acc, to_traverse = Array.fold_left (process d) (acc, []) childs in
-          loop acc (to_traverse :: ds :: up)
-      | [] :: [] -> acc
-      | [] :: up -> loop acc up
-      | _ -> assert false
-      in
-      let init acc p = process (Bos_path.dirname p) acc (Bos_path.basename p) in
-      let acc, to_traverse = List.fold_left init (acc, []) paths in
-      Ok (loop acc (to_traverse :: []))
-    with Fold_stop e -> Error e
-
-  let fold ?err ?over ?traverse f acc d =
-    contents d >>= fun childs -> fold_paths ?err ?over ?traverse f acc childs
+  let fold_contents ?err ?over ?traverse f acc d =
+    contents d >>= Path.fold ?err ?over ?traverse f acc
 
   let descendants ?err ?over ?traverse d =
-    fold ?err ?over ?traverse (fun acc p -> p :: acc) [] d
+    fold_contents ?err ?over ?traverse (fun acc p -> p :: acc) [] d
 end
 
 (* Commands *)
