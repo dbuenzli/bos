@@ -162,8 +162,8 @@ let make_unique_in ?(suff = "~") set elt =
       if not (Set.mem !candidate set) then raise Exit else
       candidate := Printf.sprintf "%s%s%d" elt suff i
     done;
-    None
-  with Exit -> Some !candidate
+    invalid_arg (Printf.sprintf "could not make %s unique in set" elt)
+  with Exit -> !candidate
 
 let uniquify ss =
   let add (seen, ss as acc) v =

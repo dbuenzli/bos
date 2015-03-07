@@ -100,13 +100,15 @@ module String : sig
     (** [of_list ss] is a set from the list [ss]. *)
   end
 
-  val make_unique_in : ?suff:string -> Set.t -> string -> string option
+  val make_unique_in : ?suff:string -> Set.t -> string -> string
   (** [make_unique_in ~suff set elt] is a string that does not belong
       [set].  If [elt] in not in [set] then this is [elt] itself
-      otherwise it is a string defined by [Printf.sprintf "%s%s%d" s
+      otherwise it is a string defined by {!strf}[ "%s%s%d" elt
       suff d] where [d] is a positive number starting from [1]. [suff]
-      defaults to ["~"].  [None] in the unlikely case that all
-      positive numbers were exhausted. *)
+      defaults to ["~"].
+
+      @raise Invalid_argument if all positive numbers were exhausted (unlikely
+      on a 64-bit platorm). *)
 
   module Map : sig
     include Map.S with type key := string
