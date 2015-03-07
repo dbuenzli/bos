@@ -11,10 +11,10 @@
 
 (** {1 Preliminaries, formatting and logging} *)
 
-module Prelude : module type of Bos.Prelude
-  with type String.t = Bos.Prelude.String.t
-   and type String.Set.t = Bos.Prelude.String.Set.t
-   and type 'a String.Map.t = 'a Bos.Prelude.String.Map.t
+module String : module type of Bos.String
+  with type t = Bos.String.t
+   and type Set.t = Bos.String.Set.t
+   and type 'a Map.t = 'a Bos.String.Map.t
 
 module Fmt : sig
   include module type of Bos.Fmt with type 'a t = 'a Bos.Fmt.t
@@ -75,7 +75,7 @@ module OS : sig
         will set it to [""]. This behaviour may change in future
         versions of the library. *)
 
-    val vars : unit -> string Prelude.String.Map.t result
+    val vars : unit -> string String.Map.t result
     (** [vars ()] is a map corresponding to the process environment. *)
   end
 

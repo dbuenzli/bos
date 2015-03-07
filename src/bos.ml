@@ -4,7 +4,8 @@
    %%NAME%% release %%VERSION%%
   ---------------------------------------------------------------------------*)
 
-module Prelude = Bos_prelude
+let strf = Format.asprintf
+module String = Bos_string
 module Fmt = Bos_fmt
 module Pat = Bos_pat
 module Log = Bos_log

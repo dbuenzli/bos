@@ -6,8 +6,8 @@
 
 (** Light, basic OS interaction.
 
-  Open the module to use it, this defines only one type and modules
-  in your scope.
+    Open the module to use it, this defines only {{!path}one type},
+    {{!strf}one value} and modules in your scope.
 
   {e Release %%VERSION%% - %%MAINTAINER%% } *)
 
@@ -15,124 +15,113 @@
 
 open Rresult
 
-(** A few extensions to the standard library.
+val strf : ('a, Format.formatter, unit, string) format4 -> 'a
+(** [strf] is {!Format.asprintf}. *)
 
-    Open the module to use it. It defines only modules
-    and one value in your scope.
+(** Extended [String] module, string sets and maps. *)
+module String : sig
 
-    {b FIXME} maybe this should be externalized  *)
-module Prelude : sig
+  (** {1 String} *)
 
-  (** {1 Strings} *)
+  include module type of String
 
-  val strf : ('a, Format.formatter, unit, string) format4 -> 'a
-  (** [strf] is {!Format.asprintf}. *)
+  (** These are sorely missing from the standard library. *)
 
-  (** Extended [String] module, string sets and maps. *)
-  module String : sig
+  val split : sep:string -> string -> string list
+  (** [split sep s] is the list of all (possibly empty) substrings of
+      [s] that are delimited by matches of the non empty separator
+      string [sep].
 
-    (** {1 String} *)
+      Matching separators in [s] starts from the beginning of [s] and
+      once one is found, the separator is skipped and matching starts
+      again (i.e. separator matches can't overlap). If there is no
+      separator match in [s], [[s]] is returned.
 
-    include module type of String
+      The invariants [String.concat sep (String.split sep s) = s] and
+      [String.split sep s <> []] always hold.
 
-    (** These are sorely missing from the standard library. *)
+      @raise Invalid_argument if [sep] is the empty string. *)
 
-    val split : sep:string -> string -> string list
-    (** [split sep s] is the list of all (possibly empty) substrings of
-        [s] that are delimited by matches of the non empty separator
-        string [sep].
+  val rsplit : sep:string -> string -> string list
+  (** [rsplit sep s] is like {!split} but the matching is
+      done backwards, starting from the end of [s].
 
-        Matching separators in [s] starts from the beginning of [s] and once
-        one is found, the separator is skipped and matching starts again
-        (i.e. separator matches can't overlap). If there is no separator
-        match in [s], [[s]] is returned.
+      @raise Invalid_argument if [sep] is the empty string. *)
 
-        The invariants [String.concat sep (String.split sep s) = s] and
-        [String.split sep s <> []] always hold.
+  val cut : sep:string -> string -> (string * string) option
+  (** [cut sep s] is either the pair [Some (l,r)] of the two
+      (possibly empty) substrings of [s] that are delimited by the first
+      match of the non empty separator string [sep] or [None] if [sep]
+      can't be matched in [s]. Matching starts from the beginning of [s].
 
-        @raise Invalid_argument if [sep] is the empty string. *)
+      The invariant [l ^ sep ^ r = s] holds.
 
-    val rsplit : sep:string -> string -> string list
-    (** [rsplit sep s] is like {!split} but the matching is
-        done backwards, starting from the end of [s].
+      @raise Invalid_argument if [sep] is the empty string. *)
 
-        @raise Invalid_argument if [sep] is the empty string. *)
+  val rcut : sep:string -> string -> (string * string) option
+  (** [rcut sep s] is like {!cut} but the matching is done backwards
+      starting from the end of [s].
 
-    val cut : sep:string -> string -> (string * string) option
-    (** [cut sep s] is either the pair [Some (l,r)] of the two
-        (possibly empty) substrings of [s] that are delimited by the first
-        match of the non empty separator string [sep] or [None] if [sep]
-        can't be matched in [s]. Matching starts from the beginning of [s].
+      @raise Invalid_argument if [sep] is the empty string. *)
 
-        The invariant [l ^ sep ^ r = s] holds.
+  val slice : ?start:int -> ?stop:int -> string -> string
+  (** [slice ~start ~stop s] is the string s.[start], s.[start+1], ...
+      s.[stop - 1]. [start] defaults to [0] and [stop] to [String.length s].
 
-        @raise Invalid_argument if [sep] is the empty string. *)
+      If [start] or [stop] are negative they are subtracted from
+      [String.length s]. This means that [-1] denotes the last
+      character of the string. *)
 
-    val rcut : sep:string -> string -> (string * string) option
-    (** [rcut sep s] is like {!cut} but the matching is done backwards
-        starting from the end of [s].
+  val tokens : string -> string list
+  (** [tokens s] is the list of non empty strings made of characters
+      that are not separated by [' '], ['\t'], ['\n'], ['\r'] characters in
+      [s], the order of character appearance in the list is the same as
+      in [s]. *)
 
-        @raise Invalid_argument if [sep] is the empty string. *)
+  val uniquify : string list -> string list
+  (** [uniquify ss] is [ss] without duplicates, the list order is
+      preserved. *)
 
-    val slice : ?start:int -> ?stop:int -> string -> string
-    (** [slice ~start ~stop s] is the string s.[start], s.[start+1], ...
-        s.[stop - 1]. [start] defaults to [0] and [stop] to [String.length s].
+  (** {1 String sets and maps} *)
 
-        If [start] or [stop] are negative they are subtracted from
-        [String.length s]. This means that [-1] denotes the last
-        character of the string. *)
+  module Set : sig
+    include Set.S with type elt := string
 
-    val tokens : string -> string list
-    (** [tokens s] is the list of non empty strings made of characters
-        that are not separated by [' '], ['\t'], ['\n'], ['\r'] characters in
-        [s], the order of character appearance in the list is the same as
-        in [s]. *)
+    val min_elt : t -> string option
+    (** Exceptionless {!Set.S.min_binding}. *)
 
-    val uniquify : string list -> string list
-    (** [uniquify ss] is [ss] without duplicates, the list order is
-        preserved. *)
+    val choose : t -> string option
+    (** Exceptionless {!Set.S.choose}. *)
 
-    (** {1 String sets and maps} *)
+    val find : string -> t -> string option
+    (** Exceptionless {!Set.S.find}. *)
 
-    module Set : sig
-      include Set.S with type elt := string
+    val of_list : string list -> t
+    (** [of_list ss] is a set from the list [ss]. *)
+  end
 
-      val min_elt : t -> string option
-      (** Exceptionless {!Set.S.min_binding}. *)
+  val make_unique_in : ?suff:string -> Set.t -> string -> string option
+  (** [make_unique_in ~suff set elt] is a string that does not belong
+      [set].  If [elt] in not in [set] then this is [elt] itself
+      otherwise it is a string defined by [Printf.sprintf "%s%s%d" s
+      suff d] where [d] is a positive number starting from [1]. [suff]
+      defaults to ["~"].  [None] in the unlikely case that all
+      positive numbers were exhausted. *)
 
-      val choose : t -> string option
-      (** Exceptionless {!Set.S.choose}. *)
+  module Map : sig
+    include Map.S with type key := string
 
-      val find : string -> t -> string option
-      (** Exceptionless {!Set.S.find}. *)
+    val min_binding : 'a t -> (string * 'a) option
+    (** Exceptionless {!Map.S.min_binding}. *)
 
-      val of_list : string list -> t
-      (** [of_list ss] is a set from the list [ss]. *)
-    end
+    val choose : 'a t -> (string * 'a) option
+    (** Exceptionless {!Map.S.choose}. *)
 
-    val make_unique_in : ?suff:string -> Set.t -> string -> string option
-    (** [make_unique_in ~suff set elt] is a string that does not belong
-        [set].  If [elt] in not in [set] then this is [elt] itself
-        otherwise it is a string defined by [Printf.sprintf "%s%s%d" s
-        suff d] where [d] is a positive number starting from [1]. [suff]
-        defaults to ["~"].  [None] in the unlikely case that all
-        positive numbers were exhausted. *)
+    val find : string -> 'a t -> 'a option
+    (** Exceptionless {!Map.S.find}. *)
 
-    module Map : sig
-      include Map.S with type key := string
-
-      val min_binding : 'a t -> (string * 'a) option
-      (** Exceptionless {!Map.S.min_binding}. *)
-
-      val choose : 'a t -> (string * 'a) option
-      (** Exceptionless {!Map.S.choose}. *)
-
-      val find : string -> 'a t -> 'a option
-      (** Exceptionless {!Map.S.find}. *)
-
-      val dom : 'a t -> Set.t
-      (** [dom m] is the domain of [m]. *)
-    end
+    val dom : 'a t -> Set.t
+    (** [dom m] is the domain of [m]. *)
   end
 end
 
@@ -272,7 +261,7 @@ module Pat : sig
   (** The type for patterns. A list of either a string literal or a
       variable. *)
 
-  type env = string Prelude.String.Map.t
+  type env = string String.Map.t
   (** Type type for pattern environments. Maps pattern variable names
       to string values. *)
 
@@ -289,7 +278,7 @@ module Pat : sig
   (** [to_string p] converts [p] to a string according to the pattern
       syntax. [buf] can specify the temporary buffer to use.  *)
 
-  val dom : t -> Prelude.String.Set.t
+  val dom : t -> String.Set.t
   (** [dom p] is the set of variables in [p]. *)
 
   val pp : Format.formatter -> t -> unit
@@ -313,7 +302,7 @@ module Pat : sig
   (** [unify ~init p s] is like {!matches} except that a matching
       string returns an environment mapping each pattern variable to
       its matched part in the string (mappings are added to [init],
-      defaults to {!Prelude.String.Map.empty}). If a variable appears
+      defaults to {!String.Map.empty}). If a variable appears
       more than once in [pat] the actual mapping for the variable is
       unspecified. *)
 
@@ -925,15 +914,15 @@ end
 
 (** {1 OS interaction.} *)
 
-module OS : sig
-  (** OS interaction
+(** OS interaction
 
       {1 File system operations and commands} *)
+module OS : sig
 
   type 'a result = ('a, R.msg) R.t
 
+  (** Path operations. *)
   module Path : sig
-    (** Path operations. *)
 
     (** {1:pathops Path operations} *)
 
@@ -966,8 +955,9 @@ module OS : sig
         variables to their matched part in the path. See {!Pat.unify}. *)
   end
 
+  (** File operations. *)
   module File : sig
-    (** File operations. *)
+
 
     (** {1:fileops File operations}
 
@@ -1038,11 +1028,11 @@ module OS : sig
         untouched except if {!Pervasives.stdout} is written. *)
   end
 
-  module Dir : sig
-    (** Directory operations.
+  (** Directory operations.
 
-        {b Note.} When paths are {{!Path.rel}relative} they are expressed
-        relative to the {{!Dir.current}current working directory}. *)
+      {b Note.} When paths are {{!Path.rel}relative} they are expressed
+      relative to the {{!Dir.current}current working directory}. *)
+  module Dir : sig
 
     (** {1:dirops Directory operations} *)
 
@@ -1105,10 +1095,10 @@ module OS : sig
         [fold err over traverse List.cons []] *)
   end
 
-  module Cmd : sig
-    (** Executing commands.
+  (** Executing commands.
 
-        {1 Commands} *)
+      {1 Commands} *)
+  module Cmd : sig
 
     val exists : ?err:bool -> string -> bool result
     (** [exists cmd] is [true] if [cmd] exists and can be invoked.
@@ -1128,7 +1118,7 @@ module OS : sig
     (** [exec_read cmd args] execute [cmd] with arguments [args] and returns
         its standard output. If [cmd]'s return code is non zero returns
         an error message. If [trim] is [true] (default) the contents is
-        passed to {!Prelude.String.trim} before being returned. *)
+        passed to {!String.trim} before being returned. *)
 
     val exec_read_lines : string -> string list -> string list result
     (** [exec_readl_lines cmd args] is like [input ~trim:false cmd args] but

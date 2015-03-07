@@ -5,9 +5,8 @@
   ---------------------------------------------------------------------------*)
 
 open Rresult_infix
-open Bos.Prelude
 
-module Prelude = Bos.Prelude
+module String = Bos.String
 module Fmt = struct
   include Bos.Fmt
 
