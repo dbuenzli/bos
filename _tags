@@ -3,4 +3,5 @@
 <src/bos*> : package(rresult)
 <src/bos_unix*> : package(unix)
 <src/bos_top*> : package(compiler-libs.toplevel)
+<src/bos_unix_top*> : package(compiler-libs.toplevel)
 <test> : include

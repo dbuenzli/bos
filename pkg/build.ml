@@ -10,5 +10,6 @@ let () =
     Pkg.lib ~exts:Exts.module_library "src/bos";
     Pkg.lib ~exts:Exts.library "src/bos_top";
     Pkg.lib ~cond:unix ~exts:Exts.module_library "src/bos_unix";
+    Pkg.lib ~exts:Exts.library "src/bos_unix_top";
     Pkg.doc "README.md";
     Pkg.doc "CHANGES.md"; ]
