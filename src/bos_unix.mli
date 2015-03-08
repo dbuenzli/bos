@@ -18,17 +18,7 @@ module String : module type of Bos.String
    and type Set.t = Bos.String.Set.t
    and type 'a Map.t = 'a Bos.String.Map.t
 
-module Fmt : sig
-  include module type of Bos.Fmt with type 'a t = 'a Bos.Fmt.t
-
-  val pp_now : ?rfc:bool -> unit t
-  (** [pp_now ~rfc] formats the current time according to
-      {{:https://tools.ietf.org/html/rfc3339}RFC3339} if [rfc] is
-      [false] (default) date and time are separated by a space
-      character rather than a ['T']; use [true] if you need a timestamp
-      that matches the [date-time] production of RFC3339. *)
-end
-
+module Fmt : module type of Bos.Fmt with type 'a t = 'a Bos.Fmt.t
 module Pat : module type of Bos.Pat
   with type t = Bos.Pat.t
    and type env = Bos.Pat.env
@@ -87,6 +77,9 @@ module OS : sig
 
   module Cmd : module type of Bos.OS.Cmd
 
+  (** {1 Environment variables} *)
+
+  (** Environment variables. *)
   module Env : sig
     include module type of Bos.OS.Env
 
@@ -101,6 +94,53 @@ module OS : sig
     val vars : unit -> string String.Map.t result
     (** [vars ()] is a map corresponding to the process environment. *)
   end
+
+  (** {1 POSIX time} *)
+
+  (** POSIX time. *)
+  module Time : sig
+
+    include module type of Bos.OS.Time
+    with type posix_s = Bos.OS.Time.posix_s
+     and type tz_offset_min = Bos.OS.Time.tz_offset_min
+
+    (** {1 Now} *)
+
+    val now_s : unit -> posix_s
+    (** [now_s ()] is the operating system's
+        {{!Bos.OS.Time.posix_s}POSIX timestamp} for the current time.
+
+        {b Warning.} These timestamps are not monotonic they
+        are subject to operating system time adjustements and can
+        even go back in time. If you need to measure time spans
+        in a single program run use a monotonic time source (e.g.
+        {!Mtime}) *)
+
+    (** {1 Time zone offset} *)
+
+    val current_tz_offset_min : unit -> tz_offset_min
+    (** [current_tz_offset_min ()] is the operating system's current local
+        {{!Bos.OS.Time.tz_offset_min}time zone offset} to UTC in minutes. *)
+
+    (** {1 Printing} *)
+
+    val pp_stamp : ?human:bool -> ?tz_offset_min:tz_offset_min ->
+      Format.formatter -> posix_s -> unit
+    (** [pp_stamp tz_offset_min human ppf t] formats the POSIX
+        timestamp [t] and time zone offset [tz_offset_min] (defaults to [0])
+        according to {{:https://tools.ietf.org/html/rfc3339}RFC 3339}.
+
+        If [human] is [true] (defaults to [false]) date and time are
+        separated by a space rather than a ['T'], and a space is
+        inserted betwen time and offset but this is {b not} RFC 3339
+        compliant. *)
+
+    val pp_stamp_now : ?human:bool -> Format.formatter -> unit  -> unit
+    (** [pp_now human ppf ()] is
+        [pp_stamp ~human ~tz_offset:(current_tz_offset_min ()) ppf
+         (now_s ())]. *)
+  end
+
 
   (** {1 Low level {!Unix} access} *)
 

@@ -7,30 +7,7 @@
 open Rresult_infix
 
 module String = Bos.String
-module Fmt = struct
-  include Bos.Fmt
-
-  let pp_now ?(rfc = false) ppf () =
-    let tz_offset local utc = (* computes the timezone offset w.r.t. utc. *)
-      let dd = local.Unix.tm_yday - utc.Unix.tm_yday in
-      let dh = local.Unix.tm_hour - utc.Unix.tm_hour in
-      let dm = dh * 60 + (local.Unix.tm_min - utc.Unix.tm_min) in
-      if dd = 1 || dd < -1 (* year wrap *) then dm + (24 * 60) else
-      if dd = -1 || dd > 1 (* year wrap *) then dm - (24 * 60) else
-      dm (* same day *)
-    in
-    let now = Unix.gettimeofday () in
-    let local = Unix.localtime now in
-    let utc = Unix.gmtime now in
-    let tz = tz_offset local utc in
-    let sep = if rfc then 'T' else ' ' in
-    Format.fprintf ppf "%04d-%02d-%02d%c%02d:%02d:%02d%c%02d%02d"
-      (local.Unix.tm_year + 1900) (local.Unix.tm_mon + 1) local.Unix.tm_mday
-      sep
-      local.Unix.tm_hour local.Unix.tm_min local.Unix.tm_sec
-      (if tz < 0 then '-' else '+') (tz / 60) (tz mod 60)
-end
-
+module Fmt = Bos.Fmt
 module Pat = Bos.Pat
 module Log = Bos.Log
 module Path = Bos.Path
@@ -133,6 +110,47 @@ module OS = struct
       | Unix.Unix_error (e, _, _) ->
           R.error_msgf
             "could not get process environment: %s" (Unix.error_message e)
+  end
+
+  module Time = struct
+    include Bos.OS.Time
+(*      with type posix_s = Bos.OS.Time.posix_s
+       and type tz_offset_min = Bos.OS.Time.tz_offset_min *)
+
+
+    let now_s = Unix.gettimeofday
+
+    let tz_offset_min t =
+      let utc = Unix.gmtime t in
+      let local = Unix.localtime t in
+      let dd = local.Unix.tm_yday - utc.Unix.tm_yday in
+      let dh = local.Unix.tm_hour - utc.Unix.tm_hour in
+      let dm = dh * 60 + (local.Unix.tm_min - utc.Unix.tm_min) in
+      if dd = 1 || dd < -1 (* year wrap *) then dm + (24 * 60) else
+      if dd = -1 || dd > 1 (* year wrap *) then dm - (24 * 60) else
+      dm (* same day *)
+
+    let current_tz_offset_min () = tz_offset_min (now_s ())
+
+    let pp_stamp ?(human = false) ?(tz_offset_min = 0) ppf t =
+      (* RFC 3339 is written in local time w.r.t. to the offset, so we
+         add the offset to the stamp to render the calendar fields *)
+      let tz = tz_offset_min in
+      let local_t = t +. (float (60 * tz)) in
+      let c = Unix.gmtime local_t in
+      let tsep = if human then ' ' else 'T' in
+      let osep = if human then " " else "" in
+      Fmt.pp ppf "%04d-%02d-%02d%c%02d:%02d:%02d%s%c%02d%02d"
+        (c.Unix.tm_year + 1900) (c.Unix.tm_mon + 1) c.Unix.tm_mday
+        tsep
+        c.Unix.tm_hour c.Unix.tm_min c.Unix.tm_sec
+        osep
+        (if tz < 0 then '-' else '+') (tz / 60) (tz mod 60)
+
+    let pp_stamp_now ?human ppf () =
+      let now = now_s () in
+      pp_stamp ?human ~tz_offset_min:(tz_offset_min now) ppf now
+
   end
 end
 
