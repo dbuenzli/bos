@@ -9,7 +9,7 @@
     Open the module to use it, this defines only {{!path}one type},
     {{!strf}one value} and modules in your scope.
 
-  {e Release %%VERSION%% - %%MAINTAINER%% } *)
+    {e Release %%VERSION%% - %%MAINTAINER%% } *)
 
 (** {1 Preliminaries, formatting and logging} *)
 
@@ -88,7 +88,7 @@ module String : sig
     include Set.S with type elt := string
 
     val min_elt : t -> string option
-    (** Exceptionless {!Set.S.min_binding}. *)
+    (** Exceptionless {!Set.S.min_elt}. *)
 
     val choose : t -> string option
     (** Exceptionless {!Set.S.choose}. *)
@@ -479,7 +479,7 @@ module Path : sig
   (** [basename p] is the basename of [p]. If [p] has no segments the
       empty string is returned. *)
 
-  val dirname :  path -> path
+  val dirname : path -> path
   (** [dirname p] is the dirname of [p]. If [p] has no segments [p]
       is returned. *)
 
@@ -720,7 +720,7 @@ module Path : sig
       include Set.S with type elt := rel
 
       val min_elt : t -> rel option
-      (** Exceptionless {!Set.S.min_binding}. *)
+      (** Exceptionless {!Set.S.min_elt}. *)
 
       val choose : t -> rel option
       (** Exceptionless {!Set.S.choose}. *)
@@ -851,7 +851,7 @@ module Path : sig
       include Set.S with type elt := abs
 
       val min_elt : t -> abs option
-      (** Exceptionless {!Set.S.min_binding}. *)
+      (** Exceptionless {!Set.S.min_elt}. *)
 
       val choose : t -> abs option
       (** Exceptionless {!Set.S.choose}. *)
@@ -885,7 +885,7 @@ module Path : sig
     include Set.S with type elt = path
 
     val min_elt : t -> path option
-    (** Exceptionless {!Set.S.min_binding}. *)
+    (** Exceptionless {!Set.S.min_elt}. *)
 
     val choose : t -> path option
     (** Exceptionless {!Set.S.choose}. *)
