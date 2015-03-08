@@ -35,17 +35,61 @@ module Pat = Bos.Pat
 module Log = Bos.Log
 module Path = Bos.Path
 module OS = struct
+
+  let pstr = Path.to_string
+  let pp_path = Path.pp
+
+  module U = struct
+    type 'a result = ('a, [`Unix of Unix.error]) Rresult.result
+    let pp_error ppf (`Unix e ) = Fmt.pp_str ppf (Unix.error_message e)
+    let open_error = function Ok _ as r -> r | Error (`Unix _) as r -> r
+    let error_to_msg r = R.error_to_msg ~pp_error r
+
+    let wrap f v = try Ok (f v) with
+    | Unix.Unix_error (e, _, _) -> Error (`Unix e)
+
+    let mkdir p m = try Ok (Unix.mkdir p m) with
+    | Unix.Unix_error (e, _, _) -> Error (`Unix e)
+
+    let link p p' = try Ok (Unix.link (pstr p) (pstr p')) with
+    | Unix.Unix_error (e, _, _) -> Error (`Unix e)
+
+    let unlink p = try Ok (Unix.unlink (pstr p)) with
+    | Unix.Unix_error (e, _, _) -> Error (`Unix e)
+
+    let rename p p' = try Ok (Unix.rename (pstr p) (pstr p')) with
+    | Unix.Unix_error (e, _, _) -> Error (`Unix e)
+
+    let stat p = try Ok (Unix.stat (pstr p)) with
+    | Unix.Unix_error (e, _, _) -> Error (`Unix e)
+
+    let lstat p = try Ok (Unix.lstat (pstr p)) with
+    | Unix.Unix_error (e, _, _) -> Error (`Unix e)
+  end
+
   type 'a result = 'a Bos.OS.result
-  module Path = Bos.OS.Path
+  module Path = struct
+
+    include Bos.OS.Path
+
+    let stat p = try Ok (Unix.stat (pstr p)) with
+    | Unix.Unix_error (e, _, _) ->
+        R.error_msgf "stat %a: %s" pp_path p (Unix.error_message e)
+
+    let lstat p = try Ok (Unix.lstat (pstr p)) with
+    | Unix.Unix_error (e, _, _) ->
+        R.error_msgf "lstat %a: %s" pp_path p (Unix.error_message e)
+  end
+
   module File = Bos.OS.File
   module Dir = struct
     include Bos.OS.Dir
 
     let mkdir err mode d =
       try R.ok (Unix.mkdir (Bos.Path.to_string d) mode) with
-      | Unix.Unix_error (Unix.EEXIST, _, _) when not err -> R.ok ()
-      | Unix.Unix_error (e, f, a) ->
-          R.error_msgf "%s %s: %s" f a (Unix.error_message e)
+      | Unix.Unix_error (Unix.EEXIST, _, _) when not err -> Ok ()
+      | Unix.Unix_error (e, _, _) ->
+          R.error_msgf "mkdir %a: %s" pp_path d (Unix.error_message e)
 
     let create ?(err = false) ?(path = false) ?(mode = 0o777) d =
       if not path then mkdir err mode d else

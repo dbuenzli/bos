@@ -4,10 +4,12 @@
    %%NAME%% release %%VERSION%%
   ---------------------------------------------------------------------------*)
 
-(** {!Bos} Unix support.
+(** {!Bos} with {!Unix} module support.
 
-    This is {!Bos} enhanced with {!Unix} support. Open this module
-    rather than {!Bos} to use it. *)
+    [Bos_unix] is {!Bos} enhanced with {!Unix} support. Open this
+    module rather than {!Bos} to use it.
+
+    {e Release %%VERSION%% - %%MAINTAINER%% } *)
 
 (** {1 Preliminaries, formatting and logging} *)
 
@@ -45,10 +47,31 @@ module Path : module type of Bos.Path
 
 (** {1 OS interaction} *)
 
+(** OS interaction
+
+    Like {!Bos} most functions in the following modules return
+    {!result} values which use {{!Result.R.msgs}error messages}. If you need
+    fine grained control over unix errors use the lower level
+    functions in {!U}. *)
 module OS : sig
 
+  (** {1 File system operations and commands} *)
+
   type 'a result = 'a Bos.OS.result
-  module Path : module type of Bos.OS.Path
+
+  module Path : sig
+    include module type of Bos.OS.Path
+
+    (** {1 Path status} *)
+
+    val stat : path -> Unix.stats result
+    (** [stat p] is [p]'s file information. See also {!U.stat}. *)
+
+    val lstat : path -> Unix.stats result
+    (** [lstat p] same as {!stat} but if [p] is a link returns
+        information about the link itself. See also {!U.lstat}. *)
+  end
+
   module File : module type of Bos.OS.File
   module Dir : sig
     include module type of Bos.OS.Dir
@@ -59,7 +82,7 @@ module OS : sig
         file permission [mode] (defaults [0o777]). If [path] is [true]
         (defaults to [false]) intermediate directories are created
         aswell. If [err] is [false] (default) no error is returned if
-        the directory already exists. *)
+        the directory already exists. See also {!U.mkdir}. *)
   end
 
   module Cmd : module type of Bos.OS.Cmd
@@ -78,6 +101,74 @@ module OS : sig
     val vars : unit -> string String.Map.t result
     (** [vars ()] is a map corresponding to the process environment. *)
   end
+
+  (** {1 Low level {!Unix} access} *)
+
+  (** Low level {!Unix} access.
+
+      These functions simply {{!wrap}wrap} functions from the {!Unix}
+      module and replace strings with {!path} where appropriate.  They
+      also provide more fine grained error handling, for example
+      {!OS.Path.stat} converts the error to a message while {!stat}
+      gives you the {{!Unix.error}Unix error}. *)
+  module U : sig
+
+    (** {1 Error handling} *)
+
+    type 'a result = ('a, [`Unix of Unix.error]) Rresult.result
+    (** The type for Unix results. *)
+
+    val pp_error : Format.formatter -> [`Unix of Unix.error] -> unit
+    (** [pp_error ppf e] prints [e] on [ppf]. *)
+
+    val open_error : ('a, [`Unix of Unix.error]) Rresult.result ->
+      ('a, [> `Unix of Unix.error]) Rresult.result
+    (** [open_error r] allows to combine a closed unix error
+        variant with other variants. *)
+
+    val error_to_msg : ('a, [`Unix of Unix.error]) Rresult.result ->
+      ('a, Rresult.R.msg) Rresult.result
+    (** [error_to_msg r] converts unix errors in [r] to an error message. *)
+
+    (** {1 Wrapping {!Unix} calls} *)
+
+    val wrap : ('a -> 'b) -> 'a -> 'b result
+    (** [wrap f v] is [Ok (f v)] but catches any {!Unix.Unix_error}
+        that may be raised and returns is as an [Error (`Unix e)]. *)
+
+    (** {1 File system operations} *)
+
+    val mkdir : path -> Unix.file_perm -> unit result
+    (** [mkdir] is {!Unix.mkdir}, see
+        {{:http://pubs.opengroup.org/onlinepubs/9699919799/functions/mkdir.html}
+        POSIX [mkdir]}. *)
+
+    val link : path -> path -> unit result
+    (** [link] is {!Unix.link}, see
+        {{:http://pubs.opengroup.org/onlinepubs/9699919799/functions/link.html}
+        POSIX [link]}. *)
+
+    val unlink : path -> unit result
+    (** [stat] is {!Unix.unlink},
+        {{:http://pubs.opengroup.org/onlinepubs/9699919799/functions/unlink.html}
+        POSIX [unlink]}. *)
+
+    val rename : path -> path -> unit result
+    (** [rename] is {!Unix.rename}, see
+        {{:http://pubs.opengroup.org/onlinepubs/9699919799/functions/rename.html}
+        POSIX [rename]}. *)
+
+    val stat : path -> Unix.stats result
+    (** [stat] is {!Unix.stat}, see
+        {{:http://pubs.opengroup.org/onlinepubs/9699919799/functions/stat.html}
+        POSIX [stat]}. *)
+
+    val lstat : path -> Unix.stats result
+    (** [lstat] is {!Unix.lstat}, see
+        {{:http://pubs.opengroup.org/onlinepubs/9699919799/functions/lstat.html}
+        POSIX [lstat]}. *)
+  end
+
 
 end
 

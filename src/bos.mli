@@ -922,7 +922,9 @@ module OS : sig
 
   type 'a result = ('a, R.msg) R.t
 
-  (** Path operations. *)
+  (** Path operations.
+
+      See also {!Bos_unix.OS.Path}. *)
   module Path : sig
 
     (** {1:pathops Path operations} *)
@@ -1072,7 +1074,9 @@ module OS : sig
       relative to the {{!Dir.current}current working directory}. *)
   module Dir : sig
 
-    (** {1:dirops Directory operations} *)
+    (** {1:dirops Directory operations}
+
+        For creating a directory see {!Bos_unix.OS.Dir}. *)
 
     val exists : ?err:bool -> path -> bool result
     (** [exists dir] is [true] if directory [dir] exists.
