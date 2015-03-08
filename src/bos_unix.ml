@@ -48,7 +48,7 @@ module OS = struct
     let wrap f v = try Ok (f v) with
     | Unix.Unix_error (e, _, _) -> Error (`Unix e)
 
-    let mkdir p m = try Ok (Unix.mkdir p m) with
+    let mkdir p m = try Ok (Unix.mkdir (pstr p) m) with
     | Unix.Unix_error (e, _, _) -> Error (`Unix e)
 
     let link p p' = try Ok (Unix.link (pstr p) (pstr p')) with
