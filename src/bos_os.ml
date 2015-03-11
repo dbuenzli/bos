@@ -316,7 +316,7 @@ module Dir = struct
   let exists = dir_exists
   let current () =
     try R.ok (Bos_path.of_string (Sys.getcwd ())) with
-    | Sys_error e -> R.error_msg e
+    | Sys_error e -> R.error_msgf "current working directory: %s" e
 
   let set_current dir =
     try R.ok (Sys.chdir (path_str dir)) with
