@@ -22,7 +22,8 @@ module OS = struct
     let open_error = function Ok _ as r -> r | Error (`Unix _) as r -> r
     let error_to_msg r = R.error_to_msg ~pp_error r
 
-    let wrap f v = try Ok (f v) with
+    let rec call f v = try Ok (f v) with
+    | Unix.Unix_error (Unix.EINTR, _, _) -> call f v
     | Unix.Unix_error (e, _, _) -> Error (`Unix e)
 
     let mkdir p m = try Ok (Unix.mkdir (pstr p) m) with

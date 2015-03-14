@@ -172,9 +172,10 @@ module OS : sig
 
     (** {1 Wrapping {!Unix} calls} *)
 
-    val wrap : ('a -> 'b) -> 'a -> 'b result
-    (** [wrap f v] is [Ok (f v)] but catches any {!Unix.Unix_error}
-        that may be raised and returns is as an [Error (`Unix e)]. *)
+    val call : ('a -> 'b) -> 'a -> 'b result
+    (** [call f v] is [Ok (f v)] but {!Unix.EINTR} errors are catched
+        and handled by retrying the call. Other errors [e] are catched
+        aswell and returned as [Error (`Unix e)]. *)
 
     (** {1 File system operations} *)
 
