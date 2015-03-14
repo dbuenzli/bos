@@ -43,6 +43,10 @@ module OS = struct
 
     let lstat p = try Ok (Unix.lstat (pstr p)) with
     | Unix.Unix_error (e, _, _) -> Error (`Unix e)
+
+    let rec truncate p size = try Ok (Unix.truncate (pstr p) size) with
+    | Unix.Unix_error (Unix.EINTR, _, _) -> truncate p size
+    | Unix.Unix_error (e, _, _) -> Error (`Unix e)
   end
 
   type 'a result = 'a Bos.OS.result
@@ -59,7 +63,15 @@ module OS = struct
         R.error_msgf "lstat %a: %s" pp_path p (Unix.error_message e)
   end
 
-  module File = Bos.OS.File
+  module File = struct
+    include Bos.OS.File
+
+    let rec truncate p size = try Ok (Unix.truncate (pstr p) size) with
+    | Unix.Unix_error (Unix.EINTR, _, _) -> truncate p size
+    | Unix.Unix_error (e, _, _) ->
+        R.error_msgf "truncate %a: %s" pp_path p (Unix.error_message e)
+  end
+
   module Dir = struct
     include Bos.OS.Dir
 

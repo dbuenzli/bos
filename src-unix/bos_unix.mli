@@ -62,7 +62,14 @@ module OS : sig
         information about the link itself. See also {!U.lstat}. *)
   end
 
-  module File : module type of Bos.OS.File
+  module File : sig
+    include module type of Bos.OS.File
+
+    val truncate : path -> int -> unit result
+    (** [truncate p size] truncates [p] to [s]. See also {!U.truncate}. *)
+
+  end
+
   module Dir : sig
     include module type of Bos.OS.Dir
 
@@ -146,7 +153,7 @@ module OS : sig
 
   (** Low level {!Unix} access.
 
-      These functions simply {{!wrap}wrap} functions from the {!Unix}
+      These functions simply {{!call}call} functions from the {!Unix}
       module and replace strings with {!path} where appropriate.  They
       also provide more fine grained error handling, for example
       {!OS.Path.stat} converts the error to a message while {!stat}
@@ -208,6 +215,11 @@ module OS : sig
     (** [lstat] is {!Unix.lstat}, see
         {{:http://pubs.opengroup.org/onlinepubs/9699919799/functions/lstat.html}
         POSIX [lstat]}. *)
+
+    val truncate : path -> int -> unit result
+    (** [truncate] is {!Unix.truncate}, see
+        {{:http://pubs.opengroup.org/onlinepubs/9699919799/functions/truncate.html}
+        POSIX [truncate]}. *)
   end
 
 
