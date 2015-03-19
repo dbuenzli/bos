@@ -412,7 +412,7 @@ end
 
 module Time = struct
   type posix_s = float
-  type tz_offset_min = int
+  type tz_offset_s = float
 end
 
 (*---------------------------------------------------------------------------

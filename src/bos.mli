@@ -1216,13 +1216,13 @@ let timeout =
 
     (** {1 Time zone offsets to UTC} *)
 
-    type tz_offset_min = int
-    (** The type for time zone offsets to UTC in minutes.
+    type tz_offset_s = float
+    (** The type for time zone offsets to UTC in seconds.
 
-        A value of [60] means that we are sixty minutes ahead of UTC,
-        i.e. we need to add 60 minutes to UTC to get the local time. A
-        value of [-60] means that we are sixty minutes behind of UTC,
-        i.e. we need to subtract 60 minutes to UTC to get the local
+        A value of [3600.] means that we are sixty minutes ahead of UTC,
+        i.e. we need to add 3600 seconds to UTC to get the local time. A
+        value of [-3600.] means that we are sixty minutes behind of UTC,
+        i.e. we need to subtract 3600 seconds to UTC to get the local
         time. *)
   end
 end

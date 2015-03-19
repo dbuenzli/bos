@@ -109,7 +109,7 @@ module OS : sig
 
     include module type of Bos.OS.Time
     with type posix_s = Bos.OS.Time.posix_s
-     and type tz_offset_min = Bos.OS.Time.tz_offset_min
+     and type tz_offset_s = Bos.OS.Time.tz_offset_s
 
     (** {1 Now} *)
 
@@ -125,13 +125,13 @@ module OS : sig
 
     (** {1 Time zone offset} *)
 
-    val current_tz_offset_min : unit -> tz_offset_min
-    (** [current_tz_offset_min ()] is the operating system's current local
-        {{!Bos.OS.Time.tz_offset_min}time zone offset} to UTC in minutes. *)
+    val current_tz_offset_s : unit -> tz_offset_s
+    (** [current_tz_offset_s ()] is the operating system's current local
+        {{!Bos.OS.Time.tz_offset_min}time zone offset} to UTC in seconds. *)
 
     (** {1 Printing} *)
 
-    val pp_stamp : ?human:bool -> ?tz_offset_min:tz_offset_min ->
+    val pp_stamp : ?human:bool -> ?tz_offset_s:tz_offset_s ->
       Format.formatter -> posix_s -> unit
     (** [pp_stamp tz_offset_min human ppf t] formats the POSIX
         timestamp [t] and time zone offset [tz_offset_min] (defaults to [0])
@@ -144,7 +144,7 @@ module OS : sig
 
     val pp_stamp_now : ?human:bool -> Format.formatter -> unit  -> unit
     (** [pp_now human ppf ()] is
-        [pp_stamp ~human ~tz_offset:(current_tz_offset_min ()) ppf
+        [pp_stamp ~human ~tz_offset_s:(current_tz_offset_s ()) ppf
          (now_s ())]. *)
   end
 
