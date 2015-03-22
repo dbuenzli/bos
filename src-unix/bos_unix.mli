@@ -13,6 +13,8 @@
 
 (** {1 Preliminaries, formatting and logging} *)
 
+val strf : ('a, Format.formatter, unit, string) format4 -> 'a
+
 module String : module type of Bos.String
   with type t = Bos.String.t
    and type Set.t = Bos.String.Set.t

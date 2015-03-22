@@ -6,6 +6,8 @@
 
 open Rresult_infix
 
+let strf = Bos.strf
+
 module String = Bos.String
 module Fmt = Bos.Fmt
 module Pat = Bos.Pat
