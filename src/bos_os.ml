@@ -237,6 +237,7 @@ module File = struct
       let close ic = if is_dash file then () else close_in ic in
       apply (f ic) v ~finally:close ic
     with
+    | End_of_file -> R.error_msg "unexpected end of file"
     | Sys_error e -> R.error_msg e
 
   let read file =
