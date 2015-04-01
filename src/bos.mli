@@ -1039,6 +1039,10 @@ module OS : sig
     (** [read_lines file] is [file]'s content splitted at ['\n']. If
         [file] is {!Path.dash} reads from {!Pervasives.stdin}. *)
 
+    val fold_lines : ('a -> string -> 'a) -> 'a -> path -> 'a result
+    (** [fold_lines f acc file] is [List.fold_left f acc (read_lines p)] but
+        doesn't build the list of lines in-memory. *)
+
     (** {1:output Output} *)
 
     val with_outf : (out_channel -> 'a -> 'b result) -> path -> 'a ->

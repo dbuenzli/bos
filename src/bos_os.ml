@@ -250,6 +250,17 @@ module File = struct
 
   let read_lines file = read file >>| (Bos_string.split ~sep:"\n")
 
+  let fold_lines f acc file =
+    let input ic acc =
+      let rec loop acc =
+        match try Some (input_line ic) with End_of_file -> None with
+        | None -> Ok acc
+        | Some line -> loop (f acc line)
+      in
+      loop acc
+    in
+    with_inf input file acc
+
   (* Output *)
 
   let with_outf f file v =
