@@ -203,6 +203,16 @@ module Fmt : sig
   val pp_range : ((int * int) * (int * int)) t
   (** [pp_range] formats a range. *)
 
+  val pp_byte_size : int t
+  (** [pp_byte_size] formats a byte size according to its magnitude
+      using {{:http://www.bipm.org/en/publications/si-brochure/chapter3.html}
+      SI prefixes} up to peta bytes (10{^15}). *)
+
+  val pp_bi_byte_size : int t
+  (** [pp_bi_byte_size] formats a byte size according to its magnitude
+      using {{:https://en.wikipedia.org/wiki/Binary_prefix}binary prefixes}
+      up to pebi bytes (2{^15}). *)
+
   val pp_doomed : string t
   (** [pp_doomed] should be used for printing a message when reasonable
       assumptions are being violated. The string should be a short

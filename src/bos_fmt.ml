@@ -64,6 +64,48 @@ let pp_doomed ppf reason =
   pp ppf "Something@ unreasonable@ is@ going@ on (%a).@ You@ are@ doomed."
     pp_text reason
 
+let _pp_byte_size k i ppf s =
+  let pp_frac = pp_float_dfrac 1 in
+  let div_round_up m n = (m + n - 1) / n in
+  if s < k then pp ppf "%dB" s else
+  let m = k * k in
+  if s < m then begin
+    let kstr = if i = "" then "k" (* SI *) else "K" (* IEC *) in
+    let sk = s / k in
+    if sk < 10
+    then pp ppf "%a%s%sB" pp_frac (float s /. float k) kstr i
+    else pp ppf "%d%s%sB" (div_round_up s k) kstr i
+  end else
+  let g = k * m in
+  if s < g then begin
+    let sm = s / m in
+    if sm < 10
+    then pp ppf "%aM%sB" pp_frac (float s /. float m) i
+    else pp ppf "%dM%sB" (div_round_up s m) i
+  end else
+  let t = k * g in
+  if s < t then begin
+    let sg = s / g in
+    if sg < 10
+    then pp ppf "%aG%sB" pp_frac (float s /. float g) i
+    else pp ppf "%dG%sB" (div_round_up s g) i
+  end else
+  let p = k * t in
+  if s < p then begin
+    let st = s / t in
+    if st < 10
+    then pp ppf "%aT%sB" pp_frac (float s /. float t) i
+    else pp ppf "%dT%sB" (div_round_up s t) i
+  end else begin
+    let sp = s / p in
+    if sp < 10
+    then pp ppf "%aP%sB" pp_frac (float s /. float p) i
+    else pp ppf "%dP%sB" (div_round_up s p) i
+  end
+
+let pp_byte_size ppf s = _pp_byte_size 1000 "" ppf s
+let pp_bi_byte_size ppf s = _pp_byte_size 1024 "i" ppf s
+
 (* Conditional UTF-8 formatting *)
 
 let utf_8_enabled, set_utf_8_enabled =
