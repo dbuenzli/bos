@@ -33,7 +33,7 @@ package "unix" (
 package "top" (
   description = "Bos toplevel support"
   version = "%%VERSION%%"
-  requires = "result.top bos"
+  requires = "rresult.top bos"
   archive(byte) = "bos_top.cma"
   archive(byte, plugin) = "bos_top.cma"
   archive(native) = "bos_top.cmxa"
