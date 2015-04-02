@@ -16,6 +16,23 @@ let pp_sp = Format.pp_print_space
 let pp_str = Format.pp_print_string
 let pp_bool = Format.pp_print_bool
 let pp_int = Format.pp_print_int
+
+(* Floats *)
+
+let round x = floor (x +. 0.5)
+let round_dfrac d x =
+  if x -. (round x) = 0. then x else                   (* x is an integer. *)
+  let m = 10. ** (float d) in                       (* m moves 10^-d to 1. *)
+  (floor ((x *. m) +. 0.5)) /. m
+
+let round_dsig d x =
+  if x = 0. then 0. else
+  let m = 10. ** (floor (log10 (abs_float x))) in       (* to normalize x. *)
+  (round_dfrac d (x /. m)) *. m
+
+let pp_float_dfrac d ppf f = pp ppf "%g" (round_dfrac d f)
+let pp_float_dsig d ppf f = pp ppf "%g" (round_dsig d f)
+
 let pp_larrow ppf () = pp_str ppf "<=="
 let pp_rarrow ppf () = pp_str ppf "==>"
 let pp_opt ?(pp_none = fun ppf () -> ()) pp_v ppf = function

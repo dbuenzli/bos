@@ -158,6 +158,22 @@ module Fmt : sig
   val pp_int : int t
   (** [pp_int] is {!Format.pp_print_int}. *)
 
+  val pp_float_dfrac : int -> float t
+  (** [pp_float_dfrac d] rounds the float to the [d]th {e decimal}
+      fractional digit and formats the result with ["%g"]. Ties are
+      rounded towards positive infinity. The result is only defined
+      for [0 <= d <= 16]. *)
+
+  val pp_float_dsig : int -> float t
+  (** [pp_float_dsig d] rounds the normalized {e decimal} significand
+      of the float to the [d]th decimal fractional digit and formats
+      the result with ["%g"]. Ties are rounded towards positive
+      infinity. The result is NaN on infinities and only defined for
+      [0 <= d <= 16].
+
+      {b Warning.} The current implementation overflows on large [d]
+      and floats. *)
+
   val pp_bool : bool t
   (** [pp_bool] is {!Format.pp_print_bool}. *)
 
