@@ -152,8 +152,14 @@ module Fmt : sig
   val pp_sp : unit t
   (** [pp_sp] is {!Format.pp_print_space}. *)
 
+  val pp_const : 'a t -> 'a -> unit t
+  (** [pp_const pp_v v] always prints [v] using [pp_v]. *)
+
   val pp_str : string t
   (** [pp_str] is {!Format.pp_print_string}. *)
+
+  val pp_str_const : string -> unit t
+  (** [pp_str_const s] is [pp_v pp_str s]. *)
 
   val pp_int : int t
   (** [pp_int] is {!Format.pp_print_int}. *)
