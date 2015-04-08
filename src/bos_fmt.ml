@@ -16,6 +16,11 @@ let pp_sp = Format.pp_print_space
 let pp_str = Format.pp_print_string
 let pp_bool = Format.pp_print_bool
 let pp_int = Format.pp_print_int
+let pp_int32 ppf v = pp ppf "%ld" v
+let pp_int64 ppf v = pp ppf "%Ld" v
+let pp_uint32 ppf v = pp ppf "%lu" v
+let pp_uint64 ppf v = pp ppf "%Lu" v
+let pp_uint ppf v = pp ppf "%u" v
 
 (* Floats *)
 

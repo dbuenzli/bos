@@ -158,6 +158,21 @@ module Fmt : sig
   val pp_int : int t
   (** [pp_int] is {!Format.pp_print_int}. *)
 
+  val pp_int32 : int32 t
+  (** [pp_int32 ppf] is [pp ppf "%ld"]. *)
+
+  val pp_int64 : int64 t
+  (** [pp_int32 ppf] is [pp ppf "%Ld"]. *)
+
+  val pp_uint32 : int32 t
+  (** [pp_int32 ppf] is [pp ppf "%lu"]. *)
+
+  val pp_uint64 : int64 t
+  (** [pp_int32 ppf] is [pp ppf "%Lu"]. *)
+
+  val pp_uint : int t
+  (** [pp_uint ppf] is [pp ppf "%u"]. *)
+
   val pp_float_dfrac : int -> float t
   (** [pp_float_dfrac d] rounds the float to the [d]th {e decimal}
       fractional digit and formats the result with ["%g"]. Ties are
