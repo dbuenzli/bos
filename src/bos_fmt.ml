@@ -42,6 +42,13 @@ let pp_float_dsig d ppf f = pp ppf "%g" (round_dsig d f)
 
 let pp_larrow ppf () = pp_str ppf "<=="
 let pp_rarrow ppf () = pp_str ppf "==>"
+
+let pp_parens pp_v ppf v = pp ppf "@[<1>(%a)@]" pp_v v
+let pp_brackets pp_v ppf v = pp ppf "@[<1>[%a]@]" pp_v v
+let pp_braces pp_v ppf v = pp ppf "@[<1>{%a}@]" pp_v v
+let pp_none ppf () = pp ppf "None"
+let pp_some pp_v ppf v = pp ppf "@[<1>Some@ %a@]" pp_v v
+
 let pp_opt ?(pp_none = fun ppf () -> ()) pp_v ppf = function
 | None -> pp_none ppf ()
 | Some v -> pp_v ppf v

@@ -204,6 +204,21 @@ module Fmt : sig
   val pp_rarrow : unit t
   (** [pp_rarrow] formats a right arrow. *)
 
+  val pp_parens : 'a t -> 'a t
+  (** [pp_parens pp_v ppf] is [pp "@[<1>(%a)@]" pp_v]. *)
+
+  val pp_brackets : 'a t -> 'a t
+  (** [pp_brackets pp_v ppf] is [pp "@[<1>[%a]@]" pp_v]. *)
+
+  val pp_braces : 'a t -> 'a t
+  (** [pp_brackets pp_v ppf] is [pp "@[<1>{%a}@]" pp_v]. *)
+
+  val pp_none : unit t
+  (** [pp_none ppf] is [pp ppf "None"]. *)
+
+  val pp_some : 'a t -> 'a t
+  (** [pp_some pp_v ppf] is [pp ppf "@[<1>Some@ %a@]" pp_v]. *)
+
   val pp_opt : ?pp_none:unit t -> 'a t -> 'a option t
   (** [pp_opt pp_none pp_v] formats value of type ['a option]. The default
       value of [pp_none] prints nothing. *)
