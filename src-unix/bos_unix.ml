@@ -4,7 +4,7 @@
    %%NAME%% release %%VERSION%%
   ---------------------------------------------------------------------------*)
 
-open Rresult_infix
+open Rresult
 
 let strf = Bos.strf
 
