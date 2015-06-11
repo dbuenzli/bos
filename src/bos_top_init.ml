@@ -4,7 +4,9 @@
    %%NAME%% release %%VERSION%%
   ---------------------------------------------------------------------------*)
 
-let () = ignore (Toploop.use_file Format.err_formatter "bos_top_init.ml")
+open Bos;;
+
+#install_printer Path.pp;;
 
 (*---------------------------------------------------------------------------
    Copyright (c) 2015 Daniel C. Bünzli.
