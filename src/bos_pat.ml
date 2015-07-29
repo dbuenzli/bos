@@ -4,6 +4,8 @@
    %%NAME%% release %%VERSION%%
   ---------------------------------------------------------------------------*)
 
+open Astring
+
 let get_buf ?buf () = match buf with
 | None -> Buffer.create 255
 | Some buf -> Buffer.clear buf; buf
@@ -11,7 +13,7 @@ let get_buf ?buf () = match buf with
 (* Patterns *)
 
 type t = [ `Lit of string | `Var of string ] list
-type env = string Bos_string.Map.t
+type env = string String.map
 
 let of_string ?buf s =
   try
@@ -58,10 +60,10 @@ let to_string ?buf p =
 let dom p =
   let rec loop acc = function
   | `Lit _ :: p -> loop acc p
-  | `Var v :: p -> loop (Bos_string.Set.add v acc) p
+  | `Var v :: p -> loop (String.Set.add v acc) p
   | [] -> acc
   in
-  loop Bos_string.Set.empty p
+  loop String.Set.empty p
 
 let rec pp ppf = function
 | [] -> ()
@@ -85,7 +87,7 @@ let match_literal pos s lit =              (* matches [lit] at [pos] in [s]. *)
 
 let match_pat ~env pos s pat =
   let init, no_env = match env with
-  | None -> Some Bos_string.Map.empty, true
+  | None -> Some String.Map.empty, true
   | Some m as init -> init, false
   in
   let rec loop pos = function
@@ -102,14 +104,15 @@ let match_pat ~env pos s pat =
         | None -> try_match (next_pos - 1)
         | Some m as r ->
             if no_env then r else
-            Some (Bos_string.Map.add n (String.sub s pos (next_pos - pos)) m)
+            Some (String.Map.add n
+                    (String.with_pos_range s ~start:pos ~stop:next_pos) m)
       in
       try_match (String.length s) (* Longest match first. *)
   in
   loop pos pat
 
 let matches p s = (match_pat ~env:None 0 s p) <> None
-let unify ?(init = Bos_string.Map.empty) p s = match_pat ~env:(Some init) 0 s p
+let unify ?(init = String.Map.empty) p s = match_pat ~env:(Some init) 0 s p
 
 (* Formatting *)
 
@@ -120,7 +123,7 @@ let format ?buf p env =
   let add = function
   | `Lit l -> Buffer.add_string b l
   | `Var v ->
-      match Bos_string.Map.find v env with
+      match String.Map.find v env with
       | None -> invalid_arg (err_var v)
       | Some s -> Buffer.add_string b s
   in
@@ -131,7 +134,7 @@ let rec pp_format p ppf env = match p with
 | [] -> ()
 | `Lit l :: p -> Format.pp_print_string ppf l; pp_format p ppf env
 | `Var v :: p ->
-    match Bos_string.Map.find v env with
+    match String.Map.find v env with
     | None -> invalid_arg (err_var v)
     | Some s -> Format.pp_print_string ppf s; pp_format p ppf env
 

@@ -5,6 +5,7 @@
   ---------------------------------------------------------------------------*)
 
 open Rresult
+open Astring
 
 let pstr = Bos.Path.to_string
 let pp_path = Bos.Path.pp
@@ -105,13 +106,13 @@ module Env = struct
       let add acc assign = match acc with
       | Error _ as e -> e
       | Ok m ->
-          match Bos.String.cut ~sep:"=" assign with
-          | Some (var, value) -> R.ok (Bos.String.Map.add var value m)
+          match String.cut ~sep:"=" assign with
+          | Some (var, value) -> R.ok (String.Map.add var value m)
           | None ->
               R.error_msgf
                 "could not parse process environment variable (%S)" assign
       in
-      Array.fold_left add (R.ok Bos.String.Map.empty) env
+      Array.fold_left add (R.ok String.Map.empty) env
     with
     | Unix.Unix_error (e, _, _) ->
         R.error_msgf

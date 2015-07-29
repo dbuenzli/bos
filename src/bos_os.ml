@@ -5,8 +5,7 @@
   ---------------------------------------------------------------------------*)
 
 open Rresult
-
-let strf = Format.asprintf
+open Astring
 
 type 'a result = ('a, R.msg) R.t
 
@@ -106,7 +105,7 @@ module Path = struct
     let pathify acc (p, _) = (Bos_path.of_string p) :: acc in
     match_path ~env:None p >>| List.fold_left pathify []
 
-  let unify ?(init = Bos_string.Map.empty) p =
+  let unify ?(init = String.Map.empty) p =
     let env = Some init in
     let pathify acc (p, map) = match map with
     | None -> assert false
@@ -244,11 +243,11 @@ module File = struct
     let input ic () =
       let len = in_channel_length ic in
       let s = Bytes.create len in
-      really_input ic s 0 len; R.ok s
+      really_input ic s 0 len; R.ok (Bytes.unsafe_to_string s)
     in
     with_inf input file ()
 
-  let read_lines file = read file >>| (Bos_string.split ~sep:"\n")
+  let read_lines file = read file >>| (String.cuts ~sep:"\n")
 
   let fold_lines f acc file =
     let input ic acc =
@@ -278,7 +277,7 @@ module File = struct
     >>= fun tmpf -> with_outf write tmpf contents
     >>= fun () -> Path.move ~force:true tmpf file
 
-  let write_lines file lines = write file (String.concat "\n" lines)
+  let write_lines file lines = write file (String.concat ~sep:"\n" lines)
 
   let write_subst vars file contents =
     let write_subst oc contents =                     (* man that's ugly. *)
@@ -299,10 +298,11 @@ module File = struct
               else (stop := true; last := !last_id)
             end else begin
               let id_start = start_subst + 2 in
-              let id = String.sub s (id_start) (!last_id - id_start) in
+              let len = !last_id - id_start in
+              let id = String.with_pos_len ~start:id_start ~len s in
               try
                 let subst = List.assoc id vars in
-                Pervasives.output oc s !start (start_subst - !start);
+                Pervasives.output_substring oc s !start (start_subst - !start);
                 output_string oc subst;
                 stop := true;
                 start := !last_id + 2;
@@ -314,7 +314,7 @@ module File = struct
           done
         end
       done;
-      Pervasives.output oc s !start (len - !start); R.ok ()
+      Pervasives.output_substring oc s !start (len - !start); R.ok ()
     in
     if is_dash file then with_outf write_subst file contents else
     temp ~dir:(Bos_path.dirname file) "write"
@@ -367,7 +367,7 @@ module Cmd = struct
     with Sys_error e -> R.error_msg e
 
   let trace cmd = Bos_log.info ~header:"EXEC" "@[<2>%a@]" Bos_fmt.pp_text cmd
-  let mk_cmd cmd args = String.concat " " (cmd :: args)
+  let mk_cmd cmd args = String.concat ~sep:" " (cmd :: args)
 
   let execute cmd = trace cmd; Sys.command cmd
   let exec_ret cmd args = execute (mk_cmd cmd args)
@@ -384,7 +384,7 @@ module Cmd = struct
     >>= fun v -> R.ok (if trim then String.trim v else v)
 
   let exec_read_lines cmd args =
-    exec_read cmd args >>| Bos_string.split ~sep:"\n"
+    exec_read cmd args >>| String.cuts ~sep:"\n"
 
   let exec_write cmd args file =
     let cmd = mk_cmd cmd args in
@@ -412,7 +412,7 @@ module Env = struct
     | Some v -> Ok v
 
   let bool =
-    let of_string s = match String.lowercase s with
+    let of_string s = match String.Ascii.lowercase s with
     | "" | "false" | "no" | "n" | "0" -> Some false
     | "true" | "yes" | "y" | "1" -> Some true
     | _ -> None

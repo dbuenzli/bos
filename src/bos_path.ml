@@ -10,6 +10,8 @@
    the path. The functions should then be reviewed with that normal
    form in mind. *)
 
+open Astring
+
 let strf = Format.asprintf
 let err_no_ext p = strf "no file extension in last segment (%s)" p
 
@@ -127,13 +129,13 @@ let of_segs = function
 (* FIXME `{to,of}_string,quote` are we doing the right things ?  *)
 
 let to_string = function
-| `Rel segs -> String.concat Filename.dir_sep segs
+| `Rel segs -> String.concat ~sep:Filename.dir_sep segs
 (* FIXME windows what's the root ? *)
-| `Abs segs -> (Filename.dir_sep ^ String.concat Filename.dir_sep segs)
+| `Abs segs -> (Filename.dir_sep ^ String.concat ~sep:Filename.dir_sep segs)
 
 let of_string s =                                (* N.B. collapses // to / *)
   (* FIXME unquote ? *)
-  match Bos_string.split ~sep:Filename.dir_sep s with
+  match String.cuts ~sep:Filename.dir_sep s with
   | "" :: segs -> of_segs (`Abs segs)   (* FIXME windows ?? *)
   | segs -> of_segs (`Rel segs)
 
@@ -181,11 +183,9 @@ let pp_ext ppf e = Format.pp_print_string ppf (ext_to_string e)
 let ext p = match List.rev (segs p) with
 | [] -> None
 | seg :: _ ->
-    try
-      let i = String.rindex seg '.' in
-      let ext = String.sub seg (i + 1) (String.length seg - i - 1) in
-      Some (ext_of_string ext)
-    with Not_found -> None
+    match String.find ~rev:true (Char.equal '.') seg with
+    | None -> None
+    | Some i -> Some (ext_of_string (String.with_pos_range ~start:(i + 1) seg))
 
 let get_ext p = match ext p with
 | Some ext -> ext
@@ -202,11 +202,11 @@ let add_ext p ext = map (naked_add_ext ext) p
 let naked_rem_ext segs = match List.rev segs with
 | [] -> []
 | seg :: segs' ->
-    try
-      let i = String.rindex seg '.' in
-      let name = String.sub seg 0 i in
-      List.rev (name :: segs')
-    with Not_found -> segs
+    match String.find (Char.equal '.') seg with
+    | None -> segs
+    | Some i ->
+        let name = String.with_index_range seg ~first:0 ~last:i in
+        List.rev (name :: segs')
 
 let rem_ext p = map naked_rem_ext p
 

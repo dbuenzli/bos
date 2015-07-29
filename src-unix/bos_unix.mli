@@ -13,12 +13,7 @@
 
 (** {1 Preliminaries, formatting and logging} *)
 
-val strf : ('a, Format.formatter, unit, string) format4 -> 'a
-
-module String : module type of Bos.String
-  with type t = Bos.String.t
-   and type Set.t = Bos.String.Set.t
-   and type 'a Map.t = 'a Bos.String.Map.t
+open Astring
 
 module Fmt : module type of Bos.Fmt with type 'a t = 'a Bos.Fmt.t
 module Pat : module type of Bos.Pat

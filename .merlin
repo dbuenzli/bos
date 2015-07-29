@@ -1,4 +1,4 @@
-PKG rresult
+PKG rresult astring
 S src
 S test
 B _build/**

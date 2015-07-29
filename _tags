@@ -1,11 +1,11 @@
-<**/*.{ml,mli}> : bin_annot, package(bytes)
+<**/*.{ml,mli}> : bin_annot, package(bytes), safe_string
 
 <src> : include
-<src/bos*> : package(rresult)
+<src/bos*> : package(rresult), package(astring)
 <src/bos_top*> : package(compiler-libs.toplevel)
 
 <src-unix> : include
-<src-unix/*> : package(rresult), package(unix)
+<src-unix/*> : package(rresult), package(astring), package(unix)
 <src-unix/bos_unix_top*> : package(compiler-libs.toplevel)
 
 <test> : include

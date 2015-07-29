@@ -6,9 +6,6 @@
 
 open Rresult
 
-let strf = Bos.strf
-
-module String = Bos.String
 module Fmt = Bos.Fmt
 module Pat = Bos.Pat
 module Log = Bos.Log
