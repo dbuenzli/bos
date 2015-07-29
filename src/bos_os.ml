@@ -366,7 +366,7 @@ module Cmd = struct
       ret_exists ?err err_msg cmd exists
     with Sys_error e -> R.error_msg e
 
-  let trace cmd = Bos_log.info ~header:"EXEC" "@[<2>%a@]" Bos_fmt.pp_text cmd
+  let trace cmd = Bos_log.info ~header:"EXEC" "@[<2>%a@]" Fmt.text cmd
   let mk_cmd cmd args = String.concat ~sep:" " (cmd :: args)
 
   let execute cmd = trace cmd; Sys.command cmd

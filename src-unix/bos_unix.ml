@@ -6,7 +6,6 @@
 
 open Rresult
 
-module Fmt = Bos.Fmt
 module Pat = Bos.Pat
 module Log = Bos.Log
 module Path = Bos.Path

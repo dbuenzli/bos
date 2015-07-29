@@ -4,7 +4,6 @@
    %%NAME%% release %%VERSION%%
   ---------------------------------------------------------------------------*)
 
-module Fmt = Bos_fmt
 module Pat = Bos_pat
 module Log = Bos_log
 module Path = Bos_path

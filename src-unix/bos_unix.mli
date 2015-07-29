@@ -15,7 +15,6 @@
 
 open Astring
 
-module Fmt : module type of Bos.Fmt with type 'a t = 'a Bos.Fmt.t
 module Pat : module type of Bos.Pat
   with type t = Bos.Pat.t
    and type env = Bos.Pat.env
