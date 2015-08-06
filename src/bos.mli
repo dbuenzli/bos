@@ -182,93 +182,99 @@ end
 (** {1 Paths}  *)
 
 type path
-(** The type for absolute or relative paths. *)
+(** The type for file paths. *)
 
-(** File system paths, path sets and maps.
+(** File paths, file {{!file_exts}extensions}, path {{!Set}sets}
+    and {{!Map}maps}.
 
-    [Path] provides three types for handling paths. Values of type
-    {!Path.t} are for paths that are either relative or absolute while
-    those of type {!Path.rel} and {!Path.abs} specialize to either
-    case.
+    A file path specifies a file or a directory in a file hierarchy. A
+    file path has three parts, an optional platform-dependent
+    {{!split_volume}volume}, an optional root directory separator
+    {!dir_sep}, followed by a list of {!dir_sep} separated
+    segments. Segments are non empty strings except for maybe the last
+    one, the latter distinguishes directories (["/a/b/"]) from file
+    specifications (["/a/b"]).
 
-    Relative paths and absolute path each have corresponding modules
-    {!Rel} and {!Abs} with specialized functions. {{!conversions}Conversion}
-    between the three type of paths are explicit.
+    A file path is {e absolute} if the optional root {!dir_sep} is
+    present and {e relative} otherwise.
 
-    {b FIXME}. We need to properly handle {!Filename.current_dir_name} and
-    {!Filename.parent_dir_name} in path segments. *)
+    Windows accepts both ['\\'] and ['/'] as directory separators.  On
+    Windows ['/'] are converted to ['\\'] on the fly by the module and
+    should be preferred to write portable programs. Note that in the
+    following documentation backslashes are escaped as per OCaml
+    conventions in strings so ["\\"] is really a single backslash.
+
+    This module operates on paths without accessing the operating
+    system. The {!OS.Path} module has the functions that do so. *)
 module Path : sig
 
   (** {1:filepaths File paths} *)
 
-  type filename = string
-  (** The type for file names (basenames). *)
-
-  type rel
-  (** The type for relative paths. *)
-
-  type abs
-  (** The type for absolute paths. *)
+  val dir_sep : string
+  (** [dir_sep] is the platform dependent path directory separator. *)
 
   type t = path
-  (** The type for absolute or relative paths. *)
+  (** The type for paths. *)
 
-  val root : path
-  (** [root] is the root absolute path (empty list of segments). *)
+  val v : string -> path
+  (** [v s] is the string [s] as path, see {!of_string} for details.
 
-  val empty : path
-  (** [empty] is the empty relative path (empty list of segments). *)
+      @raise Invalid_argument if {!of_string}[ p] is [None]. Use {!of_string}
+      to deal with errors. *)
 
-  val dash : path
-  (** [dash] is the ["-"] relative path. *)
+  val add_seg : path -> string -> path
+  (** [add_seg p seg] ads [seg] at the end of [p]. An empty [seg]
+      is only added if [p] hasn't one yet. Examples:
+      {ul
+      {- [equal (add_seg (v "/a") "b") (v "/a/b")]}
+      {- [equal (add_seg (v "/a/") "b") (v "/a/b")]}
+      {- [equal (add_seg (v "/a/b") "") (v "/a/b/")]}
+      {- [equal (add_seg (v "/a/b/") "") (v "/a/b/")]}
+      {- [equal (add_seg (v "/") "") (v "/")]}
+      {- [equal (add_seg (v "/") "a") (v "/a")]}}
 
-  val add : path -> string -> path
-  (** [add p seg] concatenates [seg] at the end of [p]. For any [p],
-      [add p "" = p]. *)
+      @raise Invalid_argument if {!is_seg_valid}[ seg] is [false]. *)
 
-  val concat : path -> rel -> path
-  (** [concat p p'] concatenates [p'] at the end of [p]. *)
+  val append : path -> path -> path
+  (** [append p p'] appends [p'] to [p] as follows:
+      {ul
+      {- If [p'] is absolute or has a non-empty {{!split_volume}volume} then
+         [p'] is returned.}
+      {- Otherwise appends [p'] to [p] using a {!dir_sep} if needed.}}
+      Examples:
+      {ul
+      {- [equal (append (v "/a/b/") (v "e/f")) (v "/a/b/e/f")]}
+      {- [equal (append (v "/a/b") (v "e/f")) (v "/a/b/e/f")]}
+      {- [equal (append (v "/a/b/") (v "/e/f")) (v "/e/f")]}
+      {- [equal (append (v "a/b/") (v "e/f")) (v "a/b/e/f")]}
+      {- [equal (append (v "a/b") (v "C:e")) (v "C:e")] (Windows)}} *)
 
   val ( / ) : path -> string -> path
-  (** [p / c] is [add p c]. Left associative. *)
+  (** [p / seg] is {!add_seg}[ p seg]. Left associative. *)
 
-  val ( // ) : path -> rel -> path
-  (** [p // p'] is [concat p p']. Left associative. *)
+  val ( // ) : path -> path -> path
+  (** [p // p'] is {!append}[ p p']. Left associative. *)
 
-  val file : filename -> path
-  (** [file name] is [add empty f]. *)
+  (** {1:cst Constants} *)
 
-  val base : string -> path
-  (** [base name] is [add empty f]. *)
+  val root : path
+  (** [root] is [v "/"], the root absolute path. *)
 
-  val basename : path -> string
-  (** [basename p] is the basename of [p]. If [p] has no segments the
-      empty string is returned. *)
+  val cur_dir : path
+  (** [cur_dir] is [v "."], the current directory. *)
 
-  val dirname : path -> path
-  (** [dirname p] is the dirname of [p]. If [p] has no segments [p]
-      is returned. *)
+  val par_dir : path
+  (** [par_dir] is [v ".."], the parent directory. *)
 
-  val rem_prefix : path -> path -> rel option
-  (** [rem_prefix pre p] is [p] with the literal prefix [pre] removed. [None]
-      if [pre] is not a prefix of [p]. *)
-
-  val find_prefix : path -> path -> t option
-  (** [find_prefix p p'] is a common prefix for [p] and [p']. There is
-      always a common prefix between path of the same kind (either {!root}
-      or {!empty} and [None] is only returned if [p] and [p'] are of
-      different kind. *)
+  val dev_null : path
+  (** [dev_null] is [v "/dev/null"] on POSIX and [v "NUL"] on
+      Windows. It represents a file that discards all writes. *)
 
   (** {1:predicates Predicates and comparison} *)
 
-  val is_root : path -> bool
-  (** [is_root p] is [true] iff [p] is {!root}. *)
-
-  val is_empty : path -> bool
-  (** [is_empty p] is [true] iff [p] is {!empty}. *)
-
-  val is_dash : path -> bool
-  (** [is_dash p] is [true] iff [p] is {!dash}. *)
+  val is_seg_valid : string -> bool
+  (** [is_seg_valid s] is [true] iff [s] does not contain {!dir_sep} or a
+      [0x00] byte. *)
 
   val is_rel : path -> bool
   (** [is_rel p] is [true] iff [p] is a relative path. *)
@@ -276,406 +282,481 @@ module Path : sig
   val is_abs : path -> bool
   (** [is_abs p] is [true] iff [p] is an absolute path. *)
 
-  val is_prefix : path -> path -> bool
-  (** [is_prefix p p'] is [true] if [p] is a literal prefix of [p']. *)
+  val is_prefix : root:path -> path -> bool
+  (** [is_prefix ~root p] is [true] if [root] is a prefix of [p].  This
+      checks that [root] has the same optional volume as [p], the same
+      optional root directory separator and that the list of segments
+      of [root] is a prefix of the segments of [p]. Examples:
+      {ul
+      {- [is_prefix (v "/a/b") (v "/a/b") = true]}
+      {- [is_prefix (v "/a/b") (v "/a/bc") = false]}
+      {- [is_prefix (v "/a/b") (v "/a/b/c") = true]}
+      {- [is_prefix (v "/a/b/") (v "/a/b") = false]}
+      {- [is_prefix (v "a/b") (v "/a/b") = false]}
+      {- [is_prefix (v "a/b") (v "a/b") = true]}
+      {- [is_prefix (v "//a/b") (v "/a/b") = false]}
+      {- [is_prefix (v "C:a") (v "a") = false] (Windows)}} *)
 
   val equal : path -> path -> bool
-  (** [equal p p'] is [p = p']. *)
+  (** [equal p p'] is [true] if [p] and [p'] have the same volume
+      are both relative or absolute and have the same segments. This
+      is a byte level comparison. *)
 
   val compare : path  -> path -> int
-  (** [compare p p'] is [Pervasives.compare p p']. *)
+  (** [compare p p'] is a total order on paths compatible with {!equal}. *)
 
-  (** {1:conversions Conversions} *)
+  (** {1:vol Volume and segments} *)
 
-  val to_rel : path -> rel option
-  (** [to_rel p] is [Some r] if [p] is a relative path. *)
+  val split_volume : path -> string * path
+  (** [split_volume p] is the pair [(vol, q)] where [vol] is
+      the platform dependent volume of [p] or the empty string
+      if there is none and [q] the path [p] without its volume, i.e. is
+      its optional root {!dir_sep} and segments.
 
-  val of_rel : rel -> path
-  (** [of_rel r] is [r] as a path. *)
+      On POSIX if [v] is non-empty then it
+      {{:http://pubs.opengroup.org/onlinepubs/9699919799/basedefs/V1_chap03.html#tag_03_267}can} only be ["/"] (e.g. in [v "//a/b"]). On Windows [v] may be
+      one of the following prefixes parsed before an
+      absolute root {!dir_sep}, except in the first case
+      where a relative path can follow:
+{[
+$(drive):
+\\$(server)\$(share)
+\\?\$(drive):
+\\?\$(server)\$(share)
+\\?\UNC\$(server)\$(share)
+\\.\$(device)
+]}
+     The following invariant holds:
+     {ul
+     {- [equal (v (vol ^ (to_string q))) p]}}
+     {b Warning.} [equal (append (v vol) q) p] does not hold. *)
 
-  val to_abs : path -> abs option
-  (** [to_abs p] is [Some a] if [p] is an absolute path. *)
+  val segs : path -> string list
+  (** [segs p] is [p]'s segments. Absolute paths have an initial empty
+      string added, this allows to recover the path with
+      {!String.concat}[ ~sep:dir_sep]. Examples:
+      {ul
+      {- [segs (v "/a/b/") = [""; "a"; "b"; ""]]}
+      {- [segs (v "/a/b") = [""; "a"; "b"]]}
+      {- [segs (v "a/b/") = ["a"; "b"; ""]]}
+      {- [segs (v "a/b") = ["a"; "b"]]}
+      {- [segs (v "a") = ["a"]]}
+      {- [segs (v "/") = [""; ""]]}
+      {- [segs (v "\\\\.\\dev\\") = ["";""]] (Windows)}
+      {- [segs (v "\\\\server\\share\\a") = ["";"a"]] (Windows)}
+      {- [segs (v "C:a") = ["a"]] (Windows)}
+      {- [segs (v "C:\\a") = ["";"a"]] (Windows)}}
 
-  val of_abs : abs -> path
-  (** [of_abs a] is [a] as a path. *)
+      The following invariant holds:
+      {ul
+      {- [to_string (snd (split_volume p)) = (String.concat ~sep:dir_sep
+      (segs p))]}} *)
 
-  val to_segs : path -> [ `Abs of string list | `Rel of string list ]
-  (** [to_segs p] is [p]'s segments. *)
+  val filename : path -> string
+  (** [filename p] is the filename of [p], that is the last segment of
+      [p]. Examples:
+      {ul
+      {- [filename (v "/a/b/") = ""]}
+      {- [filename (v "/a/b") = "b"]}
+      {- [filename (v "a") = "a"]}
+      {- [filename (v "/") = ""]}
+      {- [filename (v "C:\\") = ""] (Windows)}
+      {- [filename (v "C:a") = "a"] (Windows)}} *)
 
-  val of_segs : [ `Abs of string list | `Rel of string list ] -> path
-  (** [of_segs segs] is a path from [segs] segments. *)
+  val base : path -> path
+  (** [base p] is the path made of the last {e non-empty} segment of
+      [p] or [p] itself on root paths.
+      Examples:
+      {ul
+      {- [equal (base @@ v "/a/b/") (v "b")]}
+      {- [equal (base @@ v "/a/b") (v "b")]}
+      {- [equal (base @@ v "a") (v "a")]}
+      {- [equal (base @@ v ".") (v ".")]}
+      {- [equal (base @@ v "..") (v "..")]}
+      {- [equal (base @@ v "/") (v "/")]}
+      {- [equal (base @@ v "\\\\server\\share\\") (v "\\\\server\\share\\")]
+         (Windows)}
+      {- [equal (base @@ v "C:\\") (v "C:\\")] (Windows)}} *)
+
+  val parent : path -> path
+  (** [parent p] is the parent path of [p]. This is defined as [p] without
+      its last {e non-empty} segment or [p] if there is no such segment
+      or {!cur_dir} for a single segment relative path. Examples:
+      {ul
+      {- [equal (parent @@ v "/a/b") (v "/a")]}
+      {- [equal (parent @@ v "/a/b/") (v "/a")]}
+      {- [equal (parent @@ v "/a") (v "/")]}
+      {- [equal (parent @@ v "/a/") (v "/")]}
+      {- [equal (parent @@ v "a/b/") (v "a")]}
+      {- [equal (parent @@ v "a/b") (v "a")]}
+      {- [equal (parent @@ v "a") (v ".")]}
+      {- [equal (parent @@ v "a/") (v ".")]}
+      {- [equal (parent @@ v ".") (v ".")]}
+      {- [equal (parent @@ v "..") (v ".")]}
+      {- [equal (parent @@ v "/") (v "/")]}
+      {- [equal (parent @@ v "\\\\server\\share\\") (v "\\\\server\\share\\")]
+         (Windows)}
+      {- [equal (parent @@ v "C:a") (v "C:.")] (Windows)}
+      {- [equal (parent @@ v "C:\\") (v "C:\\")] (Windows)}} *)
+
+  val file_to_dir : path -> path
+  (** [file_to_dir p] is {!add_seg}[ p ""]. It ensures the result has a
+      trailing {!dir_sep}. Examples:
+      {ul
+      {- [equal (file_to_dir @@ v "/a/b") (v "/a/b/")]}
+      {- [equal (file_to_dir @@ v "/a/b/") (v "/a/b/")]}
+      {- [equal (file_to_dir @@ v "a") (v "a/")]}
+      {- [equal (file_to_dir @@ v "/") (v "/")]}
+      {- [equal (file_to_dir @@ v "\\\\server\\share\\")
+         (v "\\\\server\\share\\")]
+         (Windows)}
+      {- [equal (file_to_dir @@ v "C:a") (v "C:a/")] (Windows)}
+      {- [equal (file_to_dir @@ v "C:\\") (v "C:\\")] (Windows)}} *)
+
+  val dir_to_file : path -> path
+  (** [dir_to_file p] removes the last segment of [p] if it is empty.
+      It ensures the result has no trailing {!dir_sep}. Examples:
+      {ul
+      {- [equal (dir_to_file @@ v "/a/b") (v "/a/b")]}
+      {- [equal (dir_to_file @@ v "/a/b/") (v "/a/b")]}
+      {- [equal (dir_to_file @@ v "a/") (v "a")]}
+      {- [equal (dir_to_file @@ v "/") (v "/")]}
+      {- [equal (dir_to_file @@ v "\\\\server\\share\\")
+         (v "\\\\server\\share\\")]
+         (Windows)}
+      {- [equal (dir_to_file @@ v "C:a/") (v "C:a")] (Windows)}
+      {- [equal (dir_to_file @@ v "C:\\") (v "C:\\")] (Windows)}} *)
+
+  val find_prefix : path -> path -> path option
+  (** [find_prefix p p'] is [Some root] if there exists [root] such that
+      [root] is the longest path with
+      [is_prefix root p && is_prefix root p' = true] and [None] otherwise.
+      Note that if both [p] and [p'] are relative or absolute
+      and have the same volume then a prefix exists.
+      {ul
+      {- [find_prefix (v "a/b/c") (v "a/b/d")] is [Some (v "a/b/")]}
+      {- [find_prefix (v "a/b/c") (v "a/b/cd")] is [Some (v "a/b/")]}
+      {- [find_prefix (v "/a/b/c") (v "/a/b/d")] is [Some (v "/a/b/")]}
+      {- [find_prefix (v "a/b") (v "e/f")] is [Some (v ".")]}
+      {- [find_prefix (v "/a/b") (v "/e/f")] is [Some (v "/")]}
+      {- [find_prefix (v "/a/b") (v "e/f")] is [None]}
+      {- [find_prefix (v "C:\\a") (v "\\a")] is [None]} (Windows)} *)
+
+  val rem_prefix : root:path -> path -> path option
+  (** [rem_prefix root p] is [Some q] if [root] is a
+      {{!is_prefix}prefix} of [p]; [q] is [p] without the [root]
+      prefix but interpreted as a {{!file_to_dir}directory} (hence [q]
+      is always relative). Examples:
+      {ul
+      {- [rem_prefix (v "/a/b") (v "/a/bc")] is [None]}
+      {- [rem_prefix (v "/a/b") (v "/a/b")] is [Some (v ".")]}
+      {- [rem_prefix (v "/a/b/") (v "/a/b")] is [None]}
+      {- [rem_prefix (v "/a/b") (v "/a/b/")] is [Some (v ".")]}
+      {- [rem_prefix (v "/a/b/") (v "/a/b/")] is [Some (v ".")]}
+      {- [rem_prefix (v "/a/b") (v "/a/b/c")] is [Some (v "c")]}
+      {- [rem_prefix (v "/a/b/") (v "/a/b/c")] is [Some (v "c")]}
+      {- [rem_prefix (v "a") (v "a/b/c")] is [Some (v "b/c")]}}
+
+      {b Note.} If you {{!find_prefix}find} a prefix and this
+      prefix is ["."], [rem_prefix] may return [None] on that
+      prefix and the path where you found it. *)
+
+  val normalize : path -> path
+  (** [normalize p] normalizes [p] to a path refering to the same
+      {{!dir_to_file}file} without consulting the filesystem. If [p]
+      is absolute the resulting path has no {!cur_dir} and {!par_dir}
+      segments. If [p] is relative it has no {!cur_dir} and may only
+      have potential {!par_dir} as initial segments. Note that except
+      if the path is a root, the path never has a trailing directory
+      separator. Examples:
+      {ul
+      {- [equal (normalize @@ v "./a/..") (v ".")]}
+      {- [equal (normalize @@ v "/a/b/./..") (v "/a")]}
+      {- [equal (normalize @@ v "/../..") (v "/")]}
+      {- [equal (normalize @@ v "/a/../..") (v "/")]}
+      {- [equal (normalize @@ v "./../..") (v "../..")]}
+      {- [equal (normalize @@ v "../../a/") (v "../../a")]}
+      {- [equal (normalize @@ v "/a/b/c/./../../g") (v "/a/g")]}
+      {- [equal (normalize @@ v "\\\\?\\UNC\\server\\share\\..")
+         (v "\\\\?\\UNC\\server\\share\\")] (Windows)}} *)
+
+  val rooted : root:path -> path -> path option
+  (** [rooted root p] is:
+      {ul
+      {- [None] if
+         [is_prefix (normalize root) (normalize @@ append root p) = false].}
+      {- [Some (normalize @@ append root p)] otherwise.}}
+      In other words it ensures that an absolute path [p] or a relative
+      path [p] expressed w.r.t. to [root] expresses a path that is
+      within the [root] file hierarchy. Examples:
+      {ul
+      {- [rooted (v "/a/b") (v "c")] is [Some (v "/a/b/c")]}
+      {- [rooted (v "/a/b") (v "/a/b/c")] is [Some (v "/a/b/c")]}
+      {- [rooted (v "/a/b") (v "/a/b/c/")] is [Some (v "/a/b/c")]}
+      {- [rooted (v "/a/b") (v "/a/b/c/.")] is [Some (v "/a/b/c")]}
+      {- [rooted (v "/a/b") (v "../c")] is [None]}
+      {- [rooted (v "a/b") (v "c")] is [Some (v "a/b/c")]}
+      {- [rooted (v "a/b") (v "/c")] is [None]}
+      {- [rooted (v "a/b") (v "../c")] is [None]}
+      {- [rooted (v "a/b") (v "c/..")] is [Some (v "a/b")]}
+      {- [rooted (v "a/b") (v "c/../..")] is [None]}} *)
+
+  val relativize : root:path -> path -> path option
+  (** [relativize ~root p] expresses [p] relative to [root] without
+      consulting the file system. This is:
+      {ul
+      {- [None] if [find_prefix (normalize root) (normalize p)] is [None] or
+         if the number of initial relative [..] segments is larger in
+         [(normalize root)] than in [normalize p] (intuitively you can't
+         come back from [root] to [p] without knowing the absolute path to
+         the current working directory).}
+      {- [Some q] otherwise with [q] such that
+         [equal (normalize (concat root q)) (normalize p) = true].}}
+      Examples:
+      {ul
+      {- [relativize (v "/a/b") (v "c")] is [None]}
+      {- [relativize (v "/a/b") (v "/c")] is [Some (v "../../c")]}
+      {- [relativize (v "/a/b") (v "/c/")] is [Some (v "../../c")]}
+      {- [relativize (v "/a/b") (v "/a/b/c")] is [Some (v "c")]}
+      {- [relativize (v "/a/b") (v "/a/b")] is [Some (v ".")]}
+      {- [relativize (v "/a/b") (v "/a/b/")] is [Some (v ".")]}
+      {- [relativize (v "a/b") (v "/c")] is [None].}
+      {- [relativize (v "a/b") (v "c")] is [Some (v "../../c")]}
+      {- [relativize (v "a/b") (v "c/")] is [Some (v "../../c")]}
+      {- [relativize (v "a/b") (v "a/b/c")] is [Some (v "c")]}
+      {- [relativize (v "a/b") (v "a/b")] is [Some (v ".")]}
+      {- [relativize (v "a/b") (v "a/b/")] is [Some (v ".")]}
+      {- [relativize (v "../a") (v "b")] is [None]}
+      {- [relativize (v "../../a") (v "../b")] is [None]}
+      {- [relativize (v "../a") (v "../../b")] is [(Some "../../b")]}}
+  *)
+
+  (** {1:conversions Conversions and pretty printing} *)
 
   val to_string : path -> string
-  (** [to_string p] is the path [p] as a string according to
-      the driver's platform convention with {!Filename.dir_sep}. *)
+  (** [to_string p] is the path [p] as a string. This path can
+      be safely read back by {!v}. *)
 
-  val of_string : string -> path
-  (** [of_string s] is the string [s] as a path. [s] is splitted
-      according to the driver's platform convention with {!Filename.dir_sep}. *)
-
-  val quote : path -> string
-  (** [quote p] is the path [p] as a string, quoted according
-      to the driver's platform conventions with {!Filename.quote}. *)
+  val of_string : string -> path option
+  (** [of_string s] is the string [s] as a path. [None] is returned if
+      there is a ['\x00'] byte in [s] or, on Windows, if this is an
+      invalid UNC path (e.g. ["\\\\"] or ["\\\\a"]). The following
+      transformations are performed:
+      {ul
+      {- On Windows any ['/'] occurence is converted to ['\\'] before
+         any processing occurs.}
+      {- Non-initial empty segments are suppressed;
+         ["a//b"] becomes ["a/b"], ["//a////b//"] becomes ["//a/b/"], etc.}
+      {- Empty relative paths are converted to {!cur_dir}. For example
+         [""] becomes ["."], ["C:"] becomes ["C:."], etc.}
+      {- On Windows empty absolute UNC paths are completed to
+         their root. For example ["\\\\server\\share"] becomes
+         ["\\\\server\\share\\"],
+         but incomplete UNC volumes like ["\\\\a"] return [None].}} *)
 
   val pp : Format.formatter -> path -> unit
   (** [pp ppf p] prints path [p] on [ppf] using {!to_string}. *)
 
-  (** {1:file_exts File extensions} *)
+  (** {1:file_exts File extensions}
 
-  type ext =
-    [ `A | `Byte | `C | `Cma | `Cmi | `Cmo | `Cmt | `Cmti | `Cmx | `Cmxa
-    | `Cmxs | `Css | `Dll | `Exe | `Gif | `H | `Html | `Install | `Img
-    | `Jpeg | `Js | `Json | `Lib | `Md | `Ml | `Ml_dep | `Ml_pp | `Mli
-    | `Mli_dep | `Mli_pp | `Native | `O | `Opt | `Png | `Sh | `So | `Tar
-    | `Tbz | `Xml | `Zip
-    | `Ext of string ]
+      The {e file extension} (resp. {e multiple file extension}) of a
+      path segment is the suffix that starts at the last (resp. first)
+      occurence of a ['.'] that is preceeded by at least one non ['.']
+      character.  If there is no such occurence in the segment, the
+      extension is empty.  With these definitions, ["."], [".."],
+      ["..."] and dot files like [".ocamlinit"] or ["..ocamlinit"]
+      have no extension, but [".emacs.d"] and ["..emacs.d"] do have
+      one. *)
+
+  type ext = string
   (** The type for file extensions. *)
 
-  val ext_to_string : ext -> string
-  (** [ext_to_string ext] is [ext] as a string (without separator). *)
+  val ext : ?multi:bool -> path -> ext
+  (** [ext p] is [p]'s last segment file extension or the empty
+      string if there is no extension. If [multi] is [true] (defaults to
+      [false]), returns the multiple file
+      extension.
+      Examples:
+      {ul
+      {- [ext (v "/a/b") = ""]}
+      {- [ext (v "a/.") = ""]}
+      {- [ext (v "a/..") = ""]}
+      {- [ext (v "a/.ocamlinit") = ""]}
+      {- [ext (v "/a/b.") = "."]}
+      {- [ext (v "/a/b.mli") = ".mli"]}
+      {- [ext (v "a.tar.gz") = ".gz"]}
+      {- [ext (v "a/.emacs.d") = ".d"]}
+      {- [ext ~multi:true (v "/a/b.mli") = ".mli"]}
+      {- [ext ~multi:true (v "a.tar.gz") = ".tar.gz"]}
+      {- [ext ~multi:true (v "a/.emacs.d") = ".d"]}} *)
 
-  val ext_of_string : string -> ext
-  (** [ext_of_string ext] is [ext] as a file extension ([ext] without
-      separator). *)
+  val ext_exists : ?multi:bool -> path -> bool
+  (** [ext_exists ~multi p] is [true] iff [p]'s last segment has an extension.
+      If [multi] is [true] (default to [false]) returns [true] iff
+      [p] has {e more than one} extension. This can be understood as:
+      Examples:
+      {ul
+      {- [ext_exists (v "a/f") = false]}
+      {- [ext_exists (v "a/f.") = true]}
+      {- [ext_exists (v "a/f.gz") = true]}
+      {- [ext_exists (v "a/f.tar.gz") = true]}
+      {- [ext_exists (v ".emacs.d") = true]}
+      {- [ext_exists ~multi:true (v "a/f.gz") = false]}
+      {- [ext_exists ~multi:true (v "a/f.tar.gz") = true]}
+      {- [ext_exists ~multi:true (v ".emacs.d") = false]}} *)
 
-  val pp_ext : Format.formatter -> ext -> unit
-  (** [pp_ext ppf p] prints file extension [ext] on [ppf] using
-      {!ext_to_string}. *)
-
-  val ext : path -> ext option
-  (** [ext p] is [p]'s last segment file extension (if any). *)
-
-  val get_ext : path -> ext
-  (** [get_ext p] is [p]'s last segment file extension.
-
-      @raise Invalid_argument if [p]'s last segment has no file extension. *)
+  val ext_is : ext -> path -> bool
+  (** [ext_is e p] is [true] iff [ext p = e || ext ~multi:true p = e].
+      If [e] doesn't start with a ['.'] one is prefixed before making
+      the test.
+      {ul
+      {- [ext_is ".mli" (v "a/b.mli")  = true]}
+      {- [ext_is "mli" (v "a/b.mli")  = true]}
+      {- [ext_is "mli" (v "a/bmli")  = false]}
+      {- [ext_is ".tar.gz" (v "a/f.tar.gz")  = true]}
+      {- [ext_is "tar.gz" (v "a/f.tar.gz")  = true]}
+      {- [ext_is ".tar" (v "a/f.tar.gz")  = false]}} *)
 
   val add_ext : path -> ext -> path
-  (** [add_ext p ext] is [p] with [ext] concatenated to [p]'s last segment. *)
+  (** [add_ext p ext] is [p] with the string [ext] concatenated to [p]'s
+      last segment. If [ext] doesn't start with a ['.'] one is prefixed to it
+      before concatenation. Examples:
+      {ul
+      {- [equal (add_ext (v "a/b") ".mli") (v "a/b.mli")]}
+      {- [equal (add_ext (v "a/b") "mli") (v "a/b.mli")]}
+      {- [equal (add_ext (v "a/f") ".tar.gz") (v "a/f.tar.gz")]}
+      {- [equal (add_ext (v "a/f") "tar.gz") (v "a/f.tar.gz")]}
+      {- [equal (add_ext (v "a/f.tar") ".gz") (v "a/f.tar.gz")]}
+      {- [equal (add_ext (v "a/f.tar") "gz") (v "a/f.tar.gz")]}}
 
-  val rem_ext : path -> path
-  (** [rem_ext p] is [p] with [ext] removed from [p]'s last segment
-      (if it has an extension). *)
+      @raise Invalid_argument if {!is_seg_valid}[ ext] is [false]. *)
 
-  val change_ext : path -> ext -> path
-  (** [change_ext p e] is [add_ext (rem_ext p)]. *)
+  val rem_ext : ?multi:bool -> path -> path
+  (** [rem_ext p] is [p] with the file extension of [p]'s last segment
+      removed. If [multi] is [true] (default to [false]), the multiple
+      file extension is removed.
+      {ul
+      {- [equal (rem_ext @@ v "/a/b") (v "/a/b")]}
+      {- [equal (rem_ext @@ v "/a/b.mli") (v "/a/b")]}
+      {- [equal (rem_ext @@ v "a/.ocamlinit") (v "a/.ocamlinit")]}
+      {- [equal (rem_ext @@ v "f.tar.gz") (v "f.tar")]}
+      {- [equal (rem_ext ~multi:true @@ v "f.tar.gz") (v "f")]}} *)
+
+  val set_ext : ?multi:bool -> path -> ext -> path
+  (** [set_ext ~multi p ext] is [add_ext (rem_ext ~multi p) ext].
+
+      @raise Invalid_argument if {!is_seg_valid}[ ext] is [false]. *)
 
   val ( + ) : path -> ext -> path
   (** [p + ext] is [add_ext p e]. Left associative. *)
 
-  val has_ext : ext -> path -> bool
-  (** [has_ext p ext] is [true] iff [p]'s last segment has file extension
-      [ext]. *)
-
-  val ext_matches : ext list -> path -> bool
-  (** [ext_matches exts p] is [true] iff [p]'s last segment has a file
-      extension in [exts]. *)
-
-  (** {1:rel Relative paths} *)
-
-  (** Relative paths. *)
-  module Rel : sig
-
-    (** {1 Relative paths} *)
-
-    type path = t
-    (** The type for absolute or relative paths. *)
-
-    type t = rel
-    (** The type for relative paths. *)
-
-    val empty : rel
-    (** See {!Path.empty}. *)
-
-    val dash : rel
-    (** See {!Path.dash}. *)
-
-    val add : rel -> string -> rel
-    (** See {!Path.add}. *)
-
-    val concat : rel -> rel -> rel
-    (** See {!Path.concat}. *)
-
-    val file : filename -> rel
-    (** [file name] is [add empty f]. *)
-
-    val base : string -> rel
-    (** [base name] is [add empty f]. *)
-
-    val ( / ) : rel -> string -> rel
-    (** See {!Path.( / )}. *)
-
-    val ( // ) : rel -> rel -> rel
-    (** See {!Path.( // )}. *)
-
-    val basename : rel -> string
-    (** See {!Path.basename}. *)
-
-    val dirname :  rel -> rel
-    (** See {!Path.dirname}. *)
-
-    val rem_prefix : rel -> rel -> rel option
-    (** See {!Path.rem_prefix}. *)
-
-    val find_prefix : rel -> rel -> rel
-    (** See {!Path.find_prefix}. *)
-
-    (** {1:predicates Predicates and comparison} *)
-
-    val is_empty : rel -> bool
-    (** See {!Path.is_empty}. *)
-
-    val is_dash : rel -> bool
-    (** See {!Path.is_dash}. *)
-
-    val is_prefix : rel -> rel -> bool
-    (** See {!Path.is_prefix}. *)
-
-    val equal : rel -> rel -> bool
-    (** See {!Path.equal}. *)
-
-    val compare : rel  -> rel -> int
-    (** See {!Path.compare}. *)
-
-    (** {1 Conversions} *)
-
-    val to_segs : rel -> string list
-    (** [to_segs r] is [r]'s segments. *)
-
-    val of_segs : string list -> rel
-    (** [of_segs segs] is a path from [segs] segments. *)
-
-    val to_string : rel -> string
-    (** See {!Path.to_string}. *)
-
-    val quote : rel -> string
-    (** See {!Path.quote}. *)
-
-    val pp : Format.formatter -> rel -> unit
-    (** See {!Path.pp}. *)
-
-    (** {1:file_exts File extensions} *)
-
-    val ext : rel -> ext option
-    (** See {!Path.ext}. *)
-
-    val get_ext : rel -> ext
-    (** See {!Path.get_ext}. *)
-
-    val add_ext : rel -> ext -> rel
-    (** See {!Path.add_ext}. *)
-
-    val rem_ext : rel -> rel
-    (** See {!Path.rem_ext}. *)
-
-    val change_ext : rel -> ext -> rel
-    (** See {!Path.change_ext}. *)
-
-    val ( + ) : rel -> ext -> rel
-    (** See {!Path.( + )}. *)
-
-    val has_ext : ext -> rel -> bool
-    (** See {!Path.has_ext}. *)
-
-    val ext_matches : ext list -> rel -> bool
-    (** See {!Path.ext_matches}. *)
-
-    (** {1:sets_maps Path sets and maps} *)
-
-    module Set : sig
-      include Set.S with type elt := rel
-
-      val min_elt : t -> rel option
-      (** Exceptionless {!Set.S.min_elt}. *)
-
-      val choose : t -> rel option
-      (** Exceptionless {!Set.S.choose}. *)
-
-      val find : rel -> t -> rel option
-      (** Exceptionless {!Set.S.find}. *)
-
-      val of_list : rel list -> t
-    end
-
-    module Map : sig
-      include Map.S with type key := rel
-
-      val min_binding : 'a t -> (rel * 'a) option
-      (** Exceptionless {!Map.S.min_binding}. *)
-
-      val choose : 'a t -> (rel * 'a) option
-      (** Exceptionless {!Map.S.choose}. *)
-
-      val find : rel -> 'a t -> 'a option
-      (** Exceptionless {!Map.S.find}. *)
-
-      val dom : 'a t -> Set.t
-      (** [dom m] is the domain of [m]. *)
-    end
-  end
-
-  (** {1:abs Absolute paths} *)
-
-  (** Absolute paths. *)
-  module Abs : sig
-
-    (** {1 Absolute paths} *)
-
-    type path = t
-    (** The type for absolute or relative paths. *)
-
-    type t = abs
-    (** The type for absolute paths. *)
-
-    val root : abs
-    (** See {!Path.root}. *)
-
-    val add : abs -> string -> abs
-    (** See {!Path.add}. *)
-
-    val concat : abs -> rel -> abs
-    (** See {!Path.concat}. *)
-
-    val ( / ) : abs -> string -> abs
-    (** See {!Path.( / )}. *)
-
-    val ( // ) : abs -> rel -> abs
-    (** See {!Path.( // )}. *)
-
-    val basename : abs -> string
-    (** See {!Path.basename}. *)
-
-    val dirname :  abs -> abs
-    (** See {!Path.dirname}. *)
-
-    val rem_prefix : abs -> abs -> rel option
-    (** See {!Path.rem_prefix}. *)
-
-    val find_prefix : abs -> abs -> abs
-    (** See {!Path.find_prefix}. *)
-
-    (** {1:predicates Predicates and comparison} *)
-
-    val is_root : abs -> bool
-    (** See {!Path.is_root}. *)
-
-    val is_prefix : abs -> abs -> bool
-    (** See {!Path.is_prefix}. *)
-
-    val equal : abs -> abs -> bool
-    (** See {!Path.equal}. *)
-
-    val compare : abs  -> abs -> int
-    (** See {!Path.compare}. *)
-
-    (** {1:conversions Conversions} *)
-
-    val to_segs : abs -> string list
-    (** [to_segs a] is [a]'s segments. *)
-
-    val of_segs : string list -> abs
-    (** [of_segs segs] is a path from [segs] segments. *)
-
-    val to_string : abs -> string
-    (** See {!Path.to_string}. *)
-
-    val quote : abs -> string
-    (** See {!Path.quote}. *)
-
-    val pp : Format.formatter -> abs -> unit
-    (** See {!Path.pp}. *)
-
-    (** {1:file_exts File extensions} *)
-
-    val ext : abs -> ext option
-    (** See {!Path.ext}. *)
-
-    val get_ext : abs -> ext
-    (** See {!Path.get_ext}. *)
-
-    val add_ext : abs -> ext -> abs
-    (** See {!Path.add_ext}. *)
-
-    val rem_ext : abs -> abs
-    (** See {!Path.rem_ext}. *)
-
-    val change_ext : abs -> ext -> abs
-    (** See {!Path.change_ext}. *)
-
-    val ( + ) : abs -> ext -> abs
-    (** See {!Path.( + )}. *)
-
-    val has_ext : ext -> abs -> bool
-    (** See {!Path.has_ext}. *)
-
-    val ext_matches : ext list -> abs -> bool
-    (** See {!Path.ext_matches}. *)
-
-    (** {1:sets_maps Path sets and maps} *)
-
-    module Set : sig
-      include Set.S with type elt := abs
-
-      val min_elt : t -> abs option
-      (** Exceptionless {!Set.S.min_elt}. *)
-
-      val choose : t -> abs option
-      (** Exceptionless {!Set.S.choose}. *)
-
-      val find : abs -> t -> abs option
-      (** Exceptionless {!Set.S.find}. *)
-
-      val of_list : abs list -> t
-    end
-
-    module Map : sig
-      include Map.S with type key := abs
-
-      val min_binding : 'a t -> (abs * 'a) option
-      (** Exceptionless {!Map.S.min_binding}. *)
-
-      val choose : 'a t -> (abs * 'a) option
-      (** Exceptionless {!Map.S.choose}. *)
-
-      val find : abs -> 'a t -> 'a option
-      (** Exceptionless {!Map.S.find}. *)
-
-      val dom : 'a t -> Set.t
-      (** [dom m] is the domain of [m]. *)
-    end
-  end
-
   (** {1:sets_maps Path sets and maps} *)
 
+  type set
+  (** The type for path sets *)
+
+  (** Path sets. *)
   module Set : sig
-    include Set.S with type elt = path
 
-    val min_elt : t -> path option
-    (** Exceptionless {!Set.S.min_elt}. *)
+    (** {1 Path sets} *)
 
-    val choose : t -> path option
-    (** Exceptionless {!Set.S.choose}. *)
+    include Set.S with type elt := path
+                   and type t := set
 
-    val find : path -> t -> path option
-    (** Exceptionless {!Set.S.find}. *)
+    type t = set
 
-    val of_list : path list -> t
+    val min_elt : set -> string option
+    (** Exception safe {!Set.S.min_elt}. *)
+
+    val get_min_elt : set -> string
+    (** [get_min_let] is like {!min_elt} but @raise Invalid_argument
+        on the empty set. *)
+
+    val max_elt : set -> string option
+    (** Exception safe {!Set.S.max_elt}. *)
+
+    val get_max_elt : set -> string
+    (** [get_max_elt] is like {!max_elt} but @raise Invalid_argument
+        on the empty set. *)
+
+    val choose : set -> string option
+    (** Exception safe {!Set.S.choose}. *)
+
+    val get_any_elt : set -> string
+    (** [get_any_elt] is like {!choose} but @raise Invalid_argument on the
+        empty set. *)
+
+    val find : string -> set -> string option
+    (** Exception safe {!Set.S.find}. *)
+
+    val get : string -> set -> string
+    (** [get] is like {!Set.S.find} but @raise Invalid_argument if
+        [elt] is not in [s]. *)
+
+    val of_list : string list -> set
+    (** [of_list ss] is a set from the list [ss]. *)
+
+    val pp : Format.formatter -> set -> unit
+    (** [pp ppf ss] prints an unspecified representation of [ss]
+        on [ppf]. *)
   end
 
+  type +'a map
+  (** The type for maps from paths to values of type ['a]. *)
+
+  (** Path maps. *)
   module Map : sig
+
+    (** {1 String maps} *)
+
     include Map.S with type key := path
+                   and type 'a t := 'a map
 
-    val min_binding : 'a t -> (path * 'a) option
-    (** Exceptionless {!Map.S.min_binding}. *)
+    type 'a t = 'a map
 
-    val choose : 'a t -> (path * 'a) option
-    (** Exceptionless {!Map.S.choose}. *)
+    val min_binding : 'a map -> (path * 'a) option
+    (** Exception safe {!Map.S.min_binding}. *)
 
-    val find : path -> 'a t -> 'a option
-    (** Exceptionless {!Map.S.find}. *)
+    val get_min_binding : 'a map -> (path * 'a)
+    (** [get_min_binding] is like {!min_binding} but @raise Invalid_argument
+        on the empty map. *)
 
-    val dom : 'a t -> Set.t
+    val max_binding : 'a map -> (path * 'a) option
+    (** Exception safe {!Map.S.max_binding}. *)
+
+    val get_max_binding : 'a map -> string * 'a
+    (** [get_min_binding] is like {!max_binding} but @raise Invalid_argument
+        on the empty map. *)
+
+    val choose : 'a map -> (path * 'a) option
+    (** Exception safe {!Map.S.choose}. *)
+
+    val get_any_binding : 'a map -> (path * 'a)
+    (** [get_any_binding] is like {!choose} but @raise Invalid_argument
+        on the empty map. *)
+
+    val find : path -> 'a map -> 'a option
+    (** Exception safe {!Map.S.find}. *)
+
+    val get : path -> 'a map -> 'a
+    (** [get k m] is like {!Map.S.find} but raises [Invalid_argument] if
+        [k] is not bound in [m]. *)
+
+    val dom : 'a map -> set
     (** [dom m] is the domain of [m]. *)
+
+    val of_list : (path * 'a) list -> 'a map
+    (** [of_list bs] is [List.fold_left (fun m (k, v) -> add k v m) empty
+        bs]. *)
+
+    val pp : (Format.formatter -> 'a -> unit) -> Format.formatter ->
+      'a map -> unit
+    (** [pp ppf pp_v m] prints an unspecified representation of [m] on
+        [ppf] using [pp_v] to prints the map codomain elements. *)
+
+    val pp_string_map : Format.formatter -> path map -> unit
+    (** [pp ppf m] prints an unspecified representation of [m]
+        on [ppf]. *)
   end
 end
 
@@ -714,7 +795,7 @@ module OS : sig
         patterns}. Each variable of the pattern greedily matches a
         segment or sub-segment. For example the pattern:
 {[
-        Path.(base "data" / "$(dir)" / "$(file).txt")
+        Path.(v "data" / "$(dir)" / "$(file).txt")
 ]}
         will match any existing file of the form data/*/*.txt. *)
 

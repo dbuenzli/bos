@@ -9,4 +9,4 @@
 <src-unix/bos_unix_top*> : package(compiler-libs.toplevel)
 
 <test> : include
-<test/*> : package(rresult)
+<test/*> : package(rresult), package(astring), package(fmt)

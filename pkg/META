@@ -1,7 +1,7 @@
 description = "Light, basic OS interaction for OCaml"
 version = "%%VERSION%%"
 
-requires = "rresult"
+requires = "rresult astring fmt"
 archive(byte) = "bos.cma"
 archive(byte, plugin) = "bos.cma"
 archive(native) = "bos.cmxa"
@@ -16,7 +16,7 @@ package "unix" (
   archive(byte, plugin) = "bos_unix.cma"
   archive(native) = "bos_unix.cmxa"
   archive(native, plugin) = "bos_unix.cmxs"
-  exists_if = "bos_unix.cma"        
+  exists_if = "bos_unix.cma"
 
   package "top" (
    description = "Bos Unix toplevel support"
@@ -26,7 +26,7 @@ package "unix" (
    archive(byte, plugin) = "bos_unix_top.cma"
    archive(native) = "bos_unix_top.cmxa"
    archive(native, plugin) = "bos_unix_top.cmxs"
-   exists_if = "bos_unix_top.cma"        
+   exists_if = "bos_unix_top.cma"
   )
 )
 
@@ -38,8 +38,5 @@ package "top" (
   archive(byte, plugin) = "bos_top.cma"
   archive(native) = "bos_top.cmxa"
   archive(native, plugin) = "bos_top.cmxs"
-  exists_if = "bos_top.cma"        
+  exists_if = "bos_top.cma"
 )
-
-
-

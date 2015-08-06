@@ -79,7 +79,7 @@ module Dir = struct
     if not path then mkdir err mode d else
     let rec todo p acc =
       exists p >>= fun exists ->
-      if exists then R.ok acc else todo (Bos.Path.dirname p) (p :: acc)
+      if exists then R.ok acc else todo (Bos.Path.dir p) (p :: acc)
     in
     let rec create_them = function
     | d :: [] -> mkdir err mode d

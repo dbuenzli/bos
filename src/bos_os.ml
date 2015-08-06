@@ -56,7 +56,8 @@ module Path = struct
 
   (* Matching paths *)
 
-  let pats_of_path p =
+  let pats_of_path p = failwith "TODO"
+(*
     let buf = Buffer.create 255 in
     let parse_seg acc s =
       acc
@@ -64,9 +65,10 @@ module Path = struct
       >>= fun pat -> R.ok (pat :: acc)
     in
     let parse_segs ss = List.fold_left parse_seg (R.ok []) ss in
-    match Bos_path.to_segs p with
+    match Bos_path.segs p with
     | `Rel ss -> parse_segs ss >>= fun ss -> R.ok (".", List.rev ss)
     | `Abs ss -> parse_segs ss >>= fun ss -> R.ok ("/", List.rev ss)
+*)
 
   let match_segment ~env acc path seg = match acc with
   | Error _ as e -> e
@@ -102,14 +104,23 @@ module Path = struct
     | segs -> loop (R.ok [root, env]) segs
 
   let matches p =
-    let pathify acc (p, _) = (Bos_path.of_string p) :: acc in
+    let p = match Bos_path.of_string p with
+    | None -> failwith "TODO"
+    | Some p -> p
+    in
+    let pathify acc (p, _) = p :: acc in
     match_path ~env:None p >>| List.fold_left pathify []
 
   let unify ?(init = String.Map.empty) p =
     let env = Some init in
     let pathify acc (p, map) = match map with
     | None -> assert false
-    | Some map -> (Bos_path.of_string p, map) :: acc
+    | Some map ->
+        let p = match Bos_path.of_string p with
+        | None -> failwith "TODO"
+        | Some p -> p
+        in
+        (p, map) :: acc
     in
     match_path ~env p >>| List.fold_left pathify []
 
@@ -168,8 +179,8 @@ module Path = struct
       let is_element = is_element_fun err over in
       let is_dir = is_dir_fun err in
       let readdir =  readdir_fun err in
-      let process dir (acc, to_traverse) bname =
-        let p = Bos_path.(dir / bname) in
+      let process d (acc, to_traverse) bname =
+        let p = Bos_path.(d / bname) in
         (if is_element p then (f acc p) else acc),
         (if is_dir p && do_traverse p then p :: to_traverse else to_traverse)
       in
@@ -182,7 +193,7 @@ module Path = struct
       | [] :: up -> loop acc up
       | _ -> assert false
       in
-      let init acc p = process (Bos_path.dirname p) acc (Bos_path.basename p) in
+      let init acc p = process (Bos_path.parent p) acc (Bos_path.base p) in
       let acc, to_traverse = List.fold_left init (acc, []) paths in
       Ok (loop acc (to_traverse :: []))
     with Fold_stop e -> Error e
@@ -199,14 +210,11 @@ module File = struct
     finally y;
     result
 
-  let is_dash = Bos_path.is_dash
+  let is_dash = Bos_path.(equal (v "-"))
 
   (* Files *)
 
-  let dev_null = match Sys.os_type with
-  (* Using Sys.os_type, because that's really for the driver. *)
-  | "Win32" -> Bos_path.file "NUL"
-  |  _ -> Bos_path.(root / "dev" / "null")
+  let dev_null = Bos_path.dev_null
 
   let exists = file_exists
 
@@ -223,7 +231,10 @@ module File = struct
       | Some d -> Some (Bos_path.to_string d)
       in
       let f = Filename.temp_file ?temp_dir "bos" suff in
-      let f = Bos_path.of_string f in
+      let f = match Bos_path.of_string f with
+      | None -> assert false
+      | Some p -> p
+      in
       at_exit (fun () -> ignore (delete f));
       R.ok f
     with Sys_error e -> R.error_msg e
@@ -273,7 +284,7 @@ module File = struct
   let write file contents =
     let write oc contents = output_string oc contents; R.ok () in
     if is_dash file then with_outf write file contents else
-    temp ~dir:(Bos_path.dirname file) "write"
+    temp ~dir:(Bos_path.parent file) "write"
     >>= fun tmpf -> with_outf write tmpf contents
     >>= fun () -> Path.move ~force:true tmpf file
 
@@ -317,7 +328,7 @@ module File = struct
       Pervasives.output_substring oc s !start (len - !start); R.ok ()
     in
     if is_dash file then with_outf write_subst file contents else
-    temp ~dir:(Bos_path.dirname file) "write"
+    temp ~dir:(Bos_path.parent file) "write"
     >>= fun tmpf -> with_outf write_subst tmpf contents
     >>= fun () -> Path.move ~force:true tmpf file
 end
@@ -327,7 +338,13 @@ end
 module Dir = struct
   let exists = dir_exists
   let current () =
-    try R.ok (Bos_path.of_string (Sys.getcwd ())) with
+    try
+      let p = Sys.getcwd () in
+      match Bos_path.of_string p with
+      | Some p -> R.ok p
+      | None ->
+          R.error_msgf "cannot parse getcwd to a path (%a)" String.pp_string p
+    with
     | Sys_error e -> R.error_msgf "current working directory: %s" e
 
   let set_current dir =
@@ -336,7 +353,7 @@ module Dir = struct
 
   let contents ?(path = true) dir =
     try
-      let name = if path then Bos_path.add dir else Bos_path.file in
+      let name = if path then Bos_path.add_seg dir else Bos_path.v in
       let files = Sys.readdir (path_str dir) in
       let add_file acc f = name f :: acc in
       R.ok (Array.fold_left add_file [] files)

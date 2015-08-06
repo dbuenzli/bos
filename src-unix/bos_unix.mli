@@ -25,11 +25,9 @@ module Log : module type of Bos.Log with type level = Bos.Log.level
 
 type path = Bos.path
 module Path : module type of Bos.Path
-  with type rel = Bos.Path.rel
-   and type abs = Bos.Path.abs
-   and type t = Bos.Path.t
-   and type Set.t = Bos.Path.Set.t
-   and type 'a Map.t = 'a Bos.Path.Map.t
+   with type t = Bos.Path.t
+   and type set = Bos.Path.set
+   and type 'a map = 'a Bos.Path.map
 
 (** {1 OS interaction} *)
 
