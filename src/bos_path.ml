@@ -27,7 +27,7 @@ let err_invalid_ext s =
 
 (* Preliminaries *)
 
-let windows = true || Sys.os_type = "Win32"
+let windows = Sys.os_type = "Win32"
 let dir_sep_char = if windows then '\\' else '/'
 let dir_sep = String.of_char dir_sep_char
 let dir_sep_sub = String.sub dir_sep
@@ -36,7 +36,6 @@ let root = dir_sep
 let par_dir = ".."
 let cur_dir = "."
 let cur_dir_sub = String.sub cur_dir
-let dev_null = if windows then "NUL" else "/dev/null"
 
 let validate_and_collapse_seps p = try
   (* collapse non-initial sequences of [dir_sep] to a single one and checks
@@ -523,14 +522,6 @@ let ext_sub ?(multi = false) seg =
 
 let ext ?multi p = String.Sub.to_string (ext_sub ?multi (filename_sub p))
 
-let ext_exists ?(multi = false) p =
-  let ext = ext_sub ~multi (filename_sub p) in
-  if not multi then not (String.Sub.is_empty ext) else
-  if String.Sub.is_empty ext then false else
-  match String.Sub.find ~rev:true eq_ext_sep ext with (* find another dot *)
-  | Some c -> not (String.Sub.start_pos ext = String.Sub.start_pos c)
-  | None -> assert false
-
 let ext_is e p =
   let seg = String.Sub.drop ~sat:eq_ext_sep (filename_sub p) in
   if not (String.Sub.is_suffix (String.sub e) seg) then false else
@@ -539,6 +530,14 @@ let ext_is e p =
   let dot_index = String.Sub.length seg - String.length e - 1 in
   if dot_index <= 0 then false else
   String.Sub.get seg dot_index = ext_sep_char
+
+let has_ext ?(multi = false) p =
+  let ext = ext_sub ~multi (filename_sub p) in
+  if not multi then not (String.Sub.is_empty ext) else
+  if String.Sub.is_empty ext then false else
+  match String.Sub.find ~rev:true eq_ext_sep ext with (* find another dot *)
+  | Some c -> not (String.Sub.start_pos ext = String.Sub.start_pos c)
+  | None -> assert false
 
 let add_ext p e =
   if not (is_seg_valid e) then err_invalid_ext e else

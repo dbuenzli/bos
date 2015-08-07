@@ -223,7 +223,7 @@ module Path : sig
       to deal with errors. *)
 
   val add_seg : path -> string -> path
-  (** [add_seg p seg] ads [seg] at the end of [p]. An empty [seg]
+  (** [add_seg p seg] adds [seg] at the end of [p]. An empty [seg]
       is only added if [p] hasn't one yet. Examples:
       {ul
       {- [equal (add_seg (v "/a") "b") (v "/a/b")]}
@@ -266,10 +266,6 @@ module Path : sig
   val par_dir : path
   (** [par_dir] is [v ".."], the parent directory. *)
 
-  val dev_null : path
-  (** [dev_null] is [v "/dev/null"] on POSIX and [v "NUL"] on
-      Windows. It represents a file that discards all writes. *)
-
   (** {1:predicates Predicates and comparison} *)
 
   val is_seg_valid : string -> bool
@@ -289,6 +285,7 @@ module Path : sig
       of [root] is a prefix of the segments of [p]. Examples:
       {ul
       {- [is_prefix (v "/a/b") (v "/a/b") = true]}
+      {- [is_prefix (v "/a/b") (v "/a/b/") = true]}
       {- [is_prefix (v "/a/b") (v "/a/bc") = false]}
       {- [is_prefix (v "/a/b") (v "/a/b/c") = true]}
       {- [is_prefix (v "/a/b/") (v "/a/b") = false]}
@@ -332,8 +329,8 @@ $(drive):
      {b Warning.} [equal (append (v vol) q) p] does not hold. *)
 
   val segs : path -> string list
-  (** [segs p] is [p]'s segments. Absolute paths have an initial empty
-      string added, this allows to recover the path with
+  (** [segs p] is [p]'s (non-empty) list of segment. Absolute paths have an
+      initial empty string added, this allows to recover the path with
       {!String.concat}[ ~sep:dir_sep]. Examples:
       {ul
       {- [segs (v "/a/b/") = [""; "a"; "b"; ""]]}
@@ -341,6 +338,7 @@ $(drive):
       {- [segs (v "a/b/") = ["a"; "b"; ""]]}
       {- [segs (v "a/b") = ["a"; "b"]]}
       {- [segs (v "a") = ["a"]]}
+      {- [segs (v "") = ["."]]}
       {- [segs (v "/") = [""; ""]]}
       {- [segs (v "\\\\.\\dev\\") = ["";""]] (Windows)}
       {- [segs (v "\\\\server\\share\\a") = ["";"a"]] (Windows)}
@@ -462,7 +460,7 @@ $(drive):
       prefix and the path where you found it. *)
 
   val normalize : path -> path
-  (** [normalize p] normalizes [p] to a path refering to the same
+  (** [normalize p] normalizes [p] to a path referring to the same
       {{!dir_to_file}file} without consulting the filesystem. If [p]
       is absolute the resulting path has no {!cur_dir} and {!par_dir}
       segments. If [p] is relative it has no {!cur_dir} and may only
@@ -481,13 +479,13 @@ $(drive):
          (v "\\\\?\\UNC\\server\\share\\")] (Windows)}} *)
 
   val rooted : root:path -> path -> path option
-  (** [rooted root p] is:
+  (** [rooted ~root p] is:
       {ul
       {- [None] if
          [is_prefix (normalize root) (normalize @@ append root p) = false].}
       {- [Some (normalize @@ append root p)] otherwise.}}
       In other words it ensures that an absolute path [p] or a relative
-      path [p] expressed w.r.t. to [root] expresses a path that is
+      path [p] expressed w.r.t. [root] expresses a path that is
       within the [root] file hierarchy. Examples:
       {ul
       {- [rooted (v "/a/b") (v "c")] is [Some (v "/a/b/c")]}
@@ -511,7 +509,7 @@ $(drive):
          come back from [root] to [p] without knowing the absolute path to
          the current working directory).}
       {- [Some q] otherwise with [q] such that
-         [equal (normalize (concat root q)) (normalize p) = true].}}
+         [equal (normalize (append root q)) (normalize p) = true].}}
       Examples:
       {ul
       {- [relativize (v "/a/b") (v "c")] is [None]}
@@ -590,21 +588,6 @@ $(drive):
       {- [ext ~multi:true (v "a.tar.gz") = ".tar.gz"]}
       {- [ext ~multi:true (v "a/.emacs.d") = ".d"]}} *)
 
-  val ext_exists : ?multi:bool -> path -> bool
-  (** [ext_exists ~multi p] is [true] iff [p]'s last segment has an extension.
-      If [multi] is [true] (default to [false]) returns [true] iff
-      [p] has {e more than one} extension. This can be understood as:
-      Examples:
-      {ul
-      {- [ext_exists (v "a/f") = false]}
-      {- [ext_exists (v "a/f.") = true]}
-      {- [ext_exists (v "a/f.gz") = true]}
-      {- [ext_exists (v "a/f.tar.gz") = true]}
-      {- [ext_exists (v ".emacs.d") = true]}
-      {- [ext_exists ~multi:true (v "a/f.gz") = false]}
-      {- [ext_exists ~multi:true (v "a/f.tar.gz") = true]}
-      {- [ext_exists ~multi:true (v ".emacs.d") = false]}} *)
-
   val ext_is : ext -> path -> bool
   (** [ext_is e p] is [true] iff [ext p = e || ext ~multi:true p = e].
       If [e] doesn't start with a ['.'] one is prefixed before making
@@ -613,9 +596,24 @@ $(drive):
       {- [ext_is ".mli" (v "a/b.mli")  = true]}
       {- [ext_is "mli" (v "a/b.mli")  = true]}
       {- [ext_is "mli" (v "a/bmli")  = false]}
-      {- [ext_is ".tar.gz" (v "a/f.tar.gz")  = true]}
-      {- [ext_is "tar.gz" (v "a/f.tar.gz")  = true]}
-      {- [ext_is ".tar" (v "a/f.tar.gz")  = false]}} *)
+      {- [ext_is ".tar.gz" (v "a/f.tar.gz") = true]}
+      {- [ext_is "tar.gz" (v "a/f.tar.gz") = true]}
+      {- [ext_is ".tar" (v "a/f.tar.gz") = false]}} *)
+
+  val has_ext : ?multi:bool -> path -> bool
+  (** [has_ext ~multi p] is [true] iff [p]'s last segment has an extension.
+      If [multi] is [true] (default to [false]) returns [true] iff
+      [p] has {e more than one} extension. This can be understood as:
+      Examples:
+      {ul
+      {- [has_ext (v "a/f") = false]}
+      {- [has_ext (v "a/f.") = true]}
+      {- [has_ext (v "a/f.gz") = true]}
+      {- [has_ext (v "a/f.tar.gz") = true]}
+      {- [has_ext (v ".emacs.d") = true]}
+      {- [has_ext ~multi:true (v "a/f.gz") = false]}
+      {- [has_ext ~multi:true (v "a/f.tar.gz") = true]}
+      {- [has_ext ~multi:true (v ".emacs.d") = false]}} *)
 
   val add_ext : path -> ext -> path
   (** [add_ext p ext] is [p] with the string [ext] concatenated to [p]'s
@@ -857,7 +855,8 @@ module OS : sig
         when the file doesn't exist. *)
 
     val dev_null : path
-    (** [dev_null] represents a file that discards all writes. *)
+    (** [dev_null] is [Path.v "/dev/null"] on POSIX and [Path.v "NUL"] on
+        Windows. It represents a file that discards all writes. *)
 
     val delete : ?maybe:bool -> path -> unit result
     (** [delete ~maybe file] deletes file [file]. If [maybe] is [false]

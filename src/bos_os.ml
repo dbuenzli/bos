@@ -214,7 +214,9 @@ module File = struct
 
   (* Files *)
 
-  let dev_null = Bos_path.dev_null
+  let dev_null =
+    if Sys.os_type = "Win32" then Bos_path.v "NUL" else
+    Bos_path.v "/dev/null"
 
   let exists = file_exists
 

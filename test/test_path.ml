@@ -7,7 +7,7 @@
 open Testing
 open Bos
 
-let windows = true || Sys.os_type = "Win32"
+let windows = Sys.os_type = "Win32"
 
 let eqp = eq ~eq:Path.equal ~pp:Path.pp
 let v = Path.v
@@ -154,6 +154,7 @@ let is_abs_rel = test "Path.is_abs_rel" @@ fun () ->
 
 let is_prefix = test "Path.is_prefix" @@ fun () ->
   eq_bool (Path.is_prefix (v "/a/b") (v "/a/b")) true;
+  eq_bool (Path.is_prefix (v "/a/b") (v "/a/b/")) true;
   eq_bool (Path.is_prefix (v "/a/b") (v "/a/bc")) false;
   eq_bool (Path.is_prefix (v "/a/b") (v "/a/b/c")) true;
   eq_bool (Path.is_prefix (v "/a/b/") (v "/a/b/c")) true;
@@ -555,19 +556,6 @@ let ext = test "Path.ext" @@ fun () ->
   eq_str (Path.ext ~multi:true @@ v "./.a..") "..";
   ()
 
-let ext_exists = test "Path.ext_exists" @@ fun () ->
-  eq_bool (Path.ext_exists @@ v "a/f") false;
-  eq_bool (Path.ext_exists @@ v "a/f.") true;
-  eq_bool (Path.ext_exists @@ v "a/f.gz") true;
-  eq_bool (Path.ext_exists @@ v "a/f.tar.gz") true;
-  eq_bool (Path.ext_exists ~multi:true @@ v "a/f") false;
-  eq_bool (Path.ext_exists ~multi:true @@ v "a/f.") false;
-  eq_bool (Path.ext_exists ~multi:true @@ v "a/f.gz") false;
-  eq_bool (Path.ext_exists ~multi:true @@ v "a/f.tar.gz") true;
-  eq_bool (Path.ext_exists ~multi:true @@ v "a/.a..") true;
-  eq_bool (Path.ext_exists ~multi:true @@ v "a/.a.") false;
-  ()
-
 let ext_is = test "Path.ext_is" @@ fun () ->
   eq_bool (Path.ext_is "." @@ v ".") false;
   eq_bool (Path.ext_is "." @@ v "..") false;
@@ -607,6 +595,19 @@ let ext_is = test "Path.ext_is" @@ fun () ->
   eq_bool (Path.ext_is "..ocamlinit" @@ v "...ocamlinit") false;
   eq_bool (Path.ext_is "..ocamlinit" @@ v ".a..ocamlinit") true;
   eq_bool (Path.ext_is "..a" @@ v "..") false;
+  ()
+
+let has_ext = test "Path.has_ext" @@ fun () ->
+  eq_bool (Path.has_ext @@ v "a/f") false;
+  eq_bool (Path.has_ext @@ v "a/f.") true;
+  eq_bool (Path.has_ext @@ v "a/f.gz") true;
+  eq_bool (Path.has_ext @@ v "a/f.tar.gz") true;
+  eq_bool (Path.has_ext ~multi:true @@ v "a/f") false;
+  eq_bool (Path.has_ext ~multi:true @@ v "a/f.") false;
+  eq_bool (Path.has_ext ~multi:true @@ v "a/f.gz") false;
+  eq_bool (Path.has_ext ~multi:true @@ v "a/f.tar.gz") true;
+  eq_bool (Path.has_ext ~multi:true @@ v "a/.a..") true;
+  eq_bool (Path.has_ext ~multi:true @@ v "a/.a.") false;
   ()
 
 let add_ext = test "Path.add_ext" @@ fun () ->
@@ -660,8 +661,8 @@ let suite = suite "Path module"
       rooted;
       relativize;
       ext;
-      ext_exists;
       ext_is;
+      has_ext;
       add_ext;
       rem_ext;
       set_ext; ]
