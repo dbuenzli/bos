@@ -148,7 +148,7 @@ module Time = struct
     let tz_min = int_of_round (tz_offset_s /. 60.) in
     let tsep = if human then ' ' else 'T' in
     let osep = if human then " " else "" in
-    Fmt.pp ppf "%04d-%02d-%02d%c%02d:%02d:%02d%s%c%02d%02d"
+    Fmt.pf ppf "%04d-%02d-%02d%c%02d:%02d:%02d%s%c%02d%02d"
       (c.Unix.tm_year + 1900) (c.Unix.tm_mon + 1) c.Unix.tm_mday
       tsep
       c.Unix.tm_hour c.Unix.tm_min c.Unix.tm_sec
