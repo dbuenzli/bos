@@ -329,7 +329,7 @@ $(drive):
      {b Warning.} [equal (append (v vol) q) p] does not hold. *)
 
   val segs : path -> string list
-  (** [segs p] is [p]'s (non-empty) list of segment. Absolute paths have an
+  (** [segs p] is [p]'s (non-empty) list of segments. Absolute paths have an
       initial empty string added, this allows to recover the path with
       {!String.concat}[ ~sep:dir_sep]. Examples:
       {ul

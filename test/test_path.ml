@@ -109,7 +109,6 @@ let constants = test "Constants" @@ fun () ->
   eq_str Path.dir_sep (if windows then "\\" else "/");
   eqp Path.cur_dir (v ".");
   eqp Path.par_dir (v "..");
-  eqp Path.dev_null (v (if windows then "NUL" else "/dev/null"));
   ()
 
 let is_seg_valid = test "Path.is_seg_valid" @@ fun () ->
