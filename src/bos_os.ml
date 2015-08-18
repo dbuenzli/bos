@@ -439,13 +439,6 @@ module Env = struct
     parser "bool" of_string
 end
 
-(* POSIX time *)
-
-module Time = struct
-  type posix_s = float
-  type tz_offset_s = float
-end
-
 (*---------------------------------------------------------------------------
    Copyright (c) 2015 Daniel C. Bünzli.
    All rights reserved.

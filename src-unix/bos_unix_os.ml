@@ -120,7 +120,9 @@ module Env = struct
 end
 
 module Time = struct
-  include Bos.OS.Time
+
+  type posix_s = float
+  type tz_offset_s = float
 
   let now_s = Unix.gettimeofday
 

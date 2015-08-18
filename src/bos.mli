@@ -1043,38 +1043,6 @@ let timeout =
 ]}
 *)
   end
-
-  (** {1 POSIX time} *)
-
-  (** POSIX time.
-
-      See also {!Bos_unix.OS.Time}. *)
-  module Time : sig
-
-    (** {1 POSIX time} *)
-
-    type posix_s = float
-    (** The type for POSIX time in seconds.
-
-        POSIX time counts seconds since the epoch 1970-01-01
-        00:00:00 UTC. As such A POSIX timestamp is {e always} on the
-        UTC time line.
-
-        POSIX time doesn't count leap seconds, so by definition it
-        cannot represent them. Whenever a leap second occurs a POSIX
-        second can be two SI seconds or zero SI seconds. *)
-
-    (** {1 Time zone offsets to UTC} *)
-
-    type tz_offset_s = float
-    (** The type for time zone offsets to UTC in seconds.
-
-        A value of [3600.] means that we are sixty minutes ahead of UTC,
-        i.e. we need to add 3600 seconds to UTC to get the local time. A
-        value of [-3600.] means that we are sixty minutes behind of UTC,
-        i.e. we need to subtract 3600 seconds to UTC to get the local
-        time. *)
-  end
 end
 
 (*---------------------------------------------------------------------------
