@@ -555,6 +555,9 @@ $(drive):
   val pp : Format.formatter -> path -> unit
   (** [pp ppf p] prints path [p] on [ppf] using {!to_string}. *)
 
+  val dump : Format.formatter -> path -> unit
+  (** [dump ppf p] prints path [p] on [ppf] using {!String.dump}. *)
+
   (** {1:file_exts File extensions}
 
       The {e file extension} (resp. {e multiple file extension}) of a
@@ -692,11 +695,20 @@ $(drive):
         [elt] is not in [s]. *)
 
     val of_list : path list -> set
-    (** [of_list ss] is a set from the list [ss]. *)
+    (** [of_list ps] is a set from the list [ps]. *)
 
-    val pp : Format.formatter -> set -> unit
-    (** [pp ppf ss] prints an unspecified representation of [ss]
-        on [ppf]. *)
+    val pp : ?sep:(Format.formatter -> unit -> unit) ->
+      (Format.formatter -> string -> unit) ->
+      Format.formatter -> set -> unit
+    (** [pp ~sep pp_elt ppf ps] formats the elements of [ps] on
+        [ppf]. Each element is formatted with [pp_elt] and elements
+        are separated by [~sep] (defaults to
+        {!Format.pp_print_cut}). If the set is empty leaves [ppf]
+        untouched. *)
+
+    val dump : Format.formatter -> set -> unit
+    (** [dump ppf ps] prints an unspecified representation of [ps] on
+        [ppf]. *)
   end
 
   type +'a map
@@ -747,14 +759,19 @@ $(drive):
     (** [of_list bs] is [List.fold_left (fun m (k, v) -> add k v m) empty
         bs]. *)
 
-    val pp : (Format.formatter -> 'a -> unit) -> Format.formatter ->
+    val pp : ?sep:(Format.formatter -> unit -> unit) ->
+      (Format.formatter -> path * 'a -> unit) -> Format.formatter ->
       'a map -> unit
-    (** [pp ppf pp_v m] prints an unspecified representation of [m] on
-        [ppf] using [pp_v] to prints the map codomain elements. *)
+    (** [pp ~sep pp_binding ppf m] formats the bindings of [m] on
+        [ppf]. Each binding is formatted with [pp_binding] and
+        bindings are separated by [sep] (defaults to
+        {!Format.pp_print_cut}). If the map is empty leaves [ppf]
+        untouched. *)
 
-    val pp_string_map : Format.formatter -> path map -> unit
-    (** [pp ppf m] prints an unspecified representation of [m]
-        on [ppf]. *)
+    val dump : (Format.formatter -> 'a -> unit) -> Format.formatter ->
+      'a map -> unit
+    (** [dump pp_v ppf m] prints an unspecified representation of [m] on
+        [ppf] using [pp_v] to print the map codomain elements. *)
   end
 end
 

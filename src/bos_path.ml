@@ -16,14 +16,9 @@ let string_sub_unsafe_get = String.Sub.unsafe_get
 
 (* Errors *)
 
-let err_invalid_path s =
-  strf "invalid path: %a" String.pp_string s
-
-let err_invalid_seg s =
-  strf "invalid segment: %a" String.pp_string s
-
-let err_invalid_ext s =
-  strf "invalid extension: %a" String.pp_string s
+let err_invalid_path s = strf "invalid path: %a" String.dump s
+let err_invalid_seg s = strf "invalid segment: %a" String.dump s
+let err_invalid_ext s = strf "invalid extension: %a" String.dump s
 
 (* Preliminaries *)
 
@@ -129,6 +124,7 @@ let of_string_posix p =
 let of_string = if windows then of_string_windows else of_string_posix
 let to_string p = p
 let pp ppf p = Format.pp_print_string ppf (to_string p)
+let dump ppf p = String.dump ppf (to_string p)
 
 let is_seg_valid_windows s =
   let valid c = c <> '\x00' && c <> dir_sep_char && c <> '/' in
@@ -571,19 +567,28 @@ let ( + ) p e = add_ext p e
 module Set = struct
   include Set.Make (String)
 
-  let pp ppf ps =
-    let pp_elt elt not_first =
-      if not_first then Format.fprintf ppf ",@ ";
-      Format.fprintf ppf "%a" String.pp elt;
-      true
+  let pp ?(sep = Format.pp_print_cut) pp_elt ppf ps =
+    let pp_elt elt is_first =
+      if is_first then () else Format.fprintf ppf "@ ";
+      Format.fprintf ppf "%a" pp_elt elt; false
+    in
+    ignore (fold pp_elt ps true)
+
+  let dump_path = dump
+  let dump ppf ss =
+    let pp_elt elt is_first =
+      if is_first then () else Format.fprintf ppf "@ ";
+      Format.fprintf ppf "%a" dump_path elt;
+      false
     in
     Format.fprintf ppf "@[<1>{";
-    ignore (fold pp_elt ps false);
+    ignore (fold pp_elt ss true);
     Format.fprintf ppf "}@]";
     ()
 
   let err_empty () = invalid_arg "empty set"
-  let err_absent p ps = invalid_arg (strf "%a not in set %a" String.pp p pp ps)
+  let err_absent p ps =
+    invalid_arg (strf "%a not in set %a" dump_path p dump ps)
 
   let get_min_elt ps = try min_elt ps with Not_found -> err_empty ()
   let min_elt ps = try Some (min_elt ps) with Not_found -> None
@@ -622,18 +627,23 @@ module Map = struct
 
   let of_list bs = List.fold_left (fun m (k,v) -> add k v m) empty bs
 
-  let pp pp_v ppf m =
-    let pp_binding k v not_first =
-      if not_first then Format.fprintf ppf ",@ ";
-      Format.fprintf ppf "@[<1>(%a,@ %a)@]" String.pp k pp_v v;
-      true
+  let pp ?sep:(pp_sep = Format.pp_print_cut) pp_binding ppf (m : 'a t) =
+    let pp_binding k v is_first =
+      if is_first then () else pp_sep ppf ();
+      pp_binding ppf (k, v); false
+    in
+    ignore (fold pp_binding m true)
+
+  let dump pp_v ppf m =
+    let pp_binding k v is_first =
+      if is_first then () else Format.fprintf ppf "@ ";
+      Format.fprintf ppf "@[<1>(@[%a@],@ @[%a@])@]" dump k pp_v v;
+      false
     in
     Format.fprintf ppf "@[<1>{";
-    ignore (fold pp_binding m false);
+    ignore (fold pp_binding m true);
     Format.fprintf ppf "}@]";
     ()
-
-  let pp_string_map ppf m = pp String.pp_string ppf m
 end
 
 type set = Set.t

@@ -345,7 +345,7 @@ module Dir = struct
       match Bos_path.of_string p with
       | Some p -> R.ok p
       | None ->
-          R.error_msgf "cannot parse getcwd to a path (%a)" String.pp_string p
+          R.error_msgf "cannot parse getcwd to a path (%a)" String.dump p
     with
     | Sys_error e -> R.error_msgf "current working directory: %s" e
 
