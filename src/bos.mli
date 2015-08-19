@@ -663,35 +663,35 @@ $(drive):
 
     type t = set
 
-    val min_elt : set -> string option
+    val min_elt : set -> path option
     (** Exception safe {!Set.S.min_elt}. *)
 
-    val get_min_elt : set -> string
+    val get_min_elt : set -> path
     (** [get_min_let] is like {!min_elt} but @raise Invalid_argument
         on the empty set. *)
 
-    val max_elt : set -> string option
+    val max_elt : set -> path option
     (** Exception safe {!Set.S.max_elt}. *)
 
-    val get_max_elt : set -> string
+    val get_max_elt : set -> path
     (** [get_max_elt] is like {!max_elt} but @raise Invalid_argument
         on the empty set. *)
 
-    val choose : set -> string option
+    val choose : set -> path option
     (** Exception safe {!Set.S.choose}. *)
 
-    val get_any_elt : set -> string
+    val get_any_elt : set -> path
     (** [get_any_elt] is like {!choose} but @raise Invalid_argument on the
         empty set. *)
 
-    val find : string -> set -> string option
+    val find : path -> set -> path option
     (** Exception safe {!Set.S.find}. *)
 
-    val get : string -> set -> string
+    val get : path -> set -> path
     (** [get] is like {!Set.S.find} but @raise Invalid_argument if
         [elt] is not in [s]. *)
 
-    val of_list : string list -> set
+    val of_list : path list -> set
     (** [of_list ss] is a set from the list [ss]. *)
 
     val pp : Format.formatter -> set -> unit
