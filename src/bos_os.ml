@@ -414,30 +414,7 @@ end
 
 (* Environment variables lookup *)
 
-module Env = struct
-  let var name = try Some (Sys.getenv name) with Not_found -> None
-
-  let value ?(log = Bos_log.Error) name parse ~absent = match var name with
-  | None -> absent
-  | Some s ->
-      match parse s with
-      | Ok v -> v
-      | Error (`Msg m) ->
-          Bos_log.msg log "environment variable %s: %s" name m; absent
-
-  let parser kind k_of_string =
-    fun s -> match k_of_string s with
-    | None -> R.error_msgf "could not parse %s value from %S" kind s
-    | Some v -> Ok v
-
-  let bool =
-    let of_string s = match String.Ascii.lowercase s with
-    | "" | "false" | "no" | "n" | "0" -> Some false
-    | "true" | "yes" | "y" | "1" -> Some true
-    | _ -> None
-    in
-    parser "bool" of_string
-end
+module Env = Bos_env
 
 (*---------------------------------------------------------------------------
    Copyright (c) 2015 Daniel C. Bünzli.

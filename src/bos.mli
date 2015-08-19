@@ -1025,38 +1025,59 @@ module OS : sig
     (** [var name] is the value of the environment variable [name], if
         defined. *)
 
+    val opt_var : string -> absent:string -> string
+    (** [opt_var name absent] is the value of the optionally defined
+        environment variable [name] if defined and [absent] if
+        undefined. *)
+
+    val req_var : string -> string result
+    (** [req_var name]  is the value of the environment variable [name] or
+        an error if [name] is undefined in the environment. *)
+
     (** {1 Typed lookup}
 
         See the {{!examples}examples}. *)
 
-    val value : ?log:Log.level -> string ->
-      (string -> ('a, R.msg) Rresult.result) -> absent:'a -> 'a
+    type 'a parser = string -> ('a, R.msg) Rresult.result
+    (** The type for environment variable value parsers. *)
+
+    val parser : string -> (string -> 'a option) -> 'a parser
+    (** [parser kind k_of_string] is an environment variable value
+        from the [k_of_string] function. [kind] is used for error
+        reports (e.g. could be ["int"] for an [int] parser). *)
+
+
+    val bool : bool parser
+    (** [bool s] is a boolean parser. The string is lowercased and
+        the result is:
+        {ul
+        {- [Ok false] if it is one of [""], ["false"], ["no"], ["n"] or ["0"].}
+        {- [Ok true] if it is one of ["true"], ["yes"], ["y"] or ["1"].}
+        {- An [Error] otherwise.}} *)
+
+    val string : string parser
+    (** [string s] is a string parser, it always succeeds. *)
+
+    val some : 'a parser -> 'a option parser
+    (** [some p] is wraps [p]'s parse result in [Some]. *)
+
+    val value : ?log:Log.level -> string -> 'a parser -> absent:'a -> 'a
     (** [value ~log name parse ~absent] is:
         {ul
-        {- [v] if [(Env.value name) = Some s] and [(parse s) = Ok v].}
-        {- [absent] if [(Env.var name) = None] or if it is [Some s]
-           and [(parse s) = Error _]. In the latter case the error
-           message is logged with level [log] (defaults to
-           {!Log.Error}).}} *)
+        {- [absent] if [Env.var name = None]}
+        {- [v] if [Env.var name = Some s] and [parse s = Ok v].}
+        {- [absent] if [Env.var name = Some s] and [parse s = Error msg].
+           In this case the error message is logged with level [log]
+           (defaults to {!Log.Error})}} *)
 
-    val bool : string -> (bool, R.msg) Rresult.result
-    (** [bool s] is a boolean parser. The string is lowercased and
-        any of [""], ["false"], ["no"], ["n"] and ["0"] is mapped
-        to [false] while any if ["true"], ["yes"], ["y"] and ["1"]
-        is mapped to [true]. Other string values error. *)
-
-    val parser : string -> (string -> 'a option) ->
-      (string -> ('a, R.msg) Rresult.result)
-    (** [parser kind k_of_string] is an environment variable parser
-        for {!value} from the [k_of_string] function.  [kind] is used
-        for error reports. *)
-
-     (** {1:examples Example}
+     (** {1:examples Examples}
 {[
-let debug = OS.Env.(value "DEBUG" bool ~absent:false)
-let timeout =
-  let int = OS.Env.parser "int" R.int_of_string in
-  OS.Env.value "TIMEOUT" int ~absent:60
+let debug : bool = OS.Env.(value "DEBUG" bool ~absent:false)
+let msg : string = OS.Env.(value "MSG" string ~absent:"no message")
+
+let timeout : int option =
+  let int = OS.Env.(some @@ parser "int" String.to_int) in
+  OS.Env.value "TIMEOUT" int ~absent:None
 ]}
 *)
   end
