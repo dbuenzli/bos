@@ -4,71 +4,52 @@
    %%NAME%% release %%VERSION%%
   ---------------------------------------------------------------------------*)
 
-open Rresult
 open Astring
+open Rresult
 
-(* Variables *)
+(* FIXME in these functions [cmd] and [args] should be quoted. *)
 
-let vars () = try
-  let env = Unix.environment () in
-  let add acc assign = match acc with
-  | Error _ as e -> e
-  | Ok m ->
-      match String.cut ~sep:"=" assign with
-      | Some (var, value) -> R.ok (String.Map.add var value m)
-      | None ->
-          R.error_msgf
-            "could not parse process environment variable (%S)" assign
-  in
-  Array.fold_left add (R.ok String.Map.empty) env
-with
-| Unix.Unix_error (e, _, _) ->
-    R.error_msgf
-      "could not get process environment: %s" (Unix.error_message e)
+let path_str = Bos_path.to_string
 
-let var name = try Some (Sys.getenv name) with Not_found -> None
+let ret_exists ?(err = false) err_msg p b =
+  if not err then R.ok b else
+  if b then R.ok b else
+  err_msg p
 
-let set_var name v =
-  let v = match v with None -> "" | Some v -> v in
-  try R.ok (Unix.putenv name v) with
-  | Unix.Unix_error (e, _, _) ->
-      R.error_msgf "environment variable %s: %s" name (Unix.error_message e)
+let exists ?err cmd =
+  try
+    let null = path_str Bos_file.dev_null in
+    let test = match Sys.os_type with "Win32" -> "where" | _ -> "type" in
+    let err_msg cmd = R.error_msgf "%s: no such command" cmd in
+    let exists = Sys.command (strf "%s %s 1>%s 2>%s" test cmd null null)= 0 in
+    ret_exists ?err err_msg cmd exists
+  with Sys_error e -> R.error_msg e
 
-let opt_var name ~absent = try Sys.getenv name with Not_found -> absent
-let req_var name = try Ok (Sys.getenv name) with
-| Not_found -> R.error_msgf "environment variable %s: undefined" name
+let trace cmd = Bos_log.info ~header:"EXEC" "@[<2>%a@]" Fmt.text cmd
+let mk_cmd cmd args = String.concat ~sep:" " (cmd :: args)
 
-(* Typed lookup *)
+let execute cmd = trace cmd; Sys.command cmd
+let exec_ret cmd args = execute (mk_cmd cmd args)
+let handle_ret cmd = match execute cmd with
+| 0 -> R.ok ()
+| c -> R.error_msgf "Exited with code: %d `%s'" c cmd
 
-type 'a parser = string -> ('a, R.msg) result
+let exec cmd args = handle_ret (mk_cmd cmd args)
+let exec_read ?(trim = true) cmd args =
+  let cmd = mk_cmd cmd args in
+  Bos_file.temp "cmd-read"
+  >>= fun file -> handle_ret (strf "%s > %s" cmd (path_str file))
+  >>= fun () -> Bos_file.read file
+  >>= fun v -> R.ok (if trim then String.trim v else v)
 
-let parser kind k_of_string =
-  fun s -> match k_of_string s with
-  | None -> R.error_msgf "could not parse %s value from %a" kind String.dump s
-  | Some v -> Ok v
+let exec_read_lines cmd args =
+  exec_read cmd args >>| String.cuts ~sep:"\n"
 
-let bool =
-  let of_string s = match String.Ascii.lowercase s with
-  | "" | "false" | "no" | "n" | "0" -> Some false
-  | "true" | "yes" | "y" | "1" -> Some true
-  | _ -> None
-  in
-  parser "bool" of_string
-
-let string = fun s -> Ok s
-
-let some p =
-  fun s -> match p s with
-  | Ok v -> Ok (Some v)
-  | Error _ as e -> e
-
-let value ?(log = Bos_log.Error) name parse ~absent = match var name with
-| None -> absent
-| Some s ->
-    match parse s with
-    | Ok v -> v
-    | Error (`Msg m) ->
-        Bos_log.msg log "environment variable %s: %s" name m; absent
+let exec_write cmd args file =
+  let cmd = mk_cmd cmd args in
+  Bos_file.temp "cmd-write"
+  >>= fun tmpf -> handle_ret (strf "%s > %s" cmd (path_str tmpf))
+  >>= fun () -> Bos_path_os.move ~force:true tmpf file
 
 (*---------------------------------------------------------------------------
    Copyright (c) 2015 Daniel C. Bünzli.

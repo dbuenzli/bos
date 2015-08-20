@@ -7,11 +7,11 @@
 (** Light, basic OS interaction.
 
     Open the module to use it, this defines only {{!path}one type},
-    {{!strf}one value} and modules in your scope.
+    and modules in your scope.
 
     {e Release %%VERSION%% - %%MAINTAINER%% } *)
 
-(** {1 Preliminaries, formatting and logging} *)
+(** {1 Patterns and logging} *)
 
 open Rresult
 open Astring
@@ -19,7 +19,7 @@ open Astring
 (** Named string patterns.
 
     Named string patterns are strings with variables of the form ["$(VAR)"]
-    where [VAR] is any sequence of characters except [')'] or [',']. In these
+    where [VAR] is any sequence of bytes except [')'] or [',']. In these
     strings a ["$"] litteral must be written ["$$"].*)
 module Pat : sig
 
@@ -60,7 +60,7 @@ module Pat : sig
 
   (** {1 Matching}
 
-      Pattern variables greedily match from zero to more characters (i.e.
+      Pattern variables greedily match from zero to more bytes (i.e.
       [.*] in regexp speak). *)
 
   val matches : t -> string -> bool
@@ -784,9 +784,7 @@ module OS : sig
 
   type 'a result = ('a, R.msg) R.t
 
-  (** Path operations.
-
-      See also {!Bos_unix.OS.Path}. *)
+  (** Path operations. *)
   module Path : sig
 
     (** {1:pathops Path operations} *)
@@ -799,6 +797,15 @@ module OS : sig
     val move : ?force:bool -> path -> path -> unit result
     (** [move ~force src dst] moves path [src] to [dst]. If [force] is
         [false] (default) the operation fails if [dst] exists. *)
+
+    (** {1:status Path status} *)
+
+    val stat : path -> Unix.stats result
+    (** [stat p] is [p]'s file information. See also {!U.stat}. *)
+
+    val lstat : path -> Unix.stats result
+    (** [lstat p] same as {!stat} but if [p] is a link returns
+        information about the link itself. See also {!U.lstat}. *)
 
     (** {1:pathmatch Matching paths} *)
 
@@ -858,26 +865,55 @@ module OS : sig
         {!log_fold_error}[ ~level:Log.Error]. *)
   end
 
-  (** File operations. *)
+  (** File operations.
+
+      Take into account the following points:
+      {ul
+      {- When paths are {{!Path.rel}relative} they are expressed
+         relative to the {{!Dir.current}current working directory}}
+      {- The functions of this module never raise {!Sys_error} or
+         {!End_of_file} they do turn these exceptions into [Error]s.}} *)
   module File : sig
 
-    (** {1:fileops File operations}
-
-        {b Note.} When paths are {{!Path.rel}relative} they are expressed
-        relative to the {{!Dir.getcwd}current working directory}. *)
-
-    val exists : ?err:bool -> path -> bool result
-    (** [exists file] is [true] iff [file] exists and is not a directory.
-        If [err] is [true] (defaults to [false]) an error is returned
-        when the file doesn't exist. *)
+    (** {1:paths Famous file paths} *)
 
     val dev_null : path
     (** [dev_null] is [Path.v "/dev/null"] on POSIX and [Path.v "NUL"] on
-        Windows. It represents a file that discards all writes. *)
+        Windows. It represents a file on the OS that discards all
+        writes. *)
 
-    val delete : ?maybe:bool -> path -> unit result
-    (** [delete ~maybe file] deletes file [file]. If [maybe] is [false]
-        (default) no error is returned if the file doesn't exit. *)
+    val dash : path
+    (** [dash] is [Path.v "-"]. This value is used by {{!input}input}
+        and {{!output}output} functions to respectively denote [stdin]
+        and [stdout].
+
+        {b Note.} Representing [stdin] and [stdout] by this path is a
+        widespread command line tool convention. However it is
+        perfectly possible to have files that bear this name in the
+        file system. If you need to operate on such path from the
+        current directory you can simply specify them as
+        [Path.(cur_dir / "-")] and so can your users on the command
+        line by using ["./-"]. *)
+
+    (** {1:ops Existence and deletion} *)
+
+    val exists : path -> bool result
+    (** [exists file] is [Ok true] iff [file] exists and is not a directory.
+        It is [Ok false] otherwise and [Error _] in case an error occurs. *)
+
+    val must_exist : path -> unit result
+    (** [must_exist file] is [Ok ()] iff [file] exists and is not a directory.
+        It is an error otherwise. *)
+
+    val delete : ?must_exist:bool -> path -> unit result
+    (** [delete ~must_exist file] deletes file [file]. If [must_exist] is
+        [true] (defaults to [false]) and error is is returned if the file
+        doesn't exit. *)
+
+    val truncate : path -> int -> unit result
+    (** [truncate p size] truncates [p] to [s]. See also {!U.truncate}. *)
+
+    (** {1:temp Temporary files} *)
 
     val temp : ?dir:path -> string -> path result
     (** [temp dir suffix] creates a temporary file with suffix
@@ -887,45 +923,49 @@ module OS : sig
 
     (** {1:input Input} *)
 
-    val with_inf : (in_channel -> 'a -> 'b result) -> path -> 'a ->
+    val with_inf : path -> (in_channel -> 'a -> 'b result) -> 'a ->
       'b result
-    (** [with_inf f inf v] opens [inf] as a channel [ic] and returns [f
-        ic v] if no error occurs. In case of error the channel is closed
-        and the error is returned. If [inf] is {!Path.dash}, [ic] is
-        {!Pervasives.stdin} and not closed. *)
+    (** [with_inf file f v] opens [file] as a channel [ic] and returns
+        [f ic v]. After the function returns (exceptions included),
+        [ic] is ensured to be closed.  If [file] is {!dash}, [ic] is
+        {!Pervasives.stdin} and not closed when the function
+        returns. *)
 
     val read : path -> string result
-    (** [read file] is [file]'s content. If [file] is {!Path.dash} reads
+    (** [read file] is [file]'s content. If [file] is {!dash} reads
         from {!Pervasives.stdin}. *)
 
     val read_lines : path -> string list result
-    (** [read_lines file] is [file]'s content splitted at ['\n']. If
-        [file] is {!Path.dash} reads from {!Pervasives.stdin}. *)
+    (** [read_lines file] is like [read file |> String.cuts ~sep:"\n"]. *)
 
     val fold_lines : ('a -> string -> 'a) -> 'a -> path -> 'a result
-    (** [fold_lines f acc file] is [List.fold_left f acc (read_lines p)] but
-        doesn't build the list of lines in-memory. *)
+    (** [fold_lines f acc file] is like
+        [List.fold_left f acc (read_lines p)]. *)
 
     (** {1:output Output} *)
 
-    val with_outf : (out_channel -> 'a -> 'b result) -> path -> 'a ->
+    val with_outf : path -> (out_channel -> 'a -> 'b result) -> 'a ->
       'b result
-    (** [with_inf f outf v] opens [outf] as a channel [oc] and returns
-        [f oc v] if no error occurs. In case of error the channel is
-        closed and the error is returned. If [outf] is {!Path.dash}, [oc] is
-        {!Pervasives.stdout} and not closed. *)
+    (** [with_outf file f v] opens [file] as a channel [oc] and
+        returns [f oc v]. After the function returns (exceptions
+        included), [oc] is ensured to be closed. If [file] is {!dash},
+        [oc] is {!Pervasives.stdout} and not closed when the function
+        returns. *)
 
     val write : path -> string -> unit result
     (** [write file content] outputs [content] to [file]. If [file]
-        is {!Path.dash}, writes to {!Pervasives.stdout}. If an error is
+        is {!dash}, writes to {!Pervasives.stdout}. If an error is
         returned [file] is left untouched except if {!Pervasives.stdout}
-        is written.*)
+        is written. *)
+
+    val writef : path -> ('a, Format.formatter, unit, unit result) format4 ->
+      'a
+      (** [write file fmt ...] is like
+          [write file (Format.asprintf fmt ...)]. *)
 
     val write_lines : path -> string list -> unit result
-    (** [write_lines file lines] outputs [lines] separated by ['\n'] to
-        [file]. If [file] is {!Path.dash}, writes to {!Pervasives.stdout}.
-        If an error is returned [file] is left untouched except if
-        {!Pervasives.stdout} is written.*)
+    (** [write_lines file lines] is like [write file (String.concat
+        ~sep:"\n" lines)]. *)
 
     val write_subst : (string * string) list -> path -> string -> unit result
     (** [write_subst vars file content] outputs [content] to [file]. In
@@ -941,9 +981,7 @@ module OS : sig
       relative to the {{!Dir.current}current working directory}. *)
   module Dir : sig
 
-    (** {1:dirops Directory operations}
-
-        For creating a directory see {!Bos_unix.OS.Dir}. *)
+    (** {1:dirops Directory operations} *)
 
     val exists : ?err:bool -> path -> bool result
     (** [exists dir] is [true] if directory [dir] exists.
@@ -960,6 +998,14 @@ module OS : sig
     (** [contents dir] is the contents of [dir] if [path] is
         [true] (default) the basenames are prefixed by [dir].
         Elements are returned according to [kind]. *)
+
+    val create : ?err:bool -> ?path:bool -> ?mode:Unix.file_perm -> path ->
+      unit result
+    (** [create ~err ~path ~mode dir] creates the directory [dir] with
+        file permission [mode] (defaults [0o777]). If [path] is [true]
+        (defaults to [false]) intermediate directories are created
+        aswell. If [err] is [false] (default) no error is returned if
+        the directory already exists. See also {!U.mkdir}. *)
 
     (** {1:fold Folding over directory contents}
 
@@ -1013,17 +1059,27 @@ module OS : sig
 
   (** {1:env Environment variables} *)
 
-  (** Environment variables.
-
-      To determine the process environment or set variables
-      use {!Bos_unix.OS.Env}. *)
+  (** Environment variables. *)
   module Env : sig
 
-    (** {1 Lookup} *)
+    (** {1:env Process environment} *)
+
+    val vars : unit -> string String.Map.t result
+    (** [vars ()] is a string map corresponding to the process environment. *)
+
+    (** {1:vars Variables} *)
 
     val var : string -> string option
     (** [var name] is the value of the environment variable [name], if
         defined. *)
+
+    val set_var : string -> string option -> unit result
+    (** [set_var name v] sets the environment variable [name] to [v].
+
+        {b BUG.} The {!Unix} module doesn't bind to [unsetenv(3)],
+        hence for now using [None] will not unset the variable, it
+        will set it to [""]. This behaviour may change in future
+        versions of the library. *)
 
     val opt_var : string -> absent:string -> string
     (** [opt_var name absent] is the value of the optionally defined
@@ -1045,7 +1101,6 @@ module OS : sig
     (** [parser kind k_of_string] is an environment variable value
         from the [k_of_string] function. [kind] is used for error
         reports (e.g. could be ["int"] for an [int] parser). *)
-
 
     val bool : bool parser
     (** [bool s] is a boolean parser. The string is lowercased and
@@ -1081,6 +1136,147 @@ let timeout : int option =
 ]}
 *)
   end
+
+  (** {1 Low level {!Unix} access}
+
+    If you need fine grained control over unix errors use the lower level
+    functions in {!U}. *)
+
+  (** Low level {!Unix} access.
+
+      These functions simply {{!call}call} functions from the {!Unix}
+      module and replace strings with {!path} where appropriate.  They
+      also provide more fine grained error handling, for example
+      {!OS.Path.stat} converts the error to a message while {!stat}
+      gives you the {{!Unix.error}Unix error}. *)
+  module U : sig
+
+    (** {1 Error handling} *)
+
+    type 'a result = ('a, [`Unix of Unix.error]) Rresult.result
+    (** The type for Unix results. *)
+
+    val pp_error : Format.formatter -> [`Unix of Unix.error] -> unit
+    (** [pp_error ppf e] prints [e] on [ppf]. *)
+
+    val open_error : 'a result -> ('a, [> `Unix of Unix.error]) Rresult.result
+    (** [open_error r] allows to combine a closed unix error
+        variant with other variants. *)
+
+    val error_to_msg : 'a result -> ('a, Rresult.R.msg) Rresult.result
+    (** [error_to_msg r] converts unix errors in [r] to an error message. *)
+
+    (** {1 Wrapping {!Unix} calls} *)
+
+    val call : ('a -> 'b) -> 'a -> 'b result
+    (** [call f v] is [Ok (f v)] but {!Unix.EINTR} errors are catched
+        and handled by retrying the call. Other errors [e] are catched
+        aswell and returned as [Error (`Unix e)]. *)
+
+    (** {1 File system operations} *)
+
+    val mkdir : path -> Unix.file_perm -> unit result
+    (** [mkdir] is {!Unix.mkdir}, see
+        {{:http://pubs.opengroup.org/onlinepubs/9699919799/functions/mkdir.html}
+        POSIX [mkdir]}. *)
+
+    val link : path -> path -> unit result
+    (** [link] is {!Unix.link}, see
+        {{:http://pubs.opengroup.org/onlinepubs/9699919799/functions/link.html}
+        POSIX [link]}. *)
+
+    val unlink : path -> unit result
+    (** [stat] is {!Unix.unlink},
+        {{:http://pubs.opengroup.org/onlinepubs/9699919799/functions/unlink.html}
+        POSIX [unlink]}. *)
+
+    val rename : path -> path -> unit result
+    (** [rename] is {!Unix.rename}, see
+        {{:http://pubs.opengroup.org/onlinepubs/9699919799/functions/rename.html}
+        POSIX [rename]}. *)
+
+    val stat : path -> Unix.stats result
+    (** [stat] is {!Unix.stat}, see
+        {{:http://pubs.opengroup.org/onlinepubs/9699919799/functions/stat.html}
+        POSIX [stat]}. *)
+
+    val lstat : path -> Unix.stats result
+    (** [lstat] is {!Unix.lstat}, see
+        {{:http://pubs.opengroup.org/onlinepubs/9699919799/functions/lstat.html}
+        POSIX [lstat]}. *)
+
+    val truncate : path -> int -> unit result
+    (** [truncate] is {!Unix.truncate}, see
+        {{:http://pubs.opengroup.org/onlinepubs/9699919799/functions/truncate.html}
+        POSIX [truncate]}. *)
+  end
+
+  (** {1 POSIX time} *)
+
+  (** POSIX time TODO move this to ptime. *)
+  module Time : sig
+
+    (** {1 POSIX time} *)
+
+    type posix_s = float
+    (** The type for POSIX time in seconds.
+
+        POSIX time counts seconds since the epoch 1970-01-01
+        00:00:00 UTC. As such A POSIX timestamp is {e always} on the
+        UTC time line.
+
+        POSIX time doesn't count leap seconds, so by definition it
+        cannot represent them. Whenever a leap second occurs a POSIX
+        second can be two SI seconds or zero SI seconds. *)
+
+    (** {1 Time zone offsets to UTC} *)
+
+    type tz_offset_s = float
+    (** The type for time zone offsets to UTC in seconds.
+
+        A value of [3600.] means that we are sixty minutes ahead of UTC,
+        i.e. we need to add 3600 seconds to UTC to get the local time. A
+        value of [-3600.] means that we are sixty minutes behind of UTC,
+        i.e. we need to subtract 3600 seconds to UTC to get the local
+        time. *)
+
+    (** {1 Now} *)
+
+    val now_s : unit -> posix_s
+    (** [now_s ()] is the operating system's
+        {{!Bos.OS.Time.posix_s}POSIX timestamp} for the current time.
+
+        {b Warning.} These timestamps are not monotonic they
+        are subject to operating system time adjustements and can
+        even go back in time. If you need to measure time spans
+        in a single program run use a monotonic time source (e.g.
+        {!Mtime}) *)
+
+    (** {1 Time zone offset} *)
+
+    val current_tz_offset_s : unit -> tz_offset_s
+    (** [current_tz_offset_s ()] is the operating system's current local
+        {{!Bos.OS.Time.tz_offset_min}time zone offset} to UTC in seconds. *)
+
+    (** {1 Printing} *)
+
+    val pp_stamp : ?human:bool -> ?tz_offset_s:tz_offset_s ->
+      Format.formatter -> posix_s -> unit
+    (** [pp_stamp tz_offset_min human ppf t] formats the POSIX
+        timestamp [t] and time zone offset [tz_offset_min] (defaults to [0])
+        according to {{:https://tools.ietf.org/html/rfc3339}RFC 3339}.
+
+        If [human] is [true] (defaults to [false]) date and time are
+        separated by a space rather than a ['T'], and a space is
+        inserted betwen time and offset but this is {b not} RFC 3339
+        compliant. *)
+
+    val pp_stamp_now : ?human:bool -> Format.formatter -> unit  -> unit
+    (** [pp_now human ppf ()] is
+        [pp_stamp ~human ~tz_offset_s:(current_tz_offset_s ()) ppf
+         (now_s ())]. *)
+  end
+
 end
 
 (*---------------------------------------------------------------------------

@@ -1,8 +1,11 @@
-Bos_prelude
-Bos_fmt
+Bos_base
 Bos_pat
 Bos_log
+Bos_u
 Bos_path
+Bos_path_os
+Bos_file
+Bos_dir
+Bos_cmd
 Bos_env
-Bos_os
 Bos

@@ -1,7 +1,7 @@
-<**/*.{ml,mli}> : bin_annot, package(bytes), safe_string
+true : bin_annot, package(bytes), safe_string
 
 <src> : include
-<src/bos*> : package(rresult), package(astring), package(fmt)
+<src/bos*> : package(rresult), package(astring), package(fmt), package(unix)
 <src/bos_top*> : package(compiler-libs.toplevel)
 
 <src-unix> : include
@@ -9,4 +9,5 @@
 <src-unix/bos_unix_top*> : package(compiler-libs.toplevel)
 
 <test> : include
-<test/*> : package(rresult), package(astring), package(fmt)
+<test/*> : package(rresult), package(astring), package(fmt), package(unix)
+<test/watch*> : package(mtime.os)

@@ -5,11 +5,18 @@ homepage: "http://erratique.ch/software/bos"
 doc: "http://erratique.ch/software/bos"
 dev-repo: "http://erratique.ch/repos/bos.git"
 bug-reports: "https://github.com/dbuenzli/bos/issues"
-tags: [ "os" "system" "cli" "command" "file" "path" "log" "org:erratique" ]
-license: "BSD3"
+tags: [ "os" "system" "cli" "command" "file" "path" "log" "unix"
+        "org:erratique" ]
+license: "BSD-3-Clause"
 available: [ ocaml-version >= "4.01.0"]
-depends: [ "ocamlfind" "base-bytes" "rresult" "astring" "fmt" ]
-depopts: [ "base-unix" ]
+depends: [
+  "ocamlfind" {build}
+  "base-unix"
+  "rresult"
+  "astring"
+  "fmt"
+  "mtime" {test}
+]
 build:
 [
   [ "ocaml" "pkg/git.ml" ]

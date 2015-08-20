@@ -5,70 +5,37 @@
   ---------------------------------------------------------------------------*)
 
 open Rresult
-open Astring
 
-(* Variables *)
+type 'a result = ('a, [`Unix of Unix.error]) Rresult.result
+let pp_error ppf (`Unix e ) = Fmt.string ppf (Unix.error_message e)
+let open_error = function Ok _ as r -> r | Error (`Unix _) as r -> r
+let error_to_msg r = R.error_to_msg ~pp_error r
 
-let vars () = try
-  let env = Unix.environment () in
-  let add acc assign = match acc with
-  | Error _ as e -> e
-  | Ok m ->
-      match String.cut ~sep:"=" assign with
-      | Some (var, value) -> R.ok (String.Map.add var value m)
-      | None ->
-          R.error_msgf
-            "could not parse process environment variable (%S)" assign
-  in
-  Array.fold_left add (R.ok String.Map.empty) env
-with
-| Unix.Unix_error (e, _, _) ->
-    R.error_msgf
-      "could not get process environment: %s" (Unix.error_message e)
+let rec call f v = try Ok (f v) with
+| Unix.Unix_error (Unix.EINTR, _, _) -> call f v
+| Unix.Unix_error (e, _, _) -> Error (`Unix e)
 
-let var name = try Some (Sys.getenv name) with Not_found -> None
+let mkdir p m = try Ok (Unix.mkdir p m) with
+| Unix.Unix_error (e, _, _) -> Error (`Unix e)
 
-let set_var name v =
-  let v = match v with None -> "" | Some v -> v in
-  try R.ok (Unix.putenv name v) with
-  | Unix.Unix_error (e, _, _) ->
-      R.error_msgf "environment variable %s: %s" name (Unix.error_message e)
+let link p p' = try Ok (Unix.link p p') with
+| Unix.Unix_error (e, _, _) -> Error (`Unix e)
 
-let opt_var name ~absent = try Sys.getenv name with Not_found -> absent
-let req_var name = try Ok (Sys.getenv name) with
-| Not_found -> R.error_msgf "environment variable %s: undefined" name
+let unlink p = try Ok (Unix.unlink p) with
+| Unix.Unix_error (e, _, _) -> Error (`Unix e)
 
-(* Typed lookup *)
+let rename p p' = try Ok (Unix.rename p p') with
+| Unix.Unix_error (e, _, _) -> Error (`Unix e)
 
-type 'a parser = string -> ('a, R.msg) result
+let stat p = try Ok (Unix.stat p) with
+| Unix.Unix_error (e, _, _) -> Error (`Unix e)
 
-let parser kind k_of_string =
-  fun s -> match k_of_string s with
-  | None -> R.error_msgf "could not parse %s value from %a" kind String.dump s
-  | Some v -> Ok v
+let lstat p = try Ok (Unix.lstat p) with
+| Unix.Unix_error (e, _, _) -> Error (`Unix e)
 
-let bool =
-  let of_string s = match String.Ascii.lowercase s with
-  | "" | "false" | "no" | "n" | "0" -> Some false
-  | "true" | "yes" | "y" | "1" -> Some true
-  | _ -> None
-  in
-  parser "bool" of_string
-
-let string = fun s -> Ok s
-
-let some p =
-  fun s -> match p s with
-  | Ok v -> Ok (Some v)
-  | Error _ as e -> e
-
-let value ?(log = Bos_log.Error) name parse ~absent = match var name with
-| None -> absent
-| Some s ->
-    match parse s with
-    | Ok v -> v
-    | Error (`Msg m) ->
-        Bos_log.msg log "environment variable %s: %s" name m; absent
+let rec truncate p size = try Ok (Unix.truncate p size) with
+| Unix.Unix_error (Unix.EINTR, _, _) -> truncate p size
+| Unix.Unix_error (e, _, _) -> Error (`Unix e)
 
 (*---------------------------------------------------------------------------
    Copyright (c) 2015 Daniel C. Bünzli.
