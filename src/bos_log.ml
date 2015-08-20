@@ -43,7 +43,7 @@ let kmsg ?header k l fmt =
   if not (should_log l) then Format.ikfprintf k dumb fmt else
   let pp_msg ppf style label fmt =
     Format.kfprintf k ppf
-      ("[%a] @[" ^^ fmt ^^ "@]@.") (Fmt.styled_string style) label
+      ("[%a] @[" ^^ fmt ^^ "@]@.") Fmt.(styled style string) label
   in
   match l with
   | Show ->
