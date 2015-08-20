@@ -2,15 +2,16 @@ Bos — Light, basic OS interaction for OCaml
 -------------------------------------------------------------------------------
 Release %%VERSION%%
 
-Bos is an OCaml library providing basic tools for interacting with the
-operating system. It provides tools to manipulate file paths, execute
-commands and handle errors. Bos can be seen as an enhanced `Sys` and
-`Unix` module for scripts and command line programs with light OS
-interaction requirements.
+Bos is an OCaml library providing basic support for interacting with
+the operating system. It provides functions to manipulate file paths,
+interact with the file system and execute commands.
+
+Bos can be seen as an enhanced `Sys` and `Unix` module for scripts and
+command line programs with light OS interaction requirements. It
+(should) work equally well on POSIX and Windows systems.
 
 Bos depends on [Rresult][1], [Astring][2], [Fmt][3] and the OCaml Unix
-library. It is distributed under the BSD3 license. The optional
-Bos_unix library depends on OCaml's Unix library.
+library. It is distributed under the BSD3 license.
 
 [1]: http://erratique.ch/software/rresult
 [2]: http://erratique.ch/software/astring
