@@ -4,9 +4,12 @@
    %%NAME%% release %%VERSION%%
   ---------------------------------------------------------------------------*)
 
-
-
-
+let apply f x ~finally y =
+  let result = try f x with
+  | e -> try finally y; raise e with _ -> raise e
+  in
+  finally y;
+  result
 
 (*---------------------------------------------------------------------------
    Copyright (c) 2015 Daniel C. Bünzli.

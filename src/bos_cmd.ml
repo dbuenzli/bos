@@ -37,7 +37,7 @@ let handle_ret cmd = match execute cmd with
 let exec cmd args = handle_ret (mk_cmd cmd args)
 let exec_read ?(trim = true) cmd args =
   let cmd = mk_cmd cmd args in
-  Bos_file.temp "cmd-read"
+  Bos_file.tmp "cmd-read"
   >>= fun file -> handle_ret (strf "%s > %s" cmd (path_str file))
   >>= fun () -> Bos_file.read file
   >>= fun v -> R.ok (if trim then String.trim v else v)
@@ -47,7 +47,7 @@ let exec_read_lines cmd args =
 
 let exec_write cmd args file =
   let cmd = mk_cmd cmd args in
-  Bos_file.temp "cmd-write"
+  Bos_file.tmp "cmd-write"
   >>= fun tmpf -> handle_ret (strf "%s > %s" cmd (path_str tmpf))
   >>= fun () -> Bos_path_os.move ~force:true tmpf file
 

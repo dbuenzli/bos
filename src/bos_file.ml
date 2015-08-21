@@ -7,85 +7,70 @@
 open Astring
 open Rresult
 
-let writef file fmt = failwith "TODO"
-let must_exist file = failwith "TODO"
+(* Famous file paths *)
 
-let apply f x ~finally y =
-  let result = try f x with
-  | e -> try finally y; raise e with _ -> raise e
-  in
-  finally y;
-  result
-
+let dev_null = Bos_path.v (if Sys.os_type = "Win32" then "NUL" else "/dev/null")
 let dash = Bos_path.v "-"
-
 let is_dash = Bos_path.equal dash
 
-let ret_exists ?(err = false) err_msg p b =
-  if not err then R.ok b else
-  if b then R.ok b else
-  err_msg p
+(* Existence and deletion *)
 
-(* Files *)
+let exists file =
+  try Ok (Unix.((stat file).st_kind = S_REG)) with
+  | Unix.Unix_error (Unix.ENOENT, _, _) -> Ok false
+  | Unix.Unix_error (e, _, _) ->
+      R.error_msgf "%a: %s" Bos_path.pp file (Unix.error_message e)
 
-let dev_null =
-  if Sys.os_type = "Win32" then Bos_path.v "NUL" else
-  Bos_path.v "/dev/null"
-
-let path_str = Bos_path.to_string
-
-let exists ?err file =
+let must_exist file =
   try
-    let file = path_str file in
-    let err_msg file = R.error_msgf "%s: no such file" file in
-    let exists = Sys.file_exists file && not (Sys.is_directory file) in
-    ret_exists ?err err_msg file exists
+    match Unix.((stat file).st_kind) with
+    | Unix.S_REG -> Ok ()
+    | _ -> R.error_msgf "%a: Not a file" Bos_path.pp file
   with
-  | Sys_error e -> R.error_msg e
+  | Unix.Unix_error (Unix.ENOENT, _, _) -> R.error_msgf "%s: No such file" file
+  | Unix.Unix_error (e, _, _) ->
+      R.error_msgf "%a: %s" Bos_path.pp file (Unix.error_message e)
 
-let exists file = exists ~err:false file
+let delete ?must_exist:(must = false) file =
+  let unlink file = try Ok (Unix.unlink file) with
+  | Unix.Unix_error (e, _, _) ->
+      R.error_msgf "%a: %s" Bos_path.pp file (Unix.error_message e)
+  in
+  if must then must_exist file >>= fun () -> unlink file else
+  exists file >>= function
+  | true -> unlink file
+  | false -> Ok ()
 
-let delete ?(must_exist = false) file =
-  exists file >>= fun exists ->
-  if must_exist && not exists then R.ok () else
-  try R.ok (Sys.remove (path_str file)) with
-  | Sys_error e -> R.error_msg e
-
-let temp ?dir suff =
-  try
-    let temp_dir = match dir with
-    | None -> None
-    | Some d -> Some (Bos_path.to_string d)
-    in
-    let f = Filename.temp_file ?temp_dir "bos" suff in
-    let f = match Bos_path.of_string f with
-    | None -> assert false
-    | Some p -> p
-    in
-    at_exit (fun () -> ignore (delete f));
-    R.ok f
-  with Sys_error e -> R.error_msg e
+let rec truncate p size =
+  try Ok (Unix.truncate p size) with
+  | Unix.Unix_error (Unix.EINTR, _, _) -> truncate p size
+  | Unix.Unix_error (e, _, _) ->
+      R.error_msgf "truncate %a: %s" Bos_path.pp p (Unix.error_message e)
 
 (* Input *)
 
 let with_inf file f v =
   try
-    let ic = if is_dash file then stdin else open_in_bin (path_str file) in
+    let ic = if is_dash file then stdin else open_in_bin file in
     let close ic = if is_dash file then () else close_in ic in
-    apply (f ic) v ~finally:close ic
+    Bos_base.apply (f ic) v ~finally:close ic
   with
-  | End_of_file -> R.error_msg "unexpected end of file"
+  | End_of_file -> R.error_msgf "%a: unexpected end of file" Bos_path.pp file
   | Sys_error e -> R.error_msg e
 
 let read file =
   let input ic () =
     let len = in_channel_length ic in
-    let s = Bytes.create len in
-    really_input ic s 0 len; R.ok (Bytes.unsafe_to_string s)
+    if len <= Sys.max_string_length then begin
+      let s = Bytes.create len in
+      really_input ic s 0 len;
+      Ok (Bytes.unsafe_to_string s)
+    end else begin
+      R.error_msgf "%a: file too large (%a) for Bos.File.read (max: %a)"
+        Bos_path.pp file Fmt.byte_size len Fmt.byte_size Sys.max_string_length
+    end
   in
   with_inf file input ()
-
-let read_lines file = read file >>| (String.cuts ~sep:"\n")
 
 let fold_lines f acc file =
   let input ic acc =
@@ -98,24 +83,66 @@ let fold_lines f acc file =
   in
   with_inf file input acc
 
+let read_lines file = fold_lines (fun acc l -> l :: acc) [] file >>| List.rev
+
+(* Temporary files *)
+
+let tmp ?dir suff =
+  try
+    let f = Filename.temp_file ?temp_dir:dir "bos" suff in
+    let f = match Bos_path.of_string f with
+    | None -> assert false
+    | Some p -> p
+    in
+    at_exit (fun () -> ignore (delete f));
+    Ok f
+  with Sys_error e -> R.error_msg e
+
+let with_tmp ?dir suff f v =
+  try
+    let p, oc = Filename.open_temp_file ?temp_dir:dir "bos" suff in
+    let delete_close oc = (try Unix.unlink p with _ -> ()); close_out oc in
+    at_exit (fun () -> try Unix.unlink p with _ -> ()); (* TODO *)
+    Bos_base.apply (f p oc) v ~finally:delete_close oc
+  with Sys_error e -> R.error_msg e
+
 (* Output *)
 
-let with_outf file f v =
+let lo_with_outf file f v = (* not atomic *)
   try
-    let oc = if is_dash file then stdout else open_out_bin (path_str file) in
+    let oc = if is_dash file then stdout else open_out_bin file in
     let close oc = if is_dash file then () else close_out oc in
-    apply (f oc) v ~finally:close oc
+    Bos_base.apply (f oc) v ~finally:close oc
   with
   | Sys_error e -> R.error_msg e
 
-let write file contents =
-  let write oc contents = output_string oc contents; R.ok () in
-  if is_dash file then with_outf file write contents else
-  temp ~dir:(Bos_path.parent file) "write"
-  >>= fun tmpf -> with_outf tmpf write contents
-  >>= fun () -> Bos_path_os.move ~force:true tmpf file
+let with_outf file f v =
+  if is_dash file then lo_with_outf file f v else
+  let do_write tmp tmp_oc v = match f tmp_oc v with
+  | Error _ as e -> e
+  | Ok _ as r ->
+      try Unix.rename tmp file; r with
+      | Unix.Unix_error (e, _, _) ->
+          R.error_msgf "rename %a to %a: %s"
+            Bos_path.pp tmp Bos_path.pp file (Unix.error_message e)
+  in
+  with_tmp ~dir:(Bos_path.parent file) "write" do_write v
 
-let write_lines file lines = write file (String.concat ~sep:"\n" lines)
+let write file contents =
+  let write oc contents = output_string oc contents; Ok () in
+  with_outf file write contents
+
+let writef file fmt = (* FIXME avoid the kstrf. *)
+  Fmt.kstrf (fun content -> write file content) fmt
+
+let write_lines file lines =
+  let rec write oc = function
+  | [] -> Ok ()
+  | l :: ls ->
+      output_string oc l;
+      if ls <> [] then (output_char oc '\n'; write oc ls) else Ok ()
+  in
+  with_outf file write lines
 
 let write_subst vars file contents =
   let write_subst oc contents =                     (* man that's ugly. *)
@@ -154,15 +181,7 @@ let write_subst vars file contents =
     done;
     Pervasives.output_substring oc s !start (len - !start); R.ok ()
   in
-  if is_dash file then with_outf file write_subst contents else
-  temp ~dir:(Bos_path.parent file) "write"
-  >>= fun tmpf -> with_outf tmpf write_subst contents
-  >>= fun () -> Bos_path_os.move ~force:true tmpf file
-
-let rec truncate p size = try Ok (Unix.truncate p size) with
-| Unix.Unix_error (Unix.EINTR, _, _) -> truncate p size
-| Unix.Unix_error (e, _, _) ->
-    R.error_msgf "truncate %a: %s" Bos_path.pp p (Unix.error_message e)
+  with_outf file write_subst contents
 
 (*---------------------------------------------------------------------------
    Copyright (c) 2015 Daniel C. Bünzli.

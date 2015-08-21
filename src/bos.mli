@@ -780,9 +780,21 @@ end
 (** OS interaction *)
 module OS : sig
 
-  (** {1 File system operations and commands} *)
+  (** {1 Results}
+
+      The functions of this module never raise {!Sys_error} or
+      {!Unix.Unix_error} instead they turn these errors into
+      {{!Rresult.R.msgs}error messages}. If you need fine grained
+      control over unix errors use the lower level functions in
+      {!Bos.OS.U}. *)
 
   type 'a result = ('a, R.msg) R.t
+  (** The type for OS results. *)
+
+  (** {1 File system operations and commands}
+
+      {b Note.} When paths are relative they are expressed relative to
+      the {{!Dir.current}current working directory}. *)
 
   (** Path operations. *)
   module Path : sig
@@ -865,14 +877,7 @@ module OS : sig
         {!log_fold_error}[ ~level:Log.Error]. *)
   end
 
-  (** File operations.
-
-      Take into account the following points:
-      {ul
-      {- When paths are {{!Path.rel}relative} they are expressed
-         relative to the {{!Dir.current}current working directory}}
-      {- The functions of this module never raise {!Sys_error} or
-         {!End_of_file} they do turn these exceptions into [Error]s.}} *)
+  (** File operations. *)
   module File : sig
 
     (** {1:paths Famous file paths} *)
@@ -913,14 +918,6 @@ module OS : sig
     val truncate : path -> int -> unit result
     (** [truncate p size] truncates [p] to [s]. See also {!U.truncate}. *)
 
-    (** {1:temp Temporary files} *)
-
-    val temp : ?dir:path -> string -> path result
-    (** [temp dir suffix] creates a temporary file with suffix
-        [suffix] in [dir] (defaults to {!Filename.get_temp_dir_name})
-        and returns its name. The file is destroyed at the end of
-        program execution. *)
-
     (** {1:input Input} *)
 
     val with_inf : path -> (in_channel -> 'a -> 'b result) -> 'a ->
@@ -929,20 +926,27 @@ module OS : sig
         [f ic v]. After the function returns (exceptions included),
         [ic] is ensured to be closed.  If [file] is {!dash}, [ic] is
         {!Pervasives.stdin} and not closed when the function
-        returns. *)
+        returns. If [End_of_file] is raised in [f] turns it into
+        an error message. *)
 
     val read : path -> string result
     (** [read file] is [file]'s content. If [file] is {!dash} reads
         from {!Pervasives.stdin}. *)
 
     val read_lines : path -> string list result
-    (** [read_lines file] is like [read file |> String.cuts ~sep:"\n"]. *)
+    (** [read_lines file] is [file]'s content, split at each
+        "\n" character. *)
 
     val fold_lines : ('a -> string -> 'a) -> 'a -> path -> 'a result
     (** [fold_lines f acc file] is like
         [List.fold_left f acc (read_lines p)]. *)
 
-    (** {1:output Output} *)
+    (** {1:output Output}
+
+        The following functions write files atomically. They create a
+        temporary file [t] in the directory of the file [f] to write, write
+        the contents to [t] and renames it to [f] on success. In case
+        of error the [t] is deleted and [f] left intact. *)
 
     val with_outf : path -> (out_channel -> 'a -> 'b result) -> 'a ->
       'b result
@@ -960,8 +964,7 @@ module OS : sig
 
     val writef : path -> ('a, Format.formatter, unit, unit result) format4 ->
       'a
-      (** [write file fmt ...] is like
-          [write file (Format.asprintf fmt ...)]. *)
+    (** [write file fmt ...] is like [write file (Format.asprintf fmt ...)]. *)
 
     val write_lines : path -> string list -> unit result
     (** [write_lines file lines] is like [write file (String.concat
@@ -972,7 +975,26 @@ module OS : sig
         [content] patterns of the form ["%%ID%%"] are replaced by the value
         of [List.assoc "ID" vars] (if any). If [file] is {!Path.dash}, writes
         to {!Pervasives.stdout}. If an error is returned [file] is left
-        untouched except if {!Pervasives.stdout} is written. *)
+        untouched except if {!Pervasives.stdout} is written.
+
+        FIXME review that with {!Path} and {!String.Map} in mind. *)
+
+    (** {1:tmp Temporary files} *)
+
+    val tmp : ?dir:path -> string -> path result
+    (** [temp dir suffix] creates a temporary file with suffix
+        [suffix] in [dir] (defaults to {!Filename.get_temp_dir_name})
+        and returns its name. The file is destroyed at the end of
+        program execution. *)
+
+    val with_tmp : ?dir:path -> string ->
+      (path -> out_channel -> 'a -> 'b result) -> 'a -> 'b result
+    (** [with_temp dir suffix f v] atomically creates and opens a temporary
+        file with suffix [suffix] the file. When the function
+        returns the created path is closed and the out channel is closed.
+
+        FIXME review guarantees. *)
+
   end
 
   (** Directory operations.
@@ -1137,10 +1159,7 @@ let timeout : int option =
 *)
   end
 
-  (** {1 Low level {!Unix} access}
-
-    If you need fine grained control over unix errors use the lower level
-    functions in {!U}. *)
+  (** {1 Low level {!Unix} access} *)
 
   (** Low level {!Unix} access.
 
