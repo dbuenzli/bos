@@ -31,13 +31,13 @@ let rec must_exist dir =
   | Unix.Unix_error (e, _, _) ->
       R.error_msgf "directory %a must exist: %s" Bos_path.pp dir (uerror e)
 
-let create ?(path = false) ?(mode = 0o777) dir =
+let create ?(path = true) ?(mode = 0o755) dir =
   let rec chmod dir mode = try Ok (Unix.chmod dir mode) with
   | Unix.Unix_error (Unix.EINTR, _, _) -> chmod dir mode
   | Unix.Unix_error (e, _, _) ->
       R.error_msgf "create directory %a: %s" Bos_path.pp dir (uerror e)
   in
-  let rec mkdir d mode = try Ok (Unix.mkdir dir mode) with
+  let rec mkdir d mode = try Ok (Unix.mkdir d mode) with
   | Unix.Unix_error (Unix.EEXIST, _, _) -> Ok ()
   | Unix.Unix_error (e, _, _) ->
       if d = dir then

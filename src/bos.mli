@@ -812,7 +812,7 @@ module OS : sig
     val move : ?force:bool -> path -> path -> unit result
     (** [move ~force src dst] moves path [src] to [dst]. If [force] is
         [true] (defaults to [false]) the operation doesn't error if
-        [dst] exists and is can be replaced by [src]. *)
+        [dst] exists and can be replaced by [src]. *)
 
     (** {1:status Path status} *)
 
