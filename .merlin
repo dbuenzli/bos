@@ -1,4 +1,4 @@
-PKG unix rresult astring fmt
+PKG unix rresult astring fmt mtime
 S src
 S test
 B _build/**

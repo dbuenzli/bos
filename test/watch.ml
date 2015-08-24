@@ -19,7 +19,7 @@ module Db = struct
     let add acc p =
       (OS.Path.stat p >>= fun stats ->
        if stats.Unix.st_kind <> Unix.S_REG then Ok acc else
-       Ok ((Path.to_string p, stats.Unix.st_mtime) :: acc))
+       Ok ((p, stats.Unix.st_mtime) :: acc))
       |> Log.on_error_msg ~use:acc
     in
     Log.show "Scanning files";
@@ -27,20 +27,20 @@ module Db = struct
     >>= fun dir -> OS.Dir.contents_fold ~over:`Files add [] dir
 
   let dump oc db = Ok Marshal.(to_channel oc db [No_sharing; Compat_32])
-  let slurp ic () = Ok (Marshal.from_channel ic : float String.Map.t)
+  let slurp ic () = Ok (Marshal.from_channel ic : float Path.Map.t)
 
   let create files =
     Log.show "Writing modification time database %a" Path.pp db_file;
     let count = ref 0 in
-    let add acc (f, time) = incr count; String.Map.add f time acc in
-    let db = List.fold_left add String.Map.empty files in
+    let add acc (f, time) = incr count; Path.Map.add f time acc in
+    let db = List.fold_left add Path.Map.empty files in
     OS.File.with_oc db_file dump db >>= fun () -> Ok !count
 
   let check files =
     let count = ref 0 in
-    let changes db (f, time) = match (incr count; String.Map.find f db) with
-    | None -> Log.show "New file: %s" f
-    | Some stamp when stamp <> time -> Log.show "File changed: %s" f
+    let changes db (f, time) = match (incr count; Path.Map.find f db) with
+    | None -> Log.show "New file: %a" Path.pp f
+    | Some stamp when stamp <> time -> Log.show "File changed: %a" Path.pp f
     | _ -> ()
     in
     Log.show "Checking against %a" Path.pp db_file;
