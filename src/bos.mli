@@ -814,14 +814,28 @@ module OS : sig
         [true] (defaults to [false]) the operation doesn't error if
         [dst] exists and can be replaced by [src]. *)
 
-    (** {1:status Path status} *)
-
     val stat : path -> Unix.stats result
     (** [stat p] is [p]'s file information. *)
 
-    val lstat : path -> Unix.stats result
-    (** [lstat p] same as {!stat} but if [p] is a link returns
-        information about the link itself. *)
+    (** {1:link Path links} *)
+
+    val link : ?force:bool -> target:path -> path -> unit result
+    (** [link ~force target p] hard links [target] to [p].  If
+        [force] is [true] (defaults to [false]) and [p] exists, it is
+        is [rmdir]ed or [unlink]ed before making the link. *)
+
+    val symlink : ?force:bool -> target:path -> path -> unit result
+    (** [symlink ~force target p] symbolically links [target] to
+        [dst]. If [force] is [true] (defaults to [false]) and [p]
+        exists, it is [rmdir]ed or [unlink]ed before making the
+        link.*)
+
+    val symlink_target : path -> path result
+    (** [slink_target p] is [p]'s target if [p] is a symbolic link. *)
+
+    val symlink_stat : path -> Unix.stats result
+    (** [symlink_stat p] is the same as {!stat} but if [p] is a link
+        returns information about the link itself. *)
 
     (** {1:pathmatch Matching path patterns}
 

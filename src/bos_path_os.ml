@@ -7,26 +7,28 @@
 open Astring
 open Rresult
 
+let uerror = Unix.error_message
+
 (* Existence and move *)
 
 let exists path =
   try Ok (ignore @@ Unix.((stat path).st_kind); true) with
   | Unix.Unix_error (Unix.ENOENT, _, _) -> Ok false
   | Unix.Unix_error (e, _, _) ->
-      R.error_msgf "%a: %s" Bos_path.pp path (Unix.error_message e)
+      R.error_msgf "%a: %s" Bos_path.pp path (uerror e)
 
 let must_exist path =
   try Ok (ignore @@ Unix.((stat path))) with
   | Unix.Unix_error (Unix.ENOENT, _, _) -> R.error_msgf "%s: No such path" path
   | Unix.Unix_error (e, _, _) ->
-      R.error_msgf "%a: %s" Bos_path.pp path (Unix.error_message e)
+      R.error_msgf "%a: %s" Bos_path.pp path (uerror e)
 
 let move ?(force = false) src dst =
   let rename src dst =
     try Ok (Unix.rename src dst) with
     | Unix.Unix_error (e, _, _) ->
         R.error_msgf "move %a to %a: %s"
-          Bos_path.pp src Bos_path.pp dst (Unix.error_message e)
+          Bos_path.pp src Bos_path.pp dst (uerror e)
   in
   if force then rename src dst else
   exists dst >>= function
@@ -35,15 +37,50 @@ let move ?(force = false) src dst =
       R.error_msgf "move %a to %a: Destination exists"
         Bos_path.pp src Bos_path.pp dst
 
-(* Status *)
-
-let stat p = try Ok (Unix.stat p) with
+let rec stat p = try Ok (Unix.stat p) with
+| Unix.Unix_error (Unix.EINTR, _, _) -> stat p
 | Unix.Unix_error (e, _, _) ->
-    R.error_msgf "stat %a: %s" Bos_path.pp p (Unix.error_message e)
+    R.error_msgf "stat %a: %s" Bos_path.pp p (uerror e)
 
-let lstat p = try Ok (Unix.lstat p) with
+(* Path links *)
+
+let rec force_remove op target p =
+  try match Unix.((stat p).st_kind) with
+  | Unix.S_DIR -> Ok (Unix.rmdir p)
+  | _ -> Ok (Unix.unlink p)
+  with
+  | Unix.Unix_error (Unix.EINTR, _, _) -> force_remove op target p
+  | Unix.Unix_error (e, _, _) ->
+      R.error_msgf "force %s %a to %a: %s" op Bos_path.pp target Bos_path.pp p
+        (uerror e)
+
+let rec link ?(force = false) ~target p = try Ok (Unix.link target p) with
+| Unix.Unix_error (Unix.EINTR, _, _) -> link ~force ~target p
+| Unix.Unix_error (Unix.EEXIST, _, _) when force ->
+    force_remove "link" target p >>= fun () -> link ~force ~target p
 | Unix.Unix_error (e, _, _) ->
-    R.error_msgf "lstat %a: %s" Bos_path.pp p (Unix.error_message e)
+    R.error_msgf "link %a to %a: %s"
+      Bos_path.pp target Bos_path.pp p (uerror e)
+
+let rec symlink ?(force = false) ~target p = try Ok (Unix.symlink target p) with
+| Unix.Unix_error (Unix.EINTR, _, _) -> symlink ~force ~target p
+| Unix.Unix_error (Unix.EEXIST, _, _) when force ->
+    force_remove "symlink" target p >>= fun () -> symlink ~force ~target p
+| Unix.Unix_error (e, _, _) ->
+    R.error_msgf "symlink %a to %a: %s"
+      Bos_path.pp target Bos_path.pp p (uerror e)
+
+let rec symlink_target p = try Ok (Unix.readlink p) with
+| Unix.Unix_error (Unix.EINTR, _, _) -> symlink_target p
+| Unix.Unix_error (Unix.EINVAL, _, _) ->
+    R.error_msgf "target of %a: Not a symbolic link" Bos_path.pp p
+| Unix.Unix_error (e, _, _) ->
+    R.error_msgf "target of %a: %s" Bos_path.pp p (uerror e)
+
+let rec symlink_stat p = try Ok (Unix.lstat p) with
+| Unix.Unix_error (Unix.EINTR, _, _) -> symlink_stat p
+| Unix.Unix_error (e, _, _) ->
+    R.error_msgf "symlink stat %a: %s" Bos_path.pp p (uerror e)
 
 (* Matching paths *)
 
