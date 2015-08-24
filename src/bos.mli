@@ -823,24 +823,27 @@ module OS : sig
     (** [lstat p] same as {!stat} but if [p] is a link returns
         information about the link itself. *)
 
-    (** {1:pathmatch Matching paths} *)
+    (** {1:pathmatch Matching path patterns}
 
-    val matches : Path.t -> path list result
-    (** [matches pat] is the list of paths in the file system that
-        match the path pattern [pat].
-
-        [pat] is a path whose segments are made of {{!Pat}named string
-        patterns}. Each variable of the pattern greedily matches a
-        segment or sub-segment. For example the pattern:
+        A path pattern [pat] is a path whose segments are made of
+        {{!Pat}named string patterns}. Each variable of the pattern
+        greedily matches a segment or sub-segment. For example the path
+        pattern:
 {[
         Path.(v "data" / "$(dir)" / "$(file).txt")
 ]}
-        will match any existing path of the form [data/*/*.txt]. *)
+        matches any existing path the glob pattern [data/*/*.txt] would. *)
+
+
+    val matches : Path.t -> path list result
+    (** [matches pat] is the list of paths in the file system that
+        match the path pattern [pat]. *)
 
     val unify : ?init:Pat.env -> Path.t -> (path * Pat.env) list result
-    (** [unify ~init pat] is like {!matches} except each
-        matching path is returned with an environment mapping pattern
-        variables to their matched part in the path. See {!Pat.unify}. *)
+    (** [unify ~init pat] is like {!matches} except each matching path
+        is returned with an environment mapping pattern variables to
+        their matched part in the path. For each path the mappings are
+        added to [init] (defaults to {!String.Map.empty}). *)
 
     (** {1:fold Folding over file system hierarchies} *)
 

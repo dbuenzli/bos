@@ -47,19 +47,17 @@ let lstat p = try Ok (Unix.lstat p) with
 
 (* Matching paths *)
 
-let pats_of_path p = failwith "TODO"
-(*
-   let buf = Buffer.create 255 in
-   let parse_seg acc s =
-   acc
-   >>= fun acc -> Bos_pat.of_string ~buf s
-   >>= fun pat -> R.ok (pat :: acc)
-   in
-   let parse_segs ss = List.fold_left parse_seg (R.ok []) ss in
-   match Bos_path.segs p with
-   | `Rel ss -> parse_segs ss >>= fun ss -> R.ok (".", List.rev ss)
-   | `Abs ss -> parse_segs ss >>= fun ss -> R.ok ("/", List.rev ss)
-*)
+let pats_of_path p =
+  let buf = Buffer.create 255 in
+  let parse_seg acc s =
+    acc
+    >>= fun acc -> Bos_pat.of_string ~buf s
+    >>= fun pat -> Ok (pat :: acc)
+  in
+  let parse_segs ss = List.fold_left parse_seg (Ok []) ss in
+  match Bos_path.segs p with
+  | "" :: ss -> parse_segs ss >>= fun ss -> Ok ("/", List.rev ss)
+  | ss -> parse_segs ss >>= fun ss -> Ok (".", List.rev ss)
 
 let match_segment ~env acc path seg = match acc with
 | Error _ as e -> e
@@ -74,7 +72,7 @@ let match_segment ~env acc path seg = match acc with
       | None -> acc
       | Some _ as m -> (strf "%s%s%s" path Filename.dir_sep f, m) :: acc
       in
-      R.ok (Array.fold_left add_match acc occs)
+      Ok (Array.fold_left add_match acc occs)
     with Sys_error e ->
       let err _ = R.msgf "Unexpected error while matching `%s'" path in
       R.error_msg e |> R.reword_error_msg err
@@ -85,20 +83,16 @@ let match_path ~env p =
       let add_seg acc (p, env) = match_segment ~env acc p seg in
       begin match acc with
       | Error _ as e -> e
-      | Ok acc -> loop (List.fold_left add_seg (R.ok []) acc) segs
+      | Ok acc -> loop (List.fold_left add_seg (Ok []) acc) segs
       end
   | [] -> acc
   in
   pats_of_path p >>= fun (root, segs) ->
   match segs with
-  | [] -> R.ok []
-  | segs -> loop (R.ok [root, env]) segs
+  | [] -> Ok []
+  | segs -> loop (Ok [root, env]) segs
 
 let matches p =
-  let p = match Bos_path.of_string p with
-  | None -> failwith "TODO"
-  | Some p -> p
-  in
   let pathify acc (p, _) = p :: acc in
   match_path ~env:None p >>| List.fold_left pathify []
 
