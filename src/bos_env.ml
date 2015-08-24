@@ -57,6 +57,8 @@ let bool =
 
 let string = fun s -> Ok s
 
+let path = parser "path" Bos_path.of_string
+
 let some p =
   fun s -> match p s with
   | Ok v -> Ok (Some v)

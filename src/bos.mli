@@ -1277,6 +1277,9 @@ module OS : sig
     val string : string parser
     (** [string s] is a string parser, it always succeeds. *)
 
+    val path : path parser
+    (** [path s] is a path parser using {!Path.of_string}. *)
+
     val some : 'a parser -> 'a option parser
     (** [some p] is wraps [p]'s parse result in [Some]. *)
 
