@@ -799,31 +799,35 @@ module OS : sig
   (** Path operations. *)
   module Path : sig
 
-    (** {1:pathops Path operations} *)
+    (** {1:ops Existence and move} *)
 
-    val exists : ?err:bool -> path -> bool result
-    (** [exists path] is [true] iff [path] exists.
-        If [err] is [true] (defaults to [false]) an error is returned
-        when the file doesn't exist. *)
+    val exists : path -> bool result
+    (** [exists p] is [true] if [p] exists for the file system
+        and [false] otherwise. *)
+
+    val must_exist : path -> unit result
+    (** [must_exist p] is [()] if [p] exists for the file system
+        and an error otherwise. *)
 
     val move : ?force:bool -> path -> path -> unit result
     (** [move ~force src dst] moves path [src] to [dst]. If [force] is
-        [false] (default) the operation fails if [dst] exists. *)
+        [true] (defaults to [false]) the operation doesn't error if
+        [dst] exists and is can be replaced by [src]. *)
 
     (** {1:status Path status} *)
 
     val stat : path -> Unix.stats result
-    (** [stat p] is [p]'s file information. See also {!U.stat}. *)
+    (** [stat p] is [p]'s file information. *)
 
     val lstat : path -> Unix.stats result
     (** [lstat p] same as {!stat} but if [p] is a link returns
-        information about the link itself. See also {!U.lstat}. *)
+        information about the link itself. *)
 
     (** {1:pathmatch Matching paths} *)
 
     val matches : Path.t -> path list result
     (** [matches pat] is the list of paths in the file system that
-        match the pattern [pat].
+        match the path pattern [pat].
 
         [pat] is a path whose segments are made of {{!Pat}named string
         patterns}. Each variable of the pattern greedily matches a
@@ -831,7 +835,7 @@ module OS : sig
 {[
         Path.(v "data" / "$(dir)" / "$(file).txt")
 ]}
-        will match any existing file of the form data/*/*.txt. *)
+        will match any existing path of the form [data/*/*.txt]. *)
 
     val unify : ?init:Pat.env -> Path.t -> (path * Pat.env) list result
     (** [unify ~init pat] is like {!matches} except each
@@ -903,26 +907,44 @@ module OS : sig
     (** {1:ops Existence and deletion} *)
 
     val exists : path -> bool result
-    (** [exists file] is [Ok true] iff [file] exists and is not a directory.
-        It is [Ok false] otherwise and [Error _] in case an error occurs. *)
+    (** [exists file] is [true] if [file] is a regular file in the
+        file system and [false] otherwise.  Symbolic links are
+        followed. *)
 
     val must_exist : path -> unit result
-    (** [must_exist file] is [Ok ()] iff [file] exists and is not a directory.
-        It is an error otherwise. *)
+    (** [must_exist file] is [()] if [file] is a regular file in the
+        file system and an error otherwise. Symbolic links are
+        followed. *)
 
     val delete : ?must_exist:bool -> path -> unit result
-    (** [delete ~must_exist file] deletes file [file]. If [must_exist] is
-        [true] (defaults to [false]) and error is is returned if the file
-        doesn't exit. *)
+    (** [delete ~must_exist file] deletes file [file]. If [must_exist]
+        is [true] (defaults to [false]) an error is returned if [file]
+        doesn't exist. *)
 
     val truncate : path -> int -> unit result
-    (** [truncate p size] truncates [p] to [s]. See also {!U.truncate}. *)
+    (** [truncate p size] truncates [p] to [s]. *)
 
-    (** {1:input Input} *)
+    (** {1:input Input}
 
-    val with_inf : path -> (in_channel -> 'a -> 'b result) -> 'a ->
+        {b Stdin.} In the following functions if the path is {!dash},
+        bytes are read from [stdin]. *)
+
+    type input = unit -> (bytes * int * int) option
+    (** The type for file inputs. The function is called by the client
+        to input more bytes. It returns [Some (b, pos, len)] if the
+        bytes [b] can be read in the range \[[pos];[pos+len]\]; this
+        byte range is immutable until the next function call.  [None]
+        is returned at the end of input. *)
+
+    val with_input : path -> (input -> 'a -> 'b result) -> 'a -> 'b result
+    (** [with_input file f v] provides contents of [file] with an input
+        [i] and returns [f i v]. After the function returns
+        (exceptions included) a call to [i] by the client
+        raises [Invalid_argument]. *)
+
+    val with_ic : path -> (in_channel -> 'a -> 'b result) -> 'a ->
       'b result
-    (** [with_inf file f v] opens [file] as a channel [ic] and returns
+    (** [with_ic file f v] opens [file] as a channel [ic] and returns
         [f ic v]. After the function returns (exceptions included),
         [ic] is ensured to be closed.  If [file] is {!dash}, [ic] is
         {!Pervasives.stdin} and not closed when the function
@@ -930,8 +952,7 @@ module OS : sig
         an error message. *)
 
     val read : path -> string result
-    (** [read file] is [file]'s content. If [file] is {!dash} reads
-        from {!Pervasives.stdin}. *)
+    (** [read file] is [file]'s content as a string. *)
 
     val read_lines : path -> string list result
     (** [read_lines file] is [file]'s content, split at each
@@ -943,34 +964,57 @@ module OS : sig
 
     (** {1:output Output}
 
-        The following functions write files atomically. They create a
-        temporary file [t] in the directory of the file [f] to write, write
-        the contents to [t] and renames it to [f] on success. In case
-        of error the [t] is deleted and [f] left intact. *)
+        The following applies to every function in this section.
 
-    val with_outf : path -> (out_channel -> 'a -> 'b result) -> 'a ->
-      'b result
-    (** [with_outf file f v] opens [file] as a channel [oc] and
-        returns [f oc v]. After the function returns (exceptions
-        included), [oc] is ensured to be closed. If [file] is {!dash},
-        [oc] is {!Pervasives.stdout} and not closed when the function
-        returns. *)
+        {b Stdout.} If the path is {!dash}, bytes are written to
+        [stdout].
 
-    val write : path -> string -> unit result
+        {b Default permission mode.} The optional [mode] argument
+        specifies the permissions of the created file. It defaults to
+        [0o622] (readable by everyone writeable by the user).
+
+        {b Atomic writes.} Files are written atomically by the
+        functions. They create a temporary file [t] in the directory
+        of the file [f] to write, write the contents to [t] and
+        renames it to [f] on success. In case of error the [t] is
+        deleted and [f] left intact. *)
+
+    type output = (bytes * int * int) option -> unit
+    (** The type for file outputs. The function is called by the
+        client with [Some (b, pos, len)] to output the bytes of [b] in
+        the range \[[pos];[pos+len]\]. [None] is called to denote
+        end of output. *)
+
+    val with_output : ?mode:int -> path -> (output -> 'a -> 'b result) ->
+      'a -> 'b result
+    (** [with_output file f v] writes the contents of [file] using an
+        output [o] given to [f] and returns [f o v]. After the
+        function returns a call to [o] by the client raises
+        [Invalid_argument]. *)
+
+    val with_oc : ?mode:int -> path -> (out_channel -> 'a -> 'b result) ->
+      'a -> 'b result
+    (** [with_oc file f v] opens [file] as a channel [oc] and returns
+        [f oc v]. After the function returns [oc] is closed. If [file]
+        is {!dash}, [oc] is {!Pervasives.stdout} and not closed when
+        the function returns. *)
+
+    val write : ?mode:int -> path -> string -> unit result
     (** [write file content] outputs [content] to [file]. If [file]
         is {!dash}, writes to {!Pervasives.stdout}. If an error is
         returned [file] is left untouched except if {!Pervasives.stdout}
         is written. *)
 
-    val writef : path -> ('a, Format.formatter, unit, unit result) format4 ->
-      'a
+    val writef : ?mode:int -> path ->
+      ('a, Format.formatter, unit, unit result) format4 -> 'a
     (** [write file fmt ...] is like [write file (Format.asprintf fmt ...)]. *)
 
-    val write_lines : path -> string list -> unit result
+    val write_lines : ?mode:int -> path -> string list -> unit result
     (** [write_lines file lines] is like [write file (String.concat
         ~sep:"\n" lines)]. *)
 
-    val write_subst : (string * string) list -> path -> string -> unit result
+    val write_subst : ?mode:int -> (string * string) list -> path -> string ->
+      unit result
     (** [write_subst vars file content] outputs [content] to [file]. In
         [content] patterns of the form ["%%ID%%"] are replaced by the value
         of [List.assoc "ID" vars] (if any). If [file] is {!Path.dash}, writes
@@ -979,36 +1023,83 @@ module OS : sig
 
         FIXME review that with {!Path} and {!String.Map} in mind. *)
 
-    (** {1:tmp Temporary files} *)
+    (** {1:tmpfiles Temporary files} *)
 
-    val tmp : ?dir:path -> string -> path result
-    (** [temp dir suffix] creates a temporary file with suffix
-        [suffix] in [dir] (defaults to {!Filename.get_temp_dir_name})
-        and returns its name. The file is destroyed at the end of
-        program execution. *)
+    type tmp_name_pat = (string -> string, Format.formatter, unit, string)
+        format4
+    (** The type for temporary file name patterns. The string format is
+        replaced by random characters. *)
 
-    val with_tmp : ?dir:path -> string ->
+    val tmp : ?mode:int -> ?dir:path -> tmp_name_pat -> path result
+    (** [tmp mode dir pat] is a new empty temporary file in [dir]
+        (defaults to {!Dir.default_tmp}) named according to [pat] and
+        created with permissions [mode] (defaults to [0o600] only
+        readable and writable by the user). The file is deleted at the
+        end of program execution using a {!Pervasives.at_exit}
+        handler.
+
+        {b Warning.} If you want to write to the file, using
+        {!with_tmp_output} or {!with_tmp_oc} is more secure as it
+        ensures that none replaces the file, e.g. by a symbolic link,
+        between the time you create the file and open it. *)
+
+    val with_tmp_output : ?mode:int -> ?dir:path -> tmp_name_pat ->
+      (path -> output -> 'a -> 'b result) -> 'a -> 'b result
+    (** [with_tmp_output dir pat f v] is a new temporary file in [dir]
+        (defaults to {!Dir.default_tmp}) named according to [pat] and
+        atomically created and opened with permissions [mode]
+        (defaults to [0o600] only readable and writable by the
+        user). Returns the value of [f file o v] with [file] the file
+        path and [o] an output to write the file. After the function
+        returns, calls to [o] raise [Invalid_argument] and [file] is
+        deleted. *)
+
+    val with_tmp_oc : ?mode:int -> ?dir:path -> tmp_name_pat ->
       (path -> out_channel -> 'a -> 'b result) -> 'a -> 'b result
-    (** [with_temp dir suffix f v] atomically creates and opens a temporary
-        file with suffix [suffix] the file. When the function
-        returns the created path is closed and the out channel is closed.
+    (** [with_tmp_oc mode dir pat f v] is a new temporary file in [dir]
+        (defaults to {!Dir.default_tmp}) named according to [pat] and
+        atomically created and opened with permission [mode]
+        (defaults to [0x600] only readable and writable by the
+        user). Returns the value of [f file oc v] with [file] the file
+        path and [oc] an output channel to write the file. After the
+        function returns, [oc] is closed and [file] is deleted. *) end
 
-        FIXME review guarantees. *)
-
-  end
-
-  (** Directory operations.
-
-      {b Note.} When paths are {{!Path.rel}relative} they are expressed
-      relative to the {{!Dir.current}current working directory}. *)
+  (** Directory operations. *)
   module Dir : sig
 
-    (** {1:dirops Directory operations} *)
+    (** {1:dirops Existence, creation, deletion and contents} *)
 
-    val exists : ?err:bool -> path -> bool result
-    (** [exists dir] is [true] if directory [dir] exists.
-        If [err] is [true] (defaults to [false]) an error is returned
-        when the file doesn't exist. *)
+    val exists : path -> bool result
+    (** [exists dir] is [true] if [dir] is a directory in the file system
+        and [false] otherwise. Symbolic links are followed. *)
+
+    val must_exist : path -> unit result
+    (** [must_exist dir] is [()] if [dir] is a directory in the file system
+        and an error otherwise. Symbolic links are followed. *)
+
+    val create : ?path:bool -> ?mode:int -> path -> unit result
+    (** [create ~path ~mode dir] creates the directory [dir] with file
+        permission [mode] (defaults [0o755] readable and traversable
+        by everyone, writeable by the user). If [path] is [true]
+        (default) intermediate directories are created with the same
+        [mode], otherwise missing intermediate directories lead to an
+        error. If [dir] exists, no error is returned but its
+        permissions are changed to the given [mode]. *)
+
+    val delete : ?must_exist:bool -> ?recurse:bool -> path -> unit result
+    (** [delete ~must_exist ~recurse dir] deletes the directory [dir]. If
+        [must_exist] is [true] (defaults to [false]) an error is returned
+        if [dir] doesn't exist. If [recurse] is [true] (default to [false])
+        no error occurs if the directory is non-empty: its contents is
+        recursively deleted first. *)
+
+    val contents : ?rel:bool -> path -> path list result
+    (** [contents ~rel dir] is the contents of [dir].  If [rel] is
+        [true] (defaults to [false]) the resulting paths are relative
+        to [dir], otherwise they have [dir] prepended. See also
+        {!fold_contents}. *)
+
+    (** {1:current Current working directory} *)
 
     val current : unit -> path result
     (** [current ()] is the current working directory. *)
@@ -1016,18 +1107,10 @@ module OS : sig
     val set_current : path -> unit result
     (** [set_current dir] sets the current working directory to [dir]. *)
 
-    val contents : ?path:bool -> path -> path list result
-    (** [contents dir] is the contents of [dir] if [path] is
-        [true] (default) the basenames are prefixed by [dir].
-        Elements are returned according to [kind]. *)
-
-    val create : ?err:bool -> ?path:bool -> ?mode:Unix.file_perm -> path ->
-      unit result
-    (** [create ~err ~path ~mode dir] creates the directory [dir] with
-        file permission [mode] (defaults [0o777]). If [path] is [true]
-        (defaults to [false]) intermediate directories are created
-        aswell. If [err] is [false] (default) no error is returned if
-        the directory already exists. See also {!U.mkdir}. *)
+    val with_current : path -> ('a -> 'b result) -> 'a -> 'b result
+    (** [with_current dir f v] is [f v] with the current working directory
+        bound to [dir]. After the function returns the current working
+        directory is back to its initial value. *)
 
     (** {1:fold Folding over directory contents}
 
@@ -1041,7 +1124,49 @@ module OS : sig
     val descendants : ?err:'b Path.fold_error -> ?over:Path.elements ->
       ?traverse:Path.traverse -> path -> path list result
     (** [descendants err over traverse p] is
-        [(fold_contents err over traverse List.consr [])] *)
+        [(fold_contents err over traverse (fun l p -> p :: l) [])] *)
+
+    (** {1:tmpdirs Temporary directories} *)
+
+    type tmp_name_pat = (string -> string, Format.formatter, unit, string)
+        format4
+    (** The type for temporary directory name patterns. The string format is
+        replaced by random characters. *)
+
+    val tmp : ?mode:int -> ?dir:path -> tmp_name_pat -> path result
+    (** [tmp mode dir pat] is a new empty directory in [dir] (defaults
+        to {!Dir.default_tmp}) named according to [pat] and created
+        with permissions [mode] (defaults to [0o700] only readable and
+        writable by the user). The directory path and its content is
+        deleted at the end of program execution using a
+        {!Pervasives.at_exit} handler. *)
+
+    val with_tmp : ?mode:int -> ?dir:path -> tmp_name_pat ->
+      (path -> 'a -> 'b result) -> 'a -> 'b result
+    (** [with_tmp mode dir pat f v] is a new empty directory in [dir]
+        (defaults to {!Dir.default_tmp}) named according to [pat] and
+        created with permissions [mode] (defaults to [0o700] only
+        readable and writable by the user). Returns the value of [f
+        tmpdir v] with [tmpdir] the directory path. After the function
+        returns the directory path [tmpdir] and its content is
+        deleted. *)
+
+    (** {1:defaulttmpdir Default temporary directory} *)
+
+    val default_tmp : unit -> path
+    (** [default_tmp ()] is the directory used as a default value for
+        creating {{!File.tmpfiles}temporary files} and
+        {{!tmpdirs}directories}. If {!set_default_tmp} hasn't been
+        called this is:
+        {ul
+        {- On POSIX, the value of the [TMPDIR] environment variable or
+           [Path.v "/tmp"] if the variable is not set or empty.}
+        {- On Windows, the value [TEMP] environment variable or
+           {!Path.cur_dir} if it is not set or empty}} *)
+
+    val set_default_tmp : path -> unit
+    (** [set_default_tmp p] sets the value returned by {!default_tmp} to
+        [p]. *)
   end
 
   (** Executing commands.

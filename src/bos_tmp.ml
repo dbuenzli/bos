@@ -4,71 +4,31 @@
    %%NAME%% release %%VERSION%%
   ---------------------------------------------------------------------------*)
 
-open Rresult
 open Astring
 
-(* Variables *)
+(* Base functions for handling temporary file and directories. *)
 
-let vars () = try
-  let env = Unix.environment () in
-  let add acc assign = match acc with
-  | Error _ as e -> e
-  | Ok m ->
-      match String.cut ~sep:"=" assign with
-      | Some (var, value) -> R.ok (String.Map.add var value m)
-      | None ->
-          R.error_msgf
-            "could not parse process environment variable (%S)" assign
+let default_dir_init =
+  let from_env var ~absent =
+    match try Some (Sys.getenv var) with Not_found -> None with
+    | None -> absent
+    | Some v ->
+        match Bos_path.of_string v with
+        | None -> absent (* FIXME log something ? *)
+        | Some v -> v
   in
-  Array.fold_left add (R.ok String.Map.empty) env
-with
-| Unix.Unix_error (e, _, _) ->
-    R.error_msgf
-      "could not get process environment: %s" (Unix.error_message e)
+  if Sys.os_type = "Win32" then from_env "TEMP" ~absent:Bos_path.cur_dir else
+  from_env "TMPDIR" ~absent:(Bos_path.v "/tmp")
 
-let var name = try Some (Unix.getenv name) with Not_found -> None
+let default_dir = ref default_dir_init
+let set_default_dir p = default_dir := p
+let default_dir () = !default_dir
 
-let set_var name v =
-  let v = match v with None -> "" | Some v -> v in
-  try R.ok (Unix.putenv name v) with
-  | Unix.Unix_error (e, _, _) ->
-      R.error_msgf "environment variable %s: %s" name (Unix.error_message e)
+let rand_gen = lazy (Random.State.make_self_init ())
 
-let opt_var name ~absent = try Unix.getenv name with Not_found -> absent
-let req_var name = try Ok (Unix.getenv name) with
-| Not_found -> R.error_msgf "environment variable %s: undefined" name
-
-(* Typed lookup *)
-
-type 'a parser = string -> ('a, R.msg) result
-
-let parser kind k_of_string =
-  fun s -> match k_of_string s with
-  | None -> R.error_msgf "could not parse %s value from %a" kind String.dump s
-  | Some v -> Ok v
-
-let bool =
-  let of_string s = match String.Ascii.lowercase s with
-  | "" | "false" | "no" | "n" | "0" -> Some false
-  | "true" | "yes" | "y" | "1" -> Some true
-  | _ -> None
-  in
-  parser "bool" of_string
-
-let string = fun s -> Ok s
-
-let some p =
-  fun s -> match p s with
-  | Ok v -> Ok (Some v)
-  | Error _ as e -> e
-
-let value ?(log = Bos_log.Error) name parse ~absent = match var name with
-| None -> absent
-| Some s ->
-    match parse s with
-    | Ok v -> v
-    | Error (`Msg m) ->
-        Bos_log.msg log "environment variable %s: %s" name m; absent
+let rand_path dir pat =
+  let rand = Random.State.bits (Lazy.force rand_gen) land 0xFFFFFF in
+  Bos_path.(dir / strf pat (strf "%06x" rand))
 
 (*---------------------------------------------------------------------------
    Copyright (c) 2015 Daniel C. Bünzli.

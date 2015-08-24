@@ -7,6 +7,12 @@
 open Astring
 open Rresult
 
+(* Error messages *)
+
+let err_invalid_input = "input no longer valid, did it escape its scope ?"
+let err_invalid_output = "output no longer valid, did it escape its scope ?"
+let uerror = Unix.error_message
+
 (* Famous file paths *)
 
 let dev_null = Bos_path.v (if Sys.os_type = "Win32" then "NUL" else "/dev/null")
@@ -15,41 +21,65 @@ let is_dash = Bos_path.equal dash
 
 (* Existence and deletion *)
 
-let exists file =
+let rec exists file =
   try Ok (Unix.((stat file).st_kind = S_REG)) with
+  | Unix.Unix_error (Unix.EINTR, _, _) -> exists file
   | Unix.Unix_error (Unix.ENOENT, _, _) -> Ok false
   | Unix.Unix_error (e, _, _) ->
-      R.error_msgf "%a: %s" Bos_path.pp file (Unix.error_message e)
+      R.error_msgf "file %a exists: %s" Bos_path.pp file (uerror e)
 
-let must_exist file =
+let rec must_exist file =
   try
     match Unix.((stat file).st_kind) with
     | Unix.S_REG -> Ok ()
-    | _ -> R.error_msgf "%a: Not a file" Bos_path.pp file
+    | _ -> R.error_msgf "file %a must exist: Not a file" Bos_path.pp file
   with
-  | Unix.Unix_error (Unix.ENOENT, _, _) -> R.error_msgf "%s: No such file" file
+  | Unix.Unix_error (Unix.EINTR, _, _) -> must_exist file
+  | Unix.Unix_error (Unix.ENOENT, _, _) ->
+      R.error_msgf "file %a must exist: No such file" Bos_path.pp file
   | Unix.Unix_error (e, _, _) ->
-      R.error_msgf "%a: %s" Bos_path.pp file (Unix.error_message e)
+      R.error_msgf "file %a must exist: %s" Bos_path.pp file (uerror e)
 
-let delete ?must_exist:(must = false) file =
-  let unlink file = try Ok (Unix.unlink file) with
+let delete ?(must_exist = false) file =
+  let rec unlink file = try Ok (Unix.unlink file) with
+  | Unix.Unix_error (Unix.EINTR, _, _) -> unlink file
+  | Unix.Unix_error (Unix.ENOENT, _, _) ->
+      if not must_exist then Ok () else
+      R.error_msgf "delete file %a: No such file" Bos_path.pp file
   | Unix.Unix_error (e, _, _) ->
-      R.error_msgf "%a: %s" Bos_path.pp file (Unix.error_message e)
+      R.error_msgf "delete file %a: %s" Bos_path.pp file (uerror e)
   in
-  if must then must_exist file >>= fun () -> unlink file else
-  exists file >>= function
-  | true -> unlink file
-  | false -> Ok ()
+  unlink file
 
 let rec truncate p size =
   try Ok (Unix.truncate p size) with
   | Unix.Unix_error (Unix.EINTR, _, _) -> truncate p size
   | Unix.Unix_error (e, _, _) ->
-      R.error_msgf "truncate %a: %s" Bos_path.pp p (Unix.error_message e)
+      R.error_msgf "truncate file %a: %s" Bos_path.pp p (uerror e)
 
 (* Input *)
 
-let with_inf file f v =
+type input = unit -> (bytes * int * int) option
+
+let with_input file f v =
+  try
+    let ic = if is_dash file then stdin else open_in_bin file in
+    let ic_valid = ref true in
+    let close ic =
+      ic_valid := false; if is_dash file then () else close_in ic
+    in
+    let bsize = 65536 (* IO_BUFFER_SIZE *) in
+    let b = Bytes.create bsize in
+    let input () =
+      if not !ic_valid then invalid_arg err_invalid_input else
+      let rc = input ic b 0 bsize in
+      if rc = 0 then None else Some (b, 0, rc)
+    in
+    Bos_base.apply (f input) v ~finally:close ic
+  with
+  | Sys_error e -> R.error_msg e
+
+let with_ic file f v =
   try
     let ic = if is_dash file then stdin else open_in_bin file in
     let close ic = if is_dash file then () else close_in ic in
@@ -66,11 +96,11 @@ let read file =
       really_input ic s 0 len;
       Ok (Bytes.unsafe_to_string s)
     end else begin
-      R.error_msgf "%a: file too large (%a) for Bos.File.read (max: %a)"
+      R.error_msgf "read %a: file too large (%a, max supported size: %a)"
         Bos_path.pp file Fmt.byte_size len Fmt.byte_size Sys.max_string_length
     end
   in
-  with_inf file input ()
+  with_ic file input ()
 
 let fold_lines f acc file =
   let input ic acc =
@@ -81,70 +111,142 @@ let fold_lines f acc file =
     in
     loop acc
   in
-  with_inf file input acc
+  with_ic file input acc
 
 let read_lines file = fold_lines (fun acc l -> l :: acc) [] file >>| List.rev
 
 (* Temporary files *)
 
-let tmp ?dir suff =
+type tmp_name_pat = (string -> string, Format.formatter, unit, string) format4
+
+let rec unlink_tmp file = try Unix.unlink file with
+| Unix.Unix_error (Unix.EINTR, _, _) -> unlink_tmp file
+| Unix.Unix_error (e, _, _) -> ()
+
+let tmps = ref Bos_path.Set.empty
+let tmps_add file = tmps := Bos_path.Set.add file !tmps
+let tmps_rem file = unlink_tmp file; tmps := Bos_path.Set.remove file !tmps
+let unlink_tmps () = Bos_path.Set.iter unlink_tmp !tmps
+let () = at_exit unlink_tmps
+
+let create_tmp_path mode dir pat =
+  let err () =
+    R.error_msgf "create temporary file %s in %a: too many failing attempts"
+      (strf pat "XXXXXX") Bos_path.pp dir
+  in
+  let rec loop count =
+    if count < 0 then err () else
+    let file = Bos_tmp.rand_path dir pat in
+    try Ok (file, Unix.(openfile file [O_WRONLY; O_CREAT; O_EXCL] mode)) with
+    | Unix.Unix_error (Unix.EEXIST, _, _) -> loop (count - 1)
+    | Unix.Unix_error (Unix.EINTR, _, _) -> loop count
+    | Unix.Unix_error (e, _, _) ->
+        R.error_msgf "create temporary file %s in %a: %s"
+          (strf pat "XXXXXX") Bos_path.pp file (uerror e)
+  in
+  loop 10000
+
+let default_tmp_mode = 0o600
+
+let tmp ?(mode = default_tmp_mode) ?dir pat =
+  let dir = match dir with None -> Bos_tmp.default_dir () | Some d -> d in
+  create_tmp_path mode dir pat >>= fun (file, fd) ->
+  let rec close fd = try Unix.close fd with
+  | Unix.Unix_error (Unix.EINTR, _, _) -> close fd
+  | Unix.Unix_error (e, _, _) -> () (* TODO bos log *)
+  in
+  close fd; tmps_add file; Ok file
+
+let with_tmp_oc ?(mode = default_tmp_mode) ?dir pat f v =
   try
-    let f = Filename.temp_file ?temp_dir:dir "bos" suff in
-    let f = match Bos_path.of_string f with
-    | None -> assert false
-    | Some p -> p
-    in
-    at_exit (fun () -> ignore (delete f));
-    Ok f
+    let dir = match dir with None -> Bos_tmp.default_dir () | Some d -> d in
+    create_tmp_path mode dir pat >>= fun (file, fd) ->
+    let oc = Unix.out_channel_of_descr fd in
+    let delete_close oc = tmps_rem file; close_out oc in
+    tmps_add file; Bos_base.apply (f file oc) v ~finally:delete_close oc
   with Sys_error e -> R.error_msg e
 
-let with_tmp ?dir suff f v =
+let with_tmp_output ?(mode = default_tmp_mode) ?dir pat f v =
   try
-    let p, oc = Filename.open_temp_file ?temp_dir:dir "bos" suff in
-    let delete_close oc = (try Unix.unlink p with _ -> ()); close_out oc in
-    at_exit (fun () -> try Unix.unlink p with _ -> ()); (* TODO *)
-    Bos_base.apply (f p oc) v ~finally:delete_close oc
+    let dir = match dir with None -> Bos_tmp.default_dir () | Some d -> d in
+    create_tmp_path mode dir pat >>= fun (file, fd) ->
+    let oc = Unix.out_channel_of_descr fd in
+    let oc_valid = ref true in
+    let delete_close oc = oc_valid := false; tmps_rem file; close_out oc in
+    let output b =
+      if not !oc_valid then invalid_arg err_invalid_output else
+      match b with
+      | Some (b, pos, len) -> output oc b pos len
+      | None -> flush oc
+    in
+    tmps_add file; Bos_base.apply (f file output) v ~finally:delete_close oc
   with Sys_error e -> R.error_msg e
 
 (* Output *)
 
-let lo_with_outf file f v = (* not atomic *)
-  try
-    let oc = if is_dash file then stdout else open_out_bin file in
-    let close oc = if is_dash file then () else close_out oc in
-    Bos_base.apply (f oc) v ~finally:close oc
-  with
-  | Sys_error e -> R.error_msg e
+type output = (bytes * int * int) option -> unit
 
-let with_outf file f v =
-  if is_dash file then lo_with_outf file f v else
+let default_mode = 0o622
+
+let rec rename src dst = try Unix.rename src dst; Ok () with
+| Unix.Unix_error (Unix.EINTR, _, _) -> rename src dst
+| Unix.Unix_error (e, _, _) ->
+    R.error_msgf "rename %a to %a: %s"
+      Bos_path.pp src Bos_path.pp dst (uerror e)
+
+let stdout_with_output f v =
+  try
+    let output_valid = ref true in
+    let close () = output_valid := false in
+    let output b =
+      if not !output_valid then invalid_arg err_invalid_output else
+      match b with
+      | Some (b, pos, len) -> output stdout b pos len
+      | None -> flush stdout
+    in
+    Bos_base.apply (f output) v ~finally:close ()
+  with Sys_error e -> R.error_msg e
+
+let with_output ?(mode = default_mode) file f v =
+  if is_dash file then stdout_with_output f v else
+  let do_write tmp tmp_out v = match f tmp_out v with
+  | Error _ as e -> e
+  | Ok _ as r ->
+      match rename tmp file with
+      | Error _ as e -> e
+      | Ok () -> r
+  in
+  with_tmp_output ~mode ~dir:(Bos_path.parent file) "bos-%s.tmp" do_write v
+
+let with_oc ?(mode = default_mode) file f v =
+  if is_dash file then Bos_base.apply (f stdout) v ~finally:(fun () -> ()) ()
+  else
   let do_write tmp tmp_oc v = match f tmp_oc v with
   | Error _ as e -> e
   | Ok _ as r ->
-      try Unix.rename tmp file; r with
-      | Unix.Unix_error (e, _, _) ->
-          R.error_msgf "rename %a to %a: %s"
-            Bos_path.pp tmp Bos_path.pp file (Unix.error_message e)
+      match rename tmp file with
+      | Error _ as e -> e
+      | Ok () -> r
   in
-  with_tmp ~dir:(Bos_path.parent file) "write" do_write v
+  with_tmp_oc ~mode ~dir:(Bos_path.parent file) "bos-%s.tmp" do_write v
 
-let write file contents =
+let write ?mode file contents =
   let write oc contents = output_string oc contents; Ok () in
-  with_outf file write contents
+  with_oc ?mode file write contents
 
-let writef file fmt = (* FIXME avoid the kstrf. *)
-  Fmt.kstrf (fun content -> write file content) fmt
+let writef ?mode file fmt = (* FIXME avoid the kstrf  *)
+  Fmt.kstrf (fun content -> write ?mode file content) fmt
 
-let write_lines file lines =
+let write_lines ?mode file lines =
   let rec write oc = function
   | [] -> Ok ()
   | l :: ls ->
       output_string oc l;
       if ls <> [] then (output_char oc '\n'; write oc ls) else Ok ()
   in
-  with_outf file write lines
+  with_oc ?mode file write lines
 
-let write_subst vars file contents =
+let write_subst ?mode vars file contents =
   let write_subst oc contents =                     (* man that's ugly. *)
     let s = contents in
     let start = ref 0 in
@@ -181,7 +283,7 @@ let write_subst vars file contents =
     done;
     Pervasives.output_substring oc s !start (len - !start); R.ok ()
   in
-  with_outf file write_subst contents
+  with_oc ?mode file write_subst contents
 
 (*---------------------------------------------------------------------------
    Copyright (c) 2015 Daniel C. Bünzli.

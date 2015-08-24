@@ -34,7 +34,7 @@ module Db = struct
     let count = ref 0 in
     let add acc (f, time) = incr count; String.Map.add f time acc in
     let db = List.fold_left add String.Map.empty files in
-    OS.File.with_outf db_file dump db >>= fun () -> Ok !count
+    OS.File.with_oc db_file dump db >>= fun () -> Ok !count
 
   let check files =
     let count = ref 0 in
@@ -44,7 +44,7 @@ module Db = struct
     | _ -> ()
     in
     Log.show "Checking against %a" Path.pp db_file;
-    OS.File.with_inf db_file slurp ()
+    OS.File.with_ic db_file slurp ()
     >>= fun db -> List.iter (changes db) files; Ok !count
 end
 

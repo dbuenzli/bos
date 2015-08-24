@@ -4,6 +4,8 @@
    %%NAME%% release %%VERSION%%
   ---------------------------------------------------------------------------*)
 
+open Astring
+
 let apply f x ~finally y =
   let result = try f x with
   | e -> try finally y; raise e with _ -> raise e

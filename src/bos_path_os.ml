@@ -7,52 +7,39 @@
 open Astring
 open Rresult
 
-(* Path operations *)
+(* Existence and move *)
 
-let path_str = Bos_path.to_string
+let exists path =
+  try Ok (ignore @@ Unix.((stat path).st_kind); true) with
+  | Unix.Unix_error (Unix.ENOENT, _, _) -> Ok false
+  | Unix.Unix_error (e, _, _) ->
+      R.error_msgf "%a: %s" Bos_path.pp path (Unix.error_message e)
 
-let ret_exists ?(err = false) err_msg p b =
-  if not err then R.ok b else
-  if b then R.ok b else
-  err_msg p
-
-let file_exists ?err file =
-  try
-    let file = path_str file in
-    let err_msg file = R.error_msgf "%s: no such file" file in
-    let exists = Sys.file_exists file && not (Sys.is_directory file) in
-    ret_exists ?err err_msg file exists
-  with
-  | Sys_error e -> R.error_msg e
-
-let dir_exists ?err dir =
-  try
-    let dir = path_str dir in
-    let err_msg file = R.error_msgf "%s: no such directory" dir in
-    let exists = Sys.file_exists dir && Sys.is_directory dir in
-    ret_exists ?err err_msg dir exists
-  with Sys_error e -> R.error_msg e
-
-let exists ?err p =
-  try
-    let p = path_str p in
-    let err_msg p = R.error_msgf "%s: no such path" p in
-    ret_exists ?err err_msg p (Sys.file_exists p)
-  with Sys_error e -> R.error_msg e
-
-let err_move src dst =
-  let src, dst = (path_str src), (path_str dst) in
-  R.error_msgf "move %s to %s: destination exists" src dst
+let must_exist path =
+  try Ok (ignore @@ Unix.((stat path))) with
+  | Unix.Unix_error (Unix.ENOENT, _, _) -> R.error_msgf "%s: No such path" path
+  | Unix.Unix_error (e, _, _) ->
+      R.error_msgf "%a: %s" Bos_path.pp path (Unix.error_message e)
 
 let move ?(force = false) src dst =
-  (if force then R.ok false else exists dst) >>= fun don't ->
-  if don't then err_move src dst else
-  try R.ok (Sys.rename (path_str src) (path_str dst)) with
-  | Sys_error e -> R.error_msg e
+  let rename src dst =
+    try Ok (Unix.rename src dst) with
+    | Unix.Unix_error (e, _, _) ->
+        R.error_msgf "move %a to %a: %s"
+          Bos_path.pp src Bos_path.pp dst (Unix.error_message e)
+  in
+  if force then rename src dst else
+  exists dst >>= function
+  | false -> rename src dst
+  | true ->
+      R.error_msgf "move %a to %a: Destination exists"
+        Bos_path.pp src Bos_path.pp dst
+
+(* Status *)
 
 let stat p = try Ok (Unix.stat p) with
-  | Unix.Unix_error (e, _, _) ->
-      R.error_msgf "stat %a: %s" Bos_path.pp p (Unix.error_message e)
+| Unix.Unix_error (e, _, _) ->
+    R.error_msgf "stat %a: %s" Bos_path.pp p (Unix.error_message e)
 
 let lstat p = try Ok (Unix.lstat p) with
 | Unix.Unix_error (e, _, _) ->
@@ -130,6 +117,18 @@ let unify ?(init = String.Map.empty) p =
 
 (* Folding over file system hierarchies *)
 
+let ret_exists ?(err = false) err_msg p b =
+  if not err then R.ok b else
+  if b then R.ok b else
+  err_msg p
+
+let dir_exists ?err dir =
+  try
+    let err_msg file = R.error_msgf "%s: no such directory" dir in
+    let exists = Sys.file_exists dir && Sys.is_directory dir in
+    ret_exists ?err err_msg dir exists
+  with Sys_error e -> R.error_msg e
+
 type 'a res = ('a, R.msg) result
 type traverse = [`All | `None | `If of Bos_path.t -> bool res ]
 type elements = [ `Any | `Files | `Dirs | `Is of Bos_path.t -> bool res ]
@@ -159,18 +158,18 @@ let do_traverse_fun err = function
 
 let is_element_fun err = function
 | `Any -> fun _ -> true
-| `Files -> err_predicate_fun err file_exists
+| `Files -> err_predicate_fun err Bos_file.exists
 | `Dirs -> err_predicate_fun err dir_exists
 | `Is pred -> err_predicate_fun err pred
 
 let is_dir_fun err =
-  let is_dir p = try Ok (Sys.is_directory (path_str p)) with
+  let is_dir p = try Ok (Sys.is_directory p) with
   | Sys_error e -> R.error_msg e
   in
   err_predicate_fun err is_dir
 
 let readdir_fun err =
-  let readdir d = try Ok (Sys.readdir (path_str d)) with
+  let readdir d = try Ok (Sys.readdir d) with
   | Sys_error e -> R.error_msg e
   in
   err_fun err readdir ~backup_value:[||]
