@@ -196,11 +196,11 @@ let with_current dir f v =
 
 (* Directory folding *)
 
-let fold_contents ?err ?over ?traverse f acc d =
+let contents_fold ?err ?over ?traverse f acc d =
   contents d >>= Bos_path_os.fold ?err ?over ?traverse f acc
 
 let descendants ?err ?over ?traverse d =
-  fold_contents ?err ?over ?traverse (fun acc p -> p :: acc) [] d
+  contents_fold ?err ?over ?traverse (fun acc p -> p :: acc) [] d
 
 (* Temporary directories *)
 

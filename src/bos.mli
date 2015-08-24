@@ -1097,7 +1097,7 @@ module OS : sig
     (** [contents ~rel dir] is the contents of [dir].  If [rel] is
         [true] (defaults to [false]) the resulting paths are relative
         to [dir], otherwise they have [dir] prepended. See also
-        {!fold_contents}. *)
+        {!contents_fold}. *)
 
     (** {1:current Current working directory} *)
 
@@ -1116,15 +1116,15 @@ module OS : sig
 
         For more details see {!Path.fold}. *)
 
-    val fold_contents : ?err:'b Path.fold_error -> ?over:Path.elements ->
+    val contents_fold : ?err:'b Path.fold_error -> ?over:Path.elements ->
       ?traverse:Path.traverse -> ('a -> path -> 'a) -> 'a -> path -> 'a result
-    (** [fold_contents err over traverse f acc d] is
+    (** [contents_fold err over traverse f acc d] is
         [(contents d >>= ]{!Path.fold}[ err over traverse f acc)]. *)
 
     val descendants : ?err:'b Path.fold_error -> ?over:Path.elements ->
       ?traverse:Path.traverse -> path -> path list result
     (** [descendants err over traverse p] is
-        [(fold_contents err over traverse (fun l p -> p :: l) [])] *)
+        [(contents_fold err over traverse (fun l p -> p :: l) [])] *)
 
     (** {1:tmpdirs Temporary directories} *)
 

@@ -24,7 +24,7 @@ module Db = struct
     in
     Log.show "Scanning files";
     OS.Dir.current ()
-    >>= fun dir -> OS.Dir.fold_contents ~over:`Files add [] dir
+    >>= fun dir -> OS.Dir.contents_fold ~over:`Files add [] dir
 
   let dump oc db = Ok Marshal.(to_channel oc db [No_sharing; Compat_32])
   let slurp ic () = Ok (Marshal.from_channel ic : float String.Map.t)
