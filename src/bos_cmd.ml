@@ -7,28 +7,24 @@
 open Astring
 open Rresult
 
-(* FIXME in these functions [cmd] and [args] should be quoted. *)
-
-let path_str = Bos_path.to_string
-
-let ret_exists ?(err = false) err_msg p b =
-  if not err then R.ok b else
-  if b then R.ok b else
-  err_msg p
-
-let exists ?err cmd =
+let exists cmd =
   try
-    let null = path_str Bos_file.dev_null in
+    let null = Bos_file.dev_null in
     let test = match Sys.os_type with "Win32" -> "where" | _ -> "type" in
-    let err_msg cmd = R.error_msgf "%s: no such command" cmd in
-    let exists = Sys.command (strf "%s %s 1>%s 2>%s" test cmd null null)= 0 in
-    ret_exists ?err err_msg cmd exists
+    Ok (Sys.command (strf "%s %s 1>%s 2>%s" test cmd null null) <> 0)
   with Sys_error e -> R.error_msg e
 
+let must_exist cmd =
+  exists cmd >>= function
+  | false -> R.error_msgf "%s: no such command" cmd
+  | true -> Ok ()
+
+(* FIXME in these functions [cmd] and [args] should be quoted. *)
 let trace cmd = Bos_log.info ~header:"EXEC" "@[<2>%a@]" Fmt.text cmd
 let mk_cmd cmd args = String.concat ~sep:" " (cmd :: args)
 
 let execute cmd = trace cmd; Sys.command cmd
+
 let exec_ret cmd args = execute (mk_cmd cmd args)
 let handle_ret cmd = match execute cmd with
 | 0 -> R.ok ()
@@ -38,7 +34,7 @@ let exec cmd args = handle_ret (mk_cmd cmd args)
 let exec_read ?(trim = true) cmd args =
   let cmd = mk_cmd cmd args in
   Bos_file.tmp "bos-%s.tmp"
-  >>= fun file -> handle_ret (strf "%s > %s" cmd (path_str file))
+  >>= fun file -> handle_ret (strf "%s > %s" cmd file)
   >>= fun () -> Bos_file.read file
   >>= fun v -> R.ok (if trim then String.trim v else v)
 
@@ -48,7 +44,7 @@ let exec_read_lines cmd args =
 let exec_write cmd args file =
   let cmd = mk_cmd cmd args in
   Bos_file.tmp "bos-%s.tmp"
-  >>= fun tmpf -> handle_ret (strf "%s > %s" cmd (path_str tmpf))
+  >>= fun tmpf -> handle_ret (strf "%s > %s" cmd tmpf)
   >>= fun () -> Bos_path_os.move ~force:true tmpf file
 
 (*---------------------------------------------------------------------------

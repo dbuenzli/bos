@@ -1186,15 +1186,17 @@ module OS : sig
         [p]. *)
   end
 
-  (** Executing commands.
-
-      {1 Commands} *)
+  (** Executing commands. *)
   module Cmd : sig
 
-    val exists : ?err:bool -> string -> bool result
-    (** [exists cmd] is [true] if [cmd] exists and can be invoked.
-        If [err] is [true] (defaults to [false]) an error is returned
-        when the command doesn't exist. *)
+    (** {1 Commands} *)
+
+    val exists : string -> bool result
+    (** [exists cmd] is [true] if [cmd] exists and [false] otherwise. *)
+
+    val must_exist : string -> unit result
+    (** [must_exist cmd] is [()] if [cmd] exists and can be invoked
+        and an error otherwise. *)
 
     val exec_ret : string -> string list -> int
     (** [exec_ret cmd args] executes [cmd] with arguments [args] and
