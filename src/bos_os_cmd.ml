@@ -7,46 +7,47 @@
 open Astring
 open Rresult
 
-(* Command line fragments *)
+(* Command existence *)
 
-type t = A of string | S of t list
+let exists cmd =
+  try
+    let null = Bos_file.dev_null in
+    let test = match Sys.os_type with "Win32" -> "where" | _ -> "type" in
+    Ok (Sys.command (strf "%s %s 1>%s 2>%s" test cmd null null) <> 0)
+  with Sys_error e -> R.error_msg e
 
-let empty = S []
-let is_empty = function S [] -> true | _ -> false
+let must_exist cmd =
+  exists cmd >>= function
+  | false -> R.error_msgf "%s: no such command" cmd
+  | true -> Ok ()
 
-let v a = A a
+(* FIXME in these functions [cmd] and [args] should be quoted. *)
+let trace line = Bos_log.info ~header:"EXEC" "@[<2>%a@]" Fmt.text line
+let mk_line l = match Bos_cmd.to_list l with
+| [] -> invalid_arg "empty command line"
+| line -> String.concat ~sep:" " line
 
-let ( % ) l a = match l with
-| A _ -> S [A a; l]
-| S s -> S (A a :: s)
+let execute line = trace line; Sys.command line
 
-let ( %% ) l0 l1 = match l0, l1 with
-| S s0, (A _ as a1) -> S (a1 :: s0)
-| S s0, (S _ as s1) -> S (s1 :: s0)
-| A _ as a0, a1 -> S [a1; a0]
+let exec_ret line = execute (mk_line line)
+let handle_ret line = match execute line with
+| 0 -> R.ok ()
+| c -> R.error_msgf "Exited with code: %d `%s'" c line
 
-let add_arg l a = l % a
-let add_args l a = l %% a
+let exec line = handle_ret (mk_line line)
+let exec_read ?(trim = true) line =
+  Bos_file.tmp "bos-%s.tmp"
+  >>= fun file -> handle_ret (strf "%s > %s" (mk_line line) file)
+  >>= fun () -> Bos_file.read file
+  >>= fun v -> R.ok (if trim then String.trim v else v)
 
-let on bool l = if bool then l else S []
-let cond bool l l' = if bool then l else l'
+let exec_read_lines line =
+  exec_read line >>| String.cuts ~sep:"\n"
 
-let p = Bos_path.to_string
-
-let flatten line =
-  let rec loop acc current todo = match current with
-  | A a :: l -> loop (a :: acc) l todo
-  | S s :: l -> loop acc s (l :: todo)
-  | [] ->
-      match todo with
-      | [] -> acc
-      | current :: todo -> loop acc current todo
-  in
-  loop [] [line] []
-
-let to_list line = flatten line
-let of_list line = S (List.rev_map (fun s -> A s) line)
-let to_string line = String.concat ~sep:" " (flatten line)
+let exec_write line file =
+  Bos_file.tmp "bos-%s.tmp"
+  >>= fun tmpf -> handle_ret (strf "%s > %s" (mk_line line) tmpf)
+  >>= fun () -> Bos_path_os.move ~force:true tmpf file
 
 (*---------------------------------------------------------------------------
    Copyright (c) 2015 Daniel C. Bünzli.

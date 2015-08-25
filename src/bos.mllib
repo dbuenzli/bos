@@ -8,5 +8,6 @@ Bos_path_os
 Bos_file
 Bos_dir
 Bos_cmd
+Bos_os_cmd
 Bos_env
 Bos

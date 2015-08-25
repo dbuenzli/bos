@@ -16,6 +16,10 @@ module Log = Bos_log
 module Path = Bos_path
 type path = Path.t
 
+(* Command lines *)
+
+module Cmd = Bos_cmd
+
 (* OS interaction *)
 
 module OS = struct
@@ -24,7 +28,7 @@ module OS = struct
   module Path = Bos_path_os
   module File = Bos_file
   module Dir = Bos_dir
-  module Cmd = Bos_cmd
+  module Cmd = Bos_os_cmd
   module Env = Bos_env
   module U = Bos_u
 

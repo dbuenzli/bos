@@ -775,6 +775,89 @@ $(drive):
   end
 end
 
+(** {1 Command line specification} *)
+
+(** Command lines.
+
+    For API usability reasons we represent both command lines and
+    command line fragments using the same {{!t}type}. When a command
+    line is {{!section:OS.Cmd.exec}executed} the first element of the
+    line defines the program name and each other element is an
+    argument that will be passed {e as is} in the program's [argv]
+    array: no shell interpretation or any form of argument
+    concatenation occurs.
+
+    See {{!ex}examples}. *)
+module Cmd : sig
+
+  (** {1:lines Command line fragments} *)
+
+  type t
+  (** The type for command line fragments. *)
+
+  val v : string -> t
+  (** [v cmd] is a new command line (or command line fragment)
+      made of [cmd]. *)
+
+  val empty : t
+  (** [empty] is an empty command line. *)
+
+  val is_empty : t -> bool
+  (** [is_empty l] is [true] if [l] is empty. *)
+
+  val ( % ) : t -> string -> t
+    (** [l % arg] adds [arg] to the command line [l]. *)
+
+  val ( %% ) : t -> t -> t
+  (** [l %% frag] appends line fragment [frag] to [l]. *)
+
+  val add_arg : t -> string -> t
+  (** [add_arg l arg] is [l % arg]. *)
+
+  val add_args : t -> t -> t
+  (** [add_args l frag] is [l %% frag]. *)
+
+  val on : bool -> t -> t
+  (** [on bool line] is [line] if [bool] is [true] and {!empty}
+      otherwise. *)
+
+  val cond : bool -> t -> t -> t
+  (** [cond bool tline fline] is [tline] if [bool] is [true] and
+      otherwise [fline]. *)
+
+  val p : path -> string
+  (** [p] is {!Path.to_string}. This combinator is here to make
+      path argument specification brief. *)
+
+  val to_list : t -> string list
+  (** [to_list l] is [l] as a list of strings. *)
+
+  val of_list : string list -> t
+  (** [of_list l] is a command line from the list [l]. *)
+
+  val to_string : t -> string
+  (** [to_string l] is [String.concat ~sep:" " (to_list l)]. *)
+
+  (** {1:ex Examples}
+{[
+let ls path = Cmd.(v "ls" % "-a" % p path)
+
+let tar archive path = Cmd.(v "tar" % "-cvf" % p archive % p path)
+
+let opam cmd = Cmd.(v "opam" % cmd)
+
+let opam_install pkgs = Cmd.(opam "install" %% of_list pkgs)
+
+let ocamlc ?(debug = false) file =
+  Cmd.(v "ocamlc" % "-c" %% (on debug @@ v "-g") % p file)
+
+let ocamlopt ?(profile = false) ?(debug = false) file =
+  let profile = Cmd.(on profile @@ v "-p") in
+  let debug = Cmd.(on debug @@ v "-g") in
+  Cmd.(v "ocamlopt" % "-c" %% debug %% profile % p file)
+]} *)
+end
+
 (** {1 OS interaction} *)
 
 (** OS interaction *)
@@ -1186,10 +1269,10 @@ module OS : sig
         [p]. *)
   end
 
-  (** Executing commands. *)
+  (** Executing command lines. *)
   module Cmd : sig
 
-    (** {1 Commands} *)
+    (** {1:exist Command existence} *)
 
     val exists : string -> bool result
     (** [exists cmd] is [true] if [cmd] exists and [false] otherwise. *)
@@ -1198,26 +1281,31 @@ module OS : sig
     (** [must_exist cmd] is [()] if [cmd] exists and can be invoked
         and an error otherwise. *)
 
-    val exec_ret : string -> string list -> int
-    (** [exec_ret cmd args] executes [cmd] with arguments [args] and
-        returns the exit code of the invocation. *)
+    (** {1:exec Command line execution}
 
-    val exec : string -> string list -> unit result
-    (** [exec cmd args] executes [cmd] with arguments [args]. On exit
-        code [0] returns [`Ok ()]. Otherwise an error message with
-        the failed invocation and its exit code is returned in [`Error]. *)
+        {b Warning.} All the following function raise [Invalid_argument]
+        if the given command line {!is_empty}. *)
 
-    val exec_read : ?trim:bool -> string -> string list -> string result
-    (** [exec_read cmd args] execute [cmd] with arguments [args] and returns
-        its standard output. If [cmd]'s return code is non zero returns
-        an error message. If [trim] is [true] (default) the contents is
-        passed to {!String.trim} before being returned. *)
+    val exec_ret : Cmd.t -> int
+    (** [exec_ret l] executes command line [l] and returns the exit
+        code of the invocation. *)
 
-    val exec_read_lines : string -> string list -> string list result
-    (** [exec_readl_lines cmd args] is like [input ~trim:false cmd args] but
+    val exec : Cmd.t -> unit result
+    (** [exec l] executes the command line [l]. On exit code [0] returns
+        [`Ok ()]. Otherwise an error message with the failed
+        invocation and its exit code is returned in [`Error]. *)
+
+    val exec_read : ?trim:bool -> Cmd.t -> string result
+    (** [exec_read ~trim l] executes the command line [l] and returns
+        its standard output. If the excution return code is non zero
+        returns an error message. If [trim] is [true] (default) the
+        contents is passed to {!String.trim} before being returned. *)
+
+    val exec_read_lines : Cmd.t -> string list result
+    (** [exec_read_lines l] is like [exec_read ~trim:false cmd args] but
         the input is splitted at ['\n']. *)
 
-    val exec_write : string -> string list -> path -> unit result
+    val exec_write : Cmd.t -> path -> unit result
     (** [exec_write cmd args file] execute [cmd] with arguments [args] and
         writes the invocation's [stdout] to [file]. In [cmd]'s return code
         is non zero returns an error message and [file] is left intact. *)
