@@ -535,7 +535,7 @@ let has_ext ?(multi = false) p =
   | Some c -> not (String.Sub.start_pos ext = String.Sub.start_pos c)
   | None -> assert false
 
-let add_ext p e =
+let add_ext e p =
   if not (is_seg_valid e) then err_invalid_ext e else
   let maybe_dot =
     if String.is_empty e || e.[0] <> ext_sep_char then ext_sep else ""
@@ -547,7 +547,7 @@ let rem_ext ?multi p =
   if String.Sub.is_empty ext then p else
   String.with_pos_range p ~stop:(String.Sub.start_pos ext)
 
-let set_ext ?multi p e =
+let set_ext ?multi e p =
   if not (is_seg_valid e) then err_invalid_ext e else
   let ext = ext_sub ?multi (filename_sub p) in
   let p =

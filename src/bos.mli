@@ -618,17 +618,17 @@ $(drive):
       {- [has_ext ~multi:true (v "a/f.tar.gz") = true]}
       {- [has_ext ~multi:true (v ".emacs.d") = false]}} *)
 
-  val add_ext : path -> ext -> path
-  (** [add_ext p ext] is [p] with the string [ext] concatenated to [p]'s
+  val add_ext : ext -> path -> path
+  (** [add_ext ext p] is [p] with the string [ext] concatenated to [p]'s
       last segment. If [ext] doesn't start with a ['.'] one is prefixed to it
       before concatenation. Examples:
       {ul
-      {- [equal (add_ext (v "a/b") ".mli") (v "a/b.mli")]}
-      {- [equal (add_ext (v "a/b") "mli") (v "a/b.mli")]}
-      {- [equal (add_ext (v "a/f") ".tar.gz") (v "a/f.tar.gz")]}
-      {- [equal (add_ext (v "a/f") "tar.gz") (v "a/f.tar.gz")]}
-      {- [equal (add_ext (v "a/f.tar") ".gz") (v "a/f.tar.gz")]}
-      {- [equal (add_ext (v "a/f.tar") "gz") (v "a/f.tar.gz")]}}
+      {- [equal (add_ext ".mli" (v "a/b")) (v "a/b.mli")]}
+      {- [equal (add_ext "mli" (v "a/b")) (v "a/b.mli")]}
+      {- [equal (add_ext ".tar.gz" (v "a/f")) (v "a/f.tar.gz")]}
+      {- [equal (add_ext "tar.gz" (v "a/f")) (v "a/f.tar.gz")]}
+      {- [equal (add_ext ".gz" (v "a/f.tar") ) (v "a/f.tar.gz")]}
+      {- [equal (add_ext "gz" (v "a/f.tar") ) (v "a/f.tar.gz")]}}
 
       @raise Invalid_argument if {!is_seg_valid}[ ext] is [false]. *)
 
@@ -643,13 +643,13 @@ $(drive):
       {- [equal (rem_ext @@ v "f.tar.gz") (v "f.tar")]}
       {- [equal (rem_ext ~multi:true @@ v "f.tar.gz") (v "f")]}} *)
 
-  val set_ext : ?multi:bool -> path -> ext -> path
-  (** [set_ext ~multi p ext] is [add_ext (rem_ext ~multi p) ext].
+  val set_ext : ?multi:bool -> ext -> path -> path
+  (** [set_ext ~multi p ext] is [add_ext ext (rem_ext ~multi p)].
 
       @raise Invalid_argument if {!is_seg_valid}[ ext] is [false]. *)
 
   val ( + ) : path -> ext -> path
-  (** [p + ext] is [add_ext p e]. Left associative. *)
+  (** [p + ext] is [add_ext ext p]. Left associative. *)
 
   (** {1:sets_maps Path sets and maps} *)
 

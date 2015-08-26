@@ -610,14 +610,14 @@ let has_ext = test "Path.has_ext" @@ fun () ->
   ()
 
 let add_ext = test "Path.add_ext" @@ fun () ->
-  eqp (Path.add_ext (v "a/b") "") (v "a/b.");
-  eqp (Path.add_ext (v "a/b") ".") (v "a/b.");
-  eqp (Path.add_ext (v "a/b") ".mli") (v "a/b.mli");
-  eqp (Path.add_ext (v "a/b") "mli") (v "a/b.mli");
-  eqp (Path.add_ext (v "a/f") ".tar.gz") (v "a/f.tar.gz");
-  eqp (Path.add_ext (v "a/f") "tar.gz") (v "a/f.tar.gz");
-  eqp (Path.add_ext (v "a/f.tar") ".gz") (v "a/f.tar.gz");
-  eqp (Path.add_ext (v "a/f.tar") "gz") (v "a/f.tar.gz");
+  eqp (Path.add_ext "" (v "a/b")) (v "a/b.");
+  eqp (Path.add_ext "." (v "a/b")) (v "a/b.");
+  eqp (Path.add_ext ".mli" (v "a/b")) (v "a/b.mli");
+  eqp (Path.add_ext "mli" (v "a/b")) (v "a/b.mli");
+  eqp (Path.add_ext ".tar.gz" (v "a/f")) (v "a/f.tar.gz");
+  eqp (Path.add_ext "tar.gz" (v "a/f")) (v "a/f.tar.gz");
+  eqp (Path.add_ext ".gz" (v "a/f.tar")) (v "a/f.tar.gz");
+  eqp (Path.add_ext "gz" (v "a/f.tar")) (v "a/f.tar.gz");
   ()
 
 let rem_ext = test "Path.rem_ext" @@ fun () ->
@@ -629,14 +629,14 @@ let rem_ext = test "Path.rem_ext" @@ fun () ->
   ()
 
 let set_ext = test "Path.set_ext" @@ fun () ->
-  eqp (Path.set_ext (v "/a/b") ".bla") (v "/a/b.bla");
-  eqp (Path.set_ext (v "/a/b") "bla") (v "/a/b.bla");
-  eqp (Path.set_ext (v "/a/b.mli") ".bla") (v "/a/b.bla");
-  eqp (Path.set_ext (v "/a/b.mli") "bla") (v "/a/b.bla");
-  eqp (Path.set_ext (v "a/.ocamlinit") "bla") (v "a/.ocamlinit.bla");
-  eqp (Path.set_ext (v "f.tar.gz") "bla") (v "f.tar.bla");
-  eqp (Path.set_ext ~multi:true (v "f.tar.gz") "bla") (v "f.bla");
-  eqp (Path.set_ext ~multi:true (v "f.tar.gz") "") (v "f.");
+  eqp (Path.set_ext ".bla" (v "/a/b")) (v "/a/b.bla");
+  eqp (Path.set_ext "bla" (v "/a/b")) (v "/a/b.bla");
+  eqp (Path.set_ext ".bla" (v "/a/b.mli")) (v "/a/b.bla");
+  eqp (Path.set_ext "bla" (v "/a/b.mli")) (v "/a/b.bla");
+  eqp (Path.set_ext "bla" (v "a/.ocamlinit")) (v "a/.ocamlinit.bla");
+  eqp (Path.set_ext "bla" (v "f.tar.gz")) (v "f.tar.bla");
+  eqp (Path.set_ext ~multi:true "bla" (v "f.tar.gz")) (v "f.bla");
+  eqp (Path.set_ext ~multi:true "" (v "f.tar.gz")) (v "f.");
   ()
 
 let suite = suite "Path module"
