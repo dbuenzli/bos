@@ -13,7 +13,7 @@ let exists cmd =
   try
     let null = Bos_file.dev_null in
     let test = match Sys.os_type with "Win32" -> "where" | _ -> "type" in
-    Ok (Sys.command (strf "%s %s 1>%s 2>%s" test cmd null null) <> 0)
+    Ok (Sys.command (strf "%s %s 1>%s 2>%s" test cmd null null) = 0)
   with Sys_error e -> R.error_msg e
 
 let must_exist cmd =
