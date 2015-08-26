@@ -803,7 +803,7 @@ module Cmd : sig
   (** [empty] is an empty command line. *)
 
   val is_empty : t -> bool
-  (** [is_empty l] is [true] if [l] is empty. *)
+  (** [is_empty l] is [true] iff [l] is empty. *)
 
   val ( % ) : t -> string -> t
     (** [l % arg] adds [arg] to the command line [l]. *)
@@ -821,13 +821,20 @@ module Cmd : sig
   (** [on bool line] is [line] if [bool] is [true] and {!empty}
       otherwise. *)
 
-  val cond : bool -> t -> t -> t
-  (** [cond bool tline fline] is [tline] if [bool] is [true] and
-      otherwise [fline]. *)
-
   val p : path -> string
   (** [p] is {!Path.to_string}. This combinator is here to make
       path argument specification brief. *)
+
+  (** {1:predicates Predicates and comparison} *)
+
+  val equal : t -> t -> bool
+  (** [equal l l'] is [true] iff [l] and [l'] are litterally the
+      equal. *)
+
+  val compare : t -> t -> int
+  (** [compare l l'] is a total order on lines. *)
+
+  (** {1:convert Conversions and pretty printing} *)
 
   val to_list : t -> string list
   (** [to_list l] is [l] as a list of strings. *)
@@ -835,8 +842,13 @@ module Cmd : sig
   val of_list : string list -> t
   (** [of_list l] is a command line from the list [l]. *)
 
-  val to_string : t -> string
-  (** [to_string l] is [String.concat ~sep:" " (to_list l)]. *)
+  val pp : Format.formatter -> t -> unit
+  (** [pp ppf l] formats an unspecified representation of [l] on
+      [ppf]. *)
+
+  val dump : Format.formatter -> t -> unit
+  (** [dump ppf l] dumps and unspecified representation of [l]
+      on [ppf]. *)
 
   (** {1:ex Examples}
 {[

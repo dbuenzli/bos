@@ -9,44 +9,37 @@ open Rresult
 
 (* Command line fragments *)
 
-type t = A of string | S of t list
+type t = string list
 
-let empty = S []
-let is_empty = function S [] -> true | _ -> false
+let empty = []
+let is_empty = function [] -> true | _ -> false
 
-let v a = A a
-
-let ( % ) l a = match l with
-| A _ -> S [A a; l]
-| S s -> S (A a :: s)
-
-let ( %% ) l0 l1 = match l0, l1 with
-| S s0, (A _ as a1) -> S (a1 :: s0)
-| S s0, (S _ as s1) -> S (s1 :: s0)
-| A _ as a0, a1 -> S [a1; a0]
+let v a = [a]
+let ( % ) l a = a :: l
+let ( %% ) l0 l1 = List.rev_append (List.rev l1) l0
 
 let add_arg l a = l % a
 let add_args l a = l %% a
 
-let on bool l = if bool then l else S []
-let cond bool l l' = if bool then l else l'
+let on bool l = if bool then l else []
 
 let p = Bos_path.to_string
 
-let flatten line =
-  let rec loop acc current todo = match current with
-  | A a :: l -> loop (a :: acc) l todo
-  | S s :: l -> loop acc s (l :: todo)
-  | [] ->
-      match todo with
-      | [] -> acc
-      | current :: todo -> loop acc current todo
-  in
-  loop [] [line] []
+(* Predicates and comparison *)
 
-let to_list line = flatten line
-let of_list line = S (List.rev_map (fun s -> A s) line)
-let to_string line = String.concat ~sep:" " (flatten line)
+let equal l l' = l = l'
+let compare l l' = Pervasives.compare l l'
+
+(* Conversions and pretty printing *)
+
+let to_list line = List.rev line
+let of_list line = List.rev line
+
+let pp ppf = function
+| [] -> ()
+| cmd :: args -> Fmt.(pf ppf "@[<2>%s@ %a@]" cmd (list ~sep:sp string) args)
+
+let dump = Fmt.Dump.(list String.dump)
 
 (*---------------------------------------------------------------------------
    Copyright (c) 2015 Daniel C. Bünzli.
