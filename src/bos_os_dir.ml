@@ -197,7 +197,7 @@ let with_current dir f v =
 (* Directory folding *)
 
 let contents_fold ?err ?over ?traverse f acc d =
-  contents d >>= Bos_path_os.fold ?err ?over ?traverse f acc
+  contents d >>= Bos_os_path.fold ?err ?over ?traverse f acc
 
 let descendants ?err ?over ?traverse d =
   contents_fold ?err ?over ?traverse (fun acc p -> p :: acc) [] d
@@ -216,7 +216,7 @@ let () = at_exit delete_tmps
 let default_tmp_mode = 0o700
 
 let tmp ?(mode = default_tmp_mode) ?dir pat =
-  let dir = match dir with None -> Bos_tmp.default_dir () | Some d -> d in
+  let dir = match dir with None -> Bos_os_tmp.default_dir () | Some d -> d in
   let err () =
     R.error_msgf "create temporary directory %s in %a: \
                   too many failing attempts"
@@ -224,7 +224,7 @@ let tmp ?(mode = default_tmp_mode) ?dir pat =
   in
   let rec loop count =
     if count < 0 then err () else
-    let dir = Bos_tmp.rand_path dir pat in
+    let dir = Bos_os_tmp.rand_path dir pat in
     try Ok (Unix.mkdir dir mode; dir) with
     | Unix.Unix_error (Unix.EEXIST, _, _) -> loop (count - 1)
     | Unix.Unix_error (Unix.EINTR, _, _) -> loop count
@@ -246,8 +246,8 @@ let with_tmp ?mode ?dir pat f v =
 
 (* Default temporary directory *)
 
-let default_tmp = Bos_tmp.default_dir
-let set_default_tmp = Bos_tmp.set_default_dir
+let default_tmp = Bos_os_tmp.default_dir
+let set_default_tmp = Bos_os_tmp.set_default_dir
 
 (*---------------------------------------------------------------------------
    Copyright (c) 2015 Daniel C. Bünzli.

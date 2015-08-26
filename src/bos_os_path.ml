@@ -189,7 +189,7 @@ let do_traverse_fun err = function
 
 let is_element_fun err = function
 | `Any -> fun _ -> true
-| `Files -> err_predicate_fun err Bos_file.exists
+| `Files -> err_predicate_fun err Bos_os_file.exists
 | `Dirs -> err_predicate_fun err dir_exists
 | `Is pred -> err_predicate_fun err pred
 

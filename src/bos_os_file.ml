@@ -136,7 +136,7 @@ let create_tmp_path mode dir pat =
   in
   let rec loop count =
     if count < 0 then err () else
-    let file = Bos_tmp.rand_path dir pat in
+    let file = Bos_os_tmp.rand_path dir pat in
     try Ok (file, Unix.(openfile file [O_WRONLY; O_CREAT; O_EXCL] mode)) with
     | Unix.Unix_error (Unix.EEXIST, _, _) -> loop (count - 1)
     | Unix.Unix_error (Unix.EINTR, _, _) -> loop count
@@ -149,7 +149,7 @@ let create_tmp_path mode dir pat =
 let default_tmp_mode = 0o600
 
 let tmp ?(mode = default_tmp_mode) ?dir pat =
-  let dir = match dir with None -> Bos_tmp.default_dir () | Some d -> d in
+  let dir = match dir with None -> Bos_os_tmp.default_dir () | Some d -> d in
   create_tmp_path mode dir pat >>= fun (file, fd) ->
   let rec close fd = try Unix.close fd with
   | Unix.Unix_error (Unix.EINTR, _, _) -> close fd
@@ -159,7 +159,7 @@ let tmp ?(mode = default_tmp_mode) ?dir pat =
 
 let with_tmp_oc ?(mode = default_tmp_mode) ?dir pat f v =
   try
-    let dir = match dir with None -> Bos_tmp.default_dir () | Some d -> d in
+    let dir = match dir with None -> Bos_os_tmp.default_dir () | Some d -> d in
     create_tmp_path mode dir pat >>= fun (file, fd) ->
     let oc = Unix.out_channel_of_descr fd in
     let delete_close oc = tmps_rem file; close_out oc in
@@ -168,7 +168,7 @@ let with_tmp_oc ?(mode = default_tmp_mode) ?dir pat f v =
 
 let with_tmp_output ?(mode = default_tmp_mode) ?dir pat f v =
   try
-    let dir = match dir with None -> Bos_tmp.default_dir () | Some d -> d in
+    let dir = match dir with None -> Bos_os_tmp.default_dir () | Some d -> d in
     create_tmp_path mode dir pat >>= fun (file, fd) ->
     let oc = Unix.out_channel_of_descr fd in
     let oc_valid = ref true in

@@ -11,7 +11,7 @@ open Rresult
 
 let exists cmd =
   try
-    let null = Bos_file.dev_null in
+    let null = Bos_os_file.dev_null in
     let test = match Sys.os_type with "Win32" -> "where" | _ -> "type" in
     Ok (Sys.command (strf "%s %s 1>%s 2>%s" test cmd null null) = 0)
   with Sys_error e -> R.error_msg e
@@ -36,18 +36,18 @@ let handle_ret line = match execute line with
 
 let exec line = handle_ret (mk_line line)
 let exec_read ?(trim = true) line =
-  Bos_file.tmp "bos-%s.tmp"
+  Bos_os_file.tmp "bos-%s.tmp"
   >>= fun file -> handle_ret (strf "%s > %s" (mk_line line) file)
-  >>= fun () -> Bos_file.read file
+  >>= fun () -> Bos_os_file.read file
   >>= fun v -> R.ok (if trim then String.trim v else v)
 
 let exec_read_lines line =
   exec_read line >>| String.cuts ~sep:"\n"
 
 let exec_write line file =
-  Bos_file.tmp "bos-%s.tmp"
+  Bos_os_file.tmp "bos-%s.tmp"
   >>= fun tmpf -> handle_ret (strf "%s > %s" (mk_line line) tmpf)
-  >>= fun () -> Bos_path_os.move ~force:true tmpf file
+  >>= fun () -> Bos_os_path.move ~force:true tmpf file
 
 (*---------------------------------------------------------------------------
    Copyright (c) 2015 Daniel C. Bünzli.
