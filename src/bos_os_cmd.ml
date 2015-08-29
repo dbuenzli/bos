@@ -9,22 +9,27 @@ open Rresult
 
 (* Command existence *)
 
+let err_empty_line = "empty command line"
+
 let exists cmd =
   try
+    let cmd = List.hd (Bos_cmd.to_list cmd) in
     let null = Bos_os_file.dev_null in
     let test = match Sys.os_type with "Win32" -> "where" | _ -> "type" in
     Ok (Sys.command (strf "%s %s 1>%s 2>%s" test cmd null null) = 0)
-  with Sys_error e -> R.error_msg e
+  with
+  | Sys_error e -> R.error_msg e
+  | Failure _ -> invalid_arg err_empty_line
 
 let must_exist cmd =
   exists cmd >>= function
-  | false -> R.error_msgf "%s: no such command" cmd
+  | false -> R.error_msgf "%s: no such command" (List.hd (Bos_cmd.to_list cmd))
   | true -> Ok ()
 
 (* FIXME in these functions [cmd] and [args] should be quoted. *)
 let trace line = Bos_log.info ~header:"EXEC" "@[<2>%a@]" Fmt.text line
 let mk_line l = match Bos_cmd.to_list l with
-| [] -> invalid_arg "empty command line"
+| [] -> invalid_arg err_empty_line
 | line -> String.concat ~sep:" " line
 
 let execute line = trace line; Sys.command line

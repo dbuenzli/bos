@@ -1281,22 +1281,23 @@ module OS : sig
         [p]. *)
   end
 
-  (** Executing command lines. *)
+  (** Executing command lines.
+
+      {b Warning.} All the functions of this module raise [Invalid_argument]
+      if the given command line {!is_empty}. *)
   module Cmd : sig
 
     (** {1:exist Command existence} *)
 
-    val exists : string -> bool result
-    (** [exists cmd] is [true] if [cmd] exists and [false] otherwise. *)
+    val exists : Cmd.t -> bool result
+    (** [exists cmd] is [true] if the executable of [cmd] can be found in
+        the path and [false] otherwise. *)
 
-    val must_exist : string -> unit result
-    (** [must_exist cmd] is [()] if [cmd] exists and can be invoked
-        and an error otherwise. *)
+    val must_exist : Cmd.t -> unit result
+    (** [must_exist cmd] is [()] if the executable of [cmd] can be found
+        in the path and an error otherwise. *)
 
-    (** {1:exec Command line execution}
-
-        {b Warning.} All the following function raise [Invalid_argument]
-        if the given command line {!is_empty}. *)
+    (** {1:exec Command line execution} *)
 
     val exec_ret : Cmd.t -> int
     (** [exec_ret l] executes command line [l] and returns the exit
