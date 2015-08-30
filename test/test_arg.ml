@@ -4,43 +4,23 @@
    %%NAME%% release %%VERSION%%
   ---------------------------------------------------------------------------*)
 
-open Astring
-open Rresult
+open Bos
 
-(* Command line fragments *)
+let debug = OS.Arg.(flag ["g"; "debug"] ~env:"DEBUG" ~doc:"debug mode.")
+let count = OS.Arg.(flag_all ["c"] ~doc:"count me.")
 
-type t = string list
+let print_parse () =
+  Log.show "debug: %b" debug;
+  Log.show "count: %d" count;
+  ()
 
-let empty = []
-let is_empty = function [] -> true | _ -> false
+let main () =
+  OS.Arg.parse_opts ();
+  print_parse ();
+  ()
 
-let v a = [a]
-let ( % ) l a = a :: l
-let ( %% ) l0 l1 = List.rev_append (List.rev l1) l0
+let () = main ()
 
-let add_arg l a = l % a
-let add_args l a = l %% a
-
-let on bool l = if bool then l else []
-
-let p = Bos_path.to_string
-
-(* Predicates and comparison *)
-
-let equal l l' = l = l'
-let compare l l' = Pervasives.compare l l'
-
-(* Conversions and pretty printing *)
-
-let to_list line = List.rev line
-let of_list line = List.rev line
-
-let pp ppf = function
-| [] -> ()
-| cmd :: [] -> Fmt.(pf ppf "%s" cmd)
-| cmd :: args -> Fmt.(pf ppf "@[<2>%s@ %a@]" cmd (list ~sep:sp string) args)
-
-let dump = Fmt.Dump.(list String.dump)
 
 (*---------------------------------------------------------------------------
    Copyright (c) 2015 Daniel C. Bünzli.

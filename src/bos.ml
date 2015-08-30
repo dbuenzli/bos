@@ -25,11 +25,12 @@ module Cmd = Bos_cmd
 module OS = struct
   type 'a result = ('a, R.msg) R.t
 
+  module Env = Bos_os_env
+  module Arg = Bos_os_arg
   module Path = Bos_os_path
   module File = Bos_os_file
   module Dir = Bos_os_dir
   module Cmd = Bos_os_cmd
-  module Env = Bos_os_env
   module U = Bos_os_u
 
   (* FIXME remove this. *)

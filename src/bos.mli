@@ -886,6 +886,317 @@ module OS : sig
   type 'a result = ('a, R.msg) R.t
   (** The type for OS results. *)
 
+  (** {1:env Environment variables and program arguments} *)
+
+  (** Environment variables. *)
+  module Env : sig
+
+    (** {1:env Process environment} *)
+
+    val vars : unit -> string String.Map.t result
+    (** [vars ()] is a string map corresponding to the process environment. *)
+
+    (** {1:vars Variables} *)
+
+    val var : string -> string option
+    (** [var name] is the value of the environment variable [name], if
+        defined. *)
+
+    val set_var : string -> string option -> unit result
+    (** [set_var name v] sets the environment variable [name] to [v].
+
+        {b BUG.} The {!Unix} module doesn't bind to [unsetenv(3)],
+        hence for now using [None] will not unset the variable, it
+        will set it to [""]. This behaviour may change in future
+        versions of the library. *)
+
+    val opt_var : string -> absent:string -> string
+    (** [opt_var name absent] is the value of the optionally defined
+        environment variable [name] if defined and [absent] if
+        undefined. *)
+
+    val req_var : string -> string result
+    (** [req_var name]  is the value of the environment variable [name] or
+        an error if [name] is undefined in the environment. *)
+
+    (** {1 Typed lookup}
+
+        See the {{!examples}examples}. *)
+
+    type 'a parser = string -> ('a, R.msg) Rresult.result
+    (** The type for environment variable value parsers. *)
+
+    val parser : string -> (string -> 'a option) -> 'a parser
+    (** [parser kind k_of_string] is an environment variable value
+        from the [k_of_string] function. [kind] is used for error
+        reports (e.g. could be ["int"] for an [int] parser). *)
+
+    val bool : bool parser
+    (** [bool s] is a boolean parser. The string is lowercased and
+        the result is:
+        {ul
+        {- [Ok false] if it is one of [""], ["false"], ["no"], ["n"] or ["0"].}
+        {- [Ok true] if it is one of ["true"], ["yes"], ["y"] or ["1"].}
+        {- An [Error] otherwise.}} *)
+
+    val string : string parser
+    (** [string s] is a string parser, it always succeeds. *)
+
+    val path : path parser
+    (** [path s] is a path parser using {!Path.of_string}. *)
+
+    val some : 'a parser -> 'a option parser
+    (** [some p] is wraps [p]'s parse result in [Some]. *)
+
+    val value : ?log:Log.level -> string -> 'a parser -> absent:'a -> 'a
+    (** [value ~log name parse ~absent] is:
+        {ul
+        {- [absent] if [Env.var name = None]}
+        {- [v] if [Env.var name = Some s] and [parse s = Ok v].}
+        {- [absent] if [Env.var name = Some s] and [parse s = Error msg].
+           In this case the error message is logged with level [log]
+           (defaults to {!Log.Error})}} *)
+
+     (** {1:examples Examples}
+{[
+let debug : bool = OS.Env.(value "DEBUG" bool ~absent:false)
+let msg : string = OS.Env.(value "MSG" string ~absent:"no message")
+
+let timeout : int option =
+  let int = OS.Env.(some @@ parser "int" String.to_int) in
+  OS.Env.value "TIMEOUT" int ~absent:None
+]}
+*)
+  end
+
+  (** Quick and dirty program arguments parsing.
+
+      This is for quick hacks and scripts. If your program evolves to
+      a tool for end users you should rather use {!Cmdliner} to parse
+      your command lines: it generates man pages and its parsing is
+      more flexible and user friendly. The syntax of command lines
+      parsed by this module is a subset of what {!Cmdliner} is able to
+      parse so migrating there should not be a problem for existing
+      invocations of your program.
+
+      This module supports short and long options with option arguments
+      either glued to the option or specified as the next program argument.
+      It also supports the [--] program argument to notify that subsequent
+      arguments have to be treated as positional arguments.
+
+      See the {{!argbasics}basics}.
+
+      {b Warning.} This module is not thread-safe. *)
+  module Arg : sig
+
+    (** {1 Executable name.} *)
+
+    val exec : string
+    (** [exec] is the name of the executable. *)
+
+    (** {1:conv Argument converters}
+
+        Argument converters transform string arguments of the command
+        line to OCaml values. Consult the predefined
+        {{!predefconvs}converters}. *)
+
+    type 'a parser = string -> ('a, R.msg) Rresult.result
+    (** The type for option argument parsers. *)
+
+    type 'a printer = Format.formatter -> 'a -> unit
+    (** The type for converted argument printers. *)
+
+    type 'a converter = 'a parser * 'a printer
+    (** The type for argument converters. *)
+
+    val converter : string -> (string -> 'a option) -> 'a printer ->
+      'a converter
+    (** [converter kind k_of_string pp_k] is a converter for values
+        using the [k_of_string] function for parsing and [pp_k] for
+        printing. [kind] is the kind of value and used for error
+        reports (e.g. could be ["an integer"] for an [int] parser. *)
+
+    val some : ?none:string -> 'a converter -> 'a option converter
+    (** [some none c] is like the converter [c] but wraps its result
+        in [Some]. This is used for command line arguments that
+        default to [None] when absent. [none] is what should be printed
+        by the printer for [None] (defaults to [""]). *)
+
+    (** {1:queries Flag and option queries}
+
+        {b Flag and option names.} They are specified without dashes.
+        A one character name defines a short option; ["d"] is [-d].
+        Longer names define long options ["debug"] is [--debug].
+
+        {b Option argument specification.} On the command line, option
+        arguments are either specified as the next program argument or
+        glued to the option. For short options gluing is done
+        directly: [-farchive.tar]. For long options an ["="] characters
+        stands between the option and the value: [--file=archive.tar].
+
+        {b Warning.} These functions are effectful invoking them twice
+        on the same option names will result in parse errors.  All the
+        following functions raise [Invalid_argument] if they are
+        invoked after {{!section:parse}parsing}. *)
+
+    val flag : ?doc:string -> ?env:string -> string list -> bool
+    (** [flag ~doc ~env names] is [true] if one of the flags in
+        [names] is present on the command line {e at most once} and
+        [false] otherwise.
+
+        If there is no flag on the command line and [env] is specified
+        and defined in the environment, its value is parsed with
+        {!Env.bool} and the resulting value is used. [doc] is a
+        documentation string. *)
+
+    val flag_all : ?doc:string -> ?env:string -> string list -> int
+    (** [flag_all] is like {!flag} but counts the number of occurences
+        of the flag on the command line. If there is no flag on the command
+        line and [env] is specified and defined in the environment, its
+        value is parsed with {!Env.bool} and converted to an integer. *)
+
+    val opt : ?docv:string -> ?doc:string -> ?env:string -> string list ->
+      'a converter -> absent:'a -> 'a
+    (** [opt ~docv ~doc ~env names c ~absent] is a value defined by
+        the value of an optional argument that may appear {e at most
+        once} on the command line under one of the names specified by
+        [names].
+
+        The argument of the option is converted with [c] and [absent]
+        is used if the option is absent from the command line. If
+        there is no option on the command line and [env] is specified
+        and defined in the environment, its value is parsed with
+        [parse] and that value is used instead of [absent].
+
+        [doc] is is a documentation string. [docv] a documentation
+        meta-variable used in the documentation to stand for the option
+        argument. In [doc] occurences of the substring [$(docv)] in are
+        replaced by the value of [docv] *)
+
+    val opt_all : ?docv:string -> ?doc:string -> ?env:string -> string list ->
+      'a converter -> absent:'a list -> 'a list
+    (** [opt_all] is like {!opt} but the optional argument can be repeated. *)
+
+    (** {1:parse Parsing}
+
+        {b Note.} Before parsing make sure you have invoked all the
+        {{!queries}queries}.
+
+        {b Warning.} All the following functions raise
+        [Invalid_argument] if they are reinvoked after
+        {{!section:parse}parsing}. *)
+
+    val parse_opts : ?doc:string -> ?usage:string -> unit -> unit
+    (** [parse_opts ()] can:
+        {ul
+        {- Return [()] if no command line error occured and [-help] or [--help]
+           was not specified.}
+        {- Never return and exit the program with [0] after having
+           printed the help on {!stdout}.}
+        {- Never return and exit the program with [1] after having
+           printed an error on {!stderr} if a parsing
+           error occured.}}
+
+        A parsing error occurs either if an option parser failed, if a
+        non repeatable option was specified more than once, if there
+        is an unknown option on the line, if there is a positional
+        argument on the command line (use {!parse} to parse them).
+        [usage] is the command argument synopsis (default is
+        automatically inferred).  [doc] is a documentation string for
+        the program. *)
+
+    val parse : ?doc:string -> ?usage:string -> pos:'a converter -> unit ->
+      'a list
+    (** [parse ~pos] is like {!parse_opts} but returns and converts
+        the positional arguments with [pos] rather than error on them.
+        Note that any thing that comes after a [--] argument on the
+        command line is deemed to be a positional argument. *)
+
+    (** {1:predefconvs Predefined argument converters} *)
+
+    val string : string converter
+    (** [string] converts a string argument. This never errors. *)
+
+    val path : path converter
+    (** [path] converts a path argument using {!Path.of_string}. *)
+
+    val cmd : Cmd.t converter
+    (** [cmd] is {!string} mapped by {!Cmd.v}.
+        (* FIXME use a Cmd.of_string *). *)
+
+    val char : char converter
+    (** [char] converts a single character. *)
+
+    val bool : bool converter
+    (** [bool] converts a boolean with {!String.to_bool}. *)
+
+    val int : int converter
+    (** [int] converts an integer with {!String.to_int}. *)
+
+    val nativeint : nativeint converter
+    (** [int] converts a [nativeint] with {!String.to_nativeint}. *)
+
+    val int32 : int32 converter
+    (** [int32] converts an [int32] with {!String.to_int32}. *)
+
+    val int64 : int64 converter
+    (** [int64] converts an [int64] with {!String.to_int64}. *)
+
+    val float : float converter
+    (** [float] converts an float with {!String.to_float}. *)
+
+    val enum : (string * 'a) list -> 'a converter
+    (** [enum l p] converts values such that string names in [l]
+        map to the corresponding value of type ['a].
+
+        {b Warning.} The type ['a] must be comparabable with
+        {!Pervasives.compare}.
+
+        @raise Invalid_argument if [l] is empty. *)
+
+    val list : ?sep:string -> 'a converter -> 'a list converter
+    (** [list ~sep c] converts a list of [c]. For parsing the
+        argument is first {!String.cuts}[ ~sep] and the resulting
+        string list is converted using [c]. *)
+
+    val array : ?sep:string -> 'a converter -> 'a array converter
+    (** [array ~sep c] is like {!list} but returns an array instead. *)
+
+    val pair : ?sep:string -> 'a converter -> 'b converter -> ('a * 'b)
+        converter
+    (** [pair ~sep fst snd] converts a pair of [fst] and [snd]. For parsing
+        the argument is {!String.cut}[ ~sep] and the resulting strings
+        are converted using [fst] and [snd]. *)
+
+    (** {1:argbasics Basics}
+
+        To parse a command line, {b first} perform all the option
+        {{!queries}queries} and then invoke one of the
+        {{!parse}parsing} functions. Do not invoke any query after
+        parsing has been done, this will raise [Invalid_argument].
+        This leads to the following program structure:
+{[
+(* It is possible to define things at the toplevel as follows. But do not
+   abuse this. The following flag if unspecified on the command line can
+   also be specified with the DEBUG environment variable. *)
+let debug = OS.Arg.(flag ["g"; "debug"] ~env:"DEBUG" ~doc:"debug mode.")
+...
+
+let main () =
+  let depth =
+    OS.Arg.(opt ["d"; "depth"] int ~absent:2
+              ~doc:"recurses $(docv) times." ~docv:"INT")
+  in
+  let pos_args = OS.Arg.parse () in
+  (* No command line error or help request occured, run the program. *)
+  ...
+
+let main () = main ()
+]}
+ *)
+
+  end
+
   (** {1 File system operations and commands}
 
       {b Note.} When paths are relative they are expressed relative to
@@ -1322,89 +1633,6 @@ module OS : sig
     (** [exec_write cmd args file] execute [cmd] with arguments [args] and
         writes the invocation's [stdout] to [file]. In [cmd]'s return code
         is non zero returns an error message and [file] is left intact. *)
-  end
-
-  (** {1:env Environment variables} *)
-
-  (** Environment variables. *)
-  module Env : sig
-
-    (** {1:env Process environment} *)
-
-    val vars : unit -> string String.Map.t result
-    (** [vars ()] is a string map corresponding to the process environment. *)
-
-    (** {1:vars Variables} *)
-
-    val var : string -> string option
-    (** [var name] is the value of the environment variable [name], if
-        defined. *)
-
-    val set_var : string -> string option -> unit result
-    (** [set_var name v] sets the environment variable [name] to [v].
-
-        {b BUG.} The {!Unix} module doesn't bind to [unsetenv(3)],
-        hence for now using [None] will not unset the variable, it
-        will set it to [""]. This behaviour may change in future
-        versions of the library. *)
-
-    val opt_var : string -> absent:string -> string
-    (** [opt_var name absent] is the value of the optionally defined
-        environment variable [name] if defined and [absent] if
-        undefined. *)
-
-    val req_var : string -> string result
-    (** [req_var name]  is the value of the environment variable [name] or
-        an error if [name] is undefined in the environment. *)
-
-    (** {1 Typed lookup}
-
-        See the {{!examples}examples}. *)
-
-    type 'a parser = string -> ('a, R.msg) Rresult.result
-    (** The type for environment variable value parsers. *)
-
-    val parser : string -> (string -> 'a option) -> 'a parser
-    (** [parser kind k_of_string] is an environment variable value
-        from the [k_of_string] function. [kind] is used for error
-        reports (e.g. could be ["int"] for an [int] parser). *)
-
-    val bool : bool parser
-    (** [bool s] is a boolean parser. The string is lowercased and
-        the result is:
-        {ul
-        {- [Ok false] if it is one of [""], ["false"], ["no"], ["n"] or ["0"].}
-        {- [Ok true] if it is one of ["true"], ["yes"], ["y"] or ["1"].}
-        {- An [Error] otherwise.}} *)
-
-    val string : string parser
-    (** [string s] is a string parser, it always succeeds. *)
-
-    val path : path parser
-    (** [path s] is a path parser using {!Path.of_string}. *)
-
-    val some : 'a parser -> 'a option parser
-    (** [some p] is wraps [p]'s parse result in [Some]. *)
-
-    val value : ?log:Log.level -> string -> 'a parser -> absent:'a -> 'a
-    (** [value ~log name parse ~absent] is:
-        {ul
-        {- [absent] if [Env.var name = None]}
-        {- [v] if [Env.var name = Some s] and [parse s = Ok v].}
-        {- [absent] if [Env.var name = Some s] and [parse s = Error msg].
-           In this case the error message is logged with level [log]
-           (defaults to {!Log.Error})}} *)
-
-     (** {1:examples Examples}
-{[
-let debug : bool = OS.Env.(value "DEBUG" bool ~absent:false)
-let msg : string = OS.Env.(value "MSG" string ~absent:"no message")
-
-let timeout : int option =
-  let int = OS.Env.(some @@ parser "int" String.to_int) in
-  OS.Env.value "TIMEOUT" int ~absent:None
-]}
-*)
   end
 
   (** {1 Low level {!Unix} access} *)

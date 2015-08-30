@@ -10,4 +10,5 @@ Bos_os_file
 Bos_os_dir
 Bos_os_cmd
 Bos_os_env
+Bos_os_arg
 Bos

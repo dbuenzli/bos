@@ -4,43 +4,26 @@
    %%NAME%% release %%VERSION%%
   ---------------------------------------------------------------------------*)
 
-open Astring
-open Rresult
+open Bos
 
-(* Command line fragments *)
+let debug = OS.Arg.(flag ["g"; "debug"] ~env:"DEBUG" ~doc:"debug mode.")
 
-type t = string list
+let print_parse depth ints =
+  Log.show "debug: %b" debug;
+  Log.show "depth: %d" depth;
+  Log.show "pos: @[%a@]" Fmt.(list ~sep:sp int) ints;
+  ()
 
-let empty = []
-let is_empty = function [] -> true | _ -> false
+let main () =
+  let depth =
+    OS.Arg.(opt ["d"; "depth"] int ~absent:2
+              ~doc:"specifies depth of $(docv) iterations." ~docv:"INT")
+  in
+  let doc = "Testing the OS.Arg module." in
+  print_parse depth (OS.Arg.(parse ~doc ~pos:int ()))
 
-let v a = [a]
-let ( % ) l a = a :: l
-let ( %% ) l0 l1 = List.rev_append (List.rev l1) l0
+let () = main ()
 
-let add_arg l a = l % a
-let add_args l a = l %% a
-
-let on bool l = if bool then l else []
-
-let p = Bos_path.to_string
-
-(* Predicates and comparison *)
-
-let equal l l' = l = l'
-let compare l l' = Pervasives.compare l l'
-
-(* Conversions and pretty printing *)
-
-let to_list line = List.rev line
-let of_list line = List.rev line
-
-let pp ppf = function
-| [] -> ()
-| cmd :: [] -> Fmt.(pf ppf "%s" cmd)
-| cmd :: args -> Fmt.(pf ppf "@[<2>%s@ %a@]" cmd (list ~sep:sp string) args)
-
-let dump = Fmt.Dump.(list String.dump)
 
 (*---------------------------------------------------------------------------
    Copyright (c) 2015 Daniel C. Bünzli.
