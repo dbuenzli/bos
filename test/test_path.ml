@@ -619,6 +619,7 @@ let add_ext = test "Path.add_ext" @@ fun () ->
   eqp (Path.add_ext "tar.gz" (v "a/f")) (v "a/f.tar.gz");
   eqp (Path.add_ext ".gz" (v "a/f.tar")) (v "a/f.tar.gz");
   eqp (Path.add_ext "gz" (v "a/f.tar")) (v "a/f.tar.gz");
+  eqp (Path.(v "a/f.tar" + "gz")) (v "a/f.tar.gz");
   ()
 
 let rem_ext = test "Path.rem_ext" @@ fun () ->

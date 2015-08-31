@@ -561,7 +561,7 @@ let set_ext ?multi e p =
   in
   String.Sub.(to_string (concat [p; maybe_dot; String.sub e]))
 
-let ( + ) p e = add_ext p e
+let ( + ) p e = add_ext e p
 
 (* Path sets and maps *)
 
