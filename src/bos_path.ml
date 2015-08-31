@@ -538,7 +538,8 @@ let has_ext ?(multi = false) p =
 let add_ext e p =
   if not (is_seg_valid e) then err_invalid_ext e else
   let maybe_dot =
-    if String.is_empty e || e.[0] <> ext_sep_char then ext_sep else ""
+    if String.is_empty e then "" else
+    if e.[0] <> ext_sep_char then ext_sep else ""
   in
   String.concat [p; maybe_dot; e]
 

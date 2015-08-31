@@ -621,10 +621,12 @@ $(drive):
   val add_ext : ext -> path -> path
   (** [add_ext ext p] is [p] with the string [ext] concatenated to [p]'s
       last segment. If [ext] doesn't start with a ['.'] one is prefixed to it
-      before concatenation. Examples:
+      before concatenation except if [ext] is [""]. Examples:
       {ul
       {- [equal (add_ext ".mli" (v "a/b")) (v "a/b.mli")]}
       {- [equal (add_ext "mli" (v "a/b")) (v "a/b.mli")]}
+      {- [equal (add_ext "." (v "a/b")) (v "a/b.")]}
+      {- [equal (add_ext "" (v "a/b")) (v "a/b")]}
       {- [equal (add_ext ".tar.gz" (v "a/f")) (v "a/f.tar.gz")]}
       {- [equal (add_ext "tar.gz" (v "a/f")) (v "a/f.tar.gz")]}
       {- [equal (add_ext ".gz" (v "a/f.tar") ) (v "a/f.tar.gz")]}

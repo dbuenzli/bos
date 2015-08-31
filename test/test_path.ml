@@ -610,10 +610,10 @@ let has_ext = test "Path.has_ext" @@ fun () ->
   ()
 
 let add_ext = test "Path.add_ext" @@ fun () ->
-  eqp (Path.add_ext "" (v "a/b")) (v "a/b.");
-  eqp (Path.add_ext "." (v "a/b")) (v "a/b.");
   eqp (Path.add_ext ".mli" (v "a/b")) (v "a/b.mli");
   eqp (Path.add_ext "mli" (v "a/b")) (v "a/b.mli");
+  eqp (Path.add_ext "" (v "a/b")) (v "a/b");
+  eqp (Path.add_ext "." (v "a/b")) (v "a/b.");
   eqp (Path.add_ext ".tar.gz" (v "a/f")) (v "a/f.tar.gz");
   eqp (Path.add_ext "tar.gz" (v "a/f")) (v "a/f.tar.gz");
   eqp (Path.add_ext ".gz" (v "a/f.tar")) (v "a/f.tar.gz");
