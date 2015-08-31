@@ -610,6 +610,7 @@ let has_ext = test "Path.has_ext" @@ fun () ->
   ()
 
 let add_ext = test "Path.add_ext" @@ fun () ->
+  app_raises ~pp:Path.pp (Path.add_ext "/") (v "a/b/c");
   eqp (Path.add_ext ".mli" (v "a/b")) (v "a/b.mli");
   eqp (Path.add_ext "mli" (v "a/b")) (v "a/b.mli");
   eqp (Path.add_ext "" (v "a/b")) (v "a/b");
@@ -629,6 +630,7 @@ let rem_ext = test "Path.rem_ext" @@ fun () ->
   ()
 
 let set_ext = test "Path.set_ext" @@ fun () ->
+  app_raises ~pp:Path.pp (Path.set_ext "/") (v "a/b/c");
   eqp (Path.set_ext ".bla" (v "/a/b")) (v "/a/b.bla");
   eqp (Path.set_ext "bla" (v "/a/b")) (v "/a/b.bla");
   eqp (Path.set_ext ".bla" (v "/a/b.mli")) (v "/a/b.bla");
