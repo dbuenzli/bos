@@ -237,18 +237,22 @@ let flag_all ?(doc = sadly_undocumented) ?env names =
 
 let rec rem_option names rleft = function
 | "--" :: _ -> Ok None
-| s :: ss when List.mem s names ->
+| s :: ss ->
     begin match opt_arg s with
     | None ->
-        begin match ss with
+        if not (List.mem s names)
+        then rem_option names (s :: rleft) ss
+        else begin match ss with
         | [] -> Error (err_need_argument s)
         | "--" :: _ -> Error (err_need_argument s)
         | s' :: _ when is_opt s' -> Error (err_need_argument s)
         | arg :: ss -> Ok (Some (s, arg, List.rev_append rleft ss))
         end
-    | Some (opt, arg) -> Ok (Some (opt, arg, List.rev_append rleft ss))
+    | Some (opt, arg) ->
+        if not (List.mem opt names)
+        then rem_option names (s :: rleft) ss
+        else Ok (Some (opt, arg, List.rev_append rleft ss))
     end
-| arg :: args -> rem_option names (arg :: rleft) args
 | [] -> Ok None
 
 let opt ?(docv = "VAL") ?(doc = sadly_undocumented) ?env names (parse, print)

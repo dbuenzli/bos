@@ -989,7 +989,7 @@ let timeout : int option =
       {b Warning.} This module is not thread-safe. *)
   module Arg : sig
 
-    (** {1 Executable name.} *)
+    (** {1 Executable name} *)
 
     val exec : string
     (** [exec] is the name of the executable. *)
@@ -1149,7 +1149,7 @@ let timeout : int option =
     (** [enum l p] converts values such that string names in [l]
         map to the corresponding value of type ['a].
 
-        {b Warning.} The type ['a] must be comparabable with
+        {b Warning.} The type ['a] must be comparable with
         {!Pervasives.compare}.
 
         @raise Invalid_argument if [l] is empty. *)
@@ -1177,7 +1177,7 @@ let timeout : int option =
         This leads to the following program structure:
 {[
 (* It is possible to define things at the toplevel as follows. But do not
-   abuse this. The following flag if unspecified on the command line can
+   abuse this. The following flag, if unspecified on the command line, can
    also be specified with the DEBUG environment variable. *)
 let debug = OS.Arg.(flag ["g"; "debug"] ~env:"DEBUG" ~doc:"debug mode.")
 ...
@@ -1187,7 +1187,7 @@ let main () =
     OS.Arg.(opt ["d"; "depth"] int ~absent:2
               ~doc:"recurses $(docv) times." ~docv:"INT")
   in
-  let pos_args = OS.Arg.parse () in
+  let pos_args = OS.Arg.(parse ~pos:string ()) in
   (* No command line error or help request occured, run the program. *)
   ...
 
