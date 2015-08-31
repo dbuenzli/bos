@@ -1123,9 +1123,12 @@ let timeout : int option =
     val path : path converter
     (** [path] converts a path argument using {!Path.of_string}. *)
 
+    val bin : Cmd.t converter
+    (** [bin] is {!string} mapped by {!Cmd.v}. *)
+
+   (* FIXME add:
     val cmd : Cmd.t converter
-    (** [cmd] is {!string} mapped by {!Cmd.v}.
-        (* FIXME use a Cmd.of_string *). *)
+    (** [cmd] converts a command line with {!Cmd.of_string} *) *)
 
     val char : char converter
     (** [char] converts a single character. *)

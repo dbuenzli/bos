@@ -406,8 +406,8 @@ let parse ?(doc = undocumented) ?usage ~pos:(parse, print) () =
 (* Predefined argument converters *)
 
 let string = (fun s -> Ok s), Fmt.string
-let cmd = (fun s -> Ok (Bos_cmd.v s) (* FIXME use Cmd.of_string *)),Bos_cmd.pp
 let path = converter "a path" Bos_path.of_string Bos_path.pp
+let bin = (fun s -> Ok (Bos_cmd.v s)), Bos_cmd.pp
 let char = converter "a character" String.to_char Fmt.char
 let bool = converter "`true' or `false'" String.to_bool Fmt.bool
 let int = converter "an integer" String.to_int Fmt.int
