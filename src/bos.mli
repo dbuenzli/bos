@@ -979,10 +979,13 @@ let timeout : int option =
       parse so migrating there should not be a problem for existing
       invocations of your program.
 
-      This module supports short and long options with option arguments
-      either glued to the option or specified as the next program argument.
-      It also supports the [--] program argument to notify that subsequent
-      arguments have to be treated as positional arguments.
+      This module supports short and long options with option
+      arguments either glued to the option or specified as the next
+      program argument.  It also supports the [--] program argument to
+      notify that subsequent arguments have to be treated as
+      positional arguments. Parsing functions always respond to the
+      [-h], [-help] or [--help] flags by showing the program's usage
+      and command line options documentation.
 
       See the {{!argbasics}basics}.
 

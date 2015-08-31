@@ -6,8 +6,8 @@
 
 open Bos
 
-let debug = OS.Arg.(flag ["g"; "debug"] ~env:"DEBUG" ~doc:"debug mode.")
-let count = OS.Arg.(flag_all ["c"] ~doc:"count me.")
+let debug = OS.Arg.(flag ["g"; "debug"] ~env:"DEBUG" ~doc:"Debug mode.")
+let count = OS.Arg.(flag_all ["c"] ~doc:"Count me.")
 
 let print_parse () =
   Log.show "debug: %b" debug;

@@ -7,15 +7,12 @@
 open Astring
 open Rresult
 
-(* Executable name. *)
-
-let exec = if Array.length Sys.argv = 0 then "" else Sys.argv.(0)
-
 (* Errors *)
 
 let quote pp ppf v = Fmt.pf ppf "`%a'" pp v
 
 let err_done = "Bos.OS.Arg.parse_opts or Bos.OS.Arg.parse already called"
+let err_no_name = "names list cannot be empty"
 let err_env v msg = R.msgf "environment variable %s: %s" v msg
 let err_repeat n = R.msgf "option %a cannot be repeated" (quote Fmt.string) n
 let err_need_argument n =
@@ -31,6 +28,10 @@ let err_unknown_opt ppf l =
 let err_too_many ppf l =
   Fmt.pf ppf "too many arguments, don't know what to do with %a"
     Fmt.(list ~sep:(Fmt.unit ",@ ") (quote Fmt.string)) l
+
+(* Executable name. *)
+
+let exec = if Array.length Sys.argv = 0 then "" else Sys.argv.(0)
 
 (* Argument converters *)
 
@@ -72,6 +73,7 @@ let get_parse, set_parse =
 (* Option names and values *)
 
 let make_opt_names names =
+  if names = [] then invalid_arg err_no_name else
   let opt n = if String.length n = 1 then strf "-%s" n else strf "--%s" n in
   List.map opt names
 
@@ -94,6 +96,12 @@ let long_opt_arg n = String.cut ~sep:"=" n
 
 let opt_arg n = if is_short_opt n then short_opt_arg n else long_opt_arg n
 
+let opt_name_compare n0 n1 =
+  let name n =
+    if is_short_opt n then String.sub ~start:1 n else String.sub ~start:2 n
+  in
+  String.Sub.compare_bytes (name n0) (name n1)
+
 let partition_opt_pos l =
   let rec loop opts poss = function
   | "--" :: l -> List.rev opts, List.rev_append poss l
@@ -105,7 +113,7 @@ let partition_opt_pos l =
 
 (* Documentation *)
 
-let sadly_undocumented = "sadly undocumented"
+let undocumented = "Undocumented, complain loudly to the author."
 
 type doc_opt_kind =
   | Flag of string
@@ -122,7 +130,6 @@ let get_opt_docs, add_opt_doc =
   (fun () -> !docs),
   (fun doc -> docs := doc :: !docs)
 
-
 let pp_opt_doc ppf = function
 | Flag d -> Fmt.text ppf d
 | Opt (d, docv, _) ->
@@ -138,7 +145,8 @@ let pp_opt_doc ppf = function
 
 let pp_opt_docs ppf opt_docs =
   let is_flag o = match o.kind with Flag _ -> true | _ -> false in
-  let opt_docs = List.sort compare opt_docs in
+  let sort_opts o o' = opt_name_compare (List.hd o.names) (List.hd o'.names) in
+  let opt_docs = List.sort sort_opts opt_docs in
   let pp_name = Fmt.(styled `Bold string) in
   let pp_var = Fmt.(styled `Underline string) in
   let pp_short var ppf name = Fmt.pf ppf "%a %a" pp_name name pp_var var in
@@ -155,10 +163,15 @@ let pp_opt_docs ppf opt_docs =
   | Some var -> Fmt.pf ppf "@ (env=%a)" Fmt.(styled `Underline string) var
   in
   let pp_opts ppf o =
+    let compare n n' = match compare (String.length n) (String.length n') with
+    | 0 -> compare n n'
+    | c -> c
+    in
+    let names = List.sort compare o.names in
     match o.kind with
-    | Flag _ -> Fmt.(list ~sep:(unit ",@ ") pp_name) ppf o.names;
+    | Flag _ -> Fmt.(list ~sep:(unit ",@ ") pp_name) ppf names;
     | Opt (_, var, absent) ->
-        Fmt.(list ~sep:(unit ",@ ") (pp_opt var)) ppf o.names;
+        Fmt.(list ~sep:(unit ",@ ") (pp_opt var)) ppf names;
         pp_absent ppf absent;
   in
   let pp_opt_doc ppf o = match o.names with
@@ -171,7 +184,6 @@ let pp_opt_docs ppf opt_docs =
   if opt_docs = [] then () else
   Fmt.pf ppf "@[<v>Options:@,@,  @[<v>%a@]@]"
     Fmt.(list ~sep:cut pp_opt_doc) opt_docs
-
 
 (* Environment default parsing *)
 
@@ -193,7 +205,7 @@ let rec rem_flag names rleft = function
 | s :: ss -> rem_flag names (s :: rleft) ss
 | [] -> None
 
-let flag ?(doc = sadly_undocumented) ?env names =
+let flag ?(doc = undocumented) ?env names =
   let names = make_opt_names names in
   add_opt_doc { names; env; repeat = false; kind = Flag doc };
   match get_parse () with
@@ -215,7 +227,7 @@ let flag ?(doc = sadly_undocumented) ?env names =
               then (set_parse @@ Perror (err_repeat flag); false)
               else (set_parse @@ Perror (err_dupe flag flag'); false)
 
-let flag_all ?(doc = sadly_undocumented) ?env names =
+let flag_all ?(doc = undocumented) ?env names =
   let names = make_opt_names names in
   add_opt_doc { names; env; repeat = true; kind = Flag doc };
   match get_parse () with
@@ -255,8 +267,7 @@ let rec rem_option names rleft = function
     end
 | [] -> Ok None
 
-let opt ?(docv = "VAL") ?(doc = sadly_undocumented) ?env names (parse, print)
-    ~absent
+let opt ?(docv = "VAL") ?(doc = undocumented) ?env names (parse, print) ~absent
   =
   let names = make_opt_names names in
   let opt = Opt (doc, docv, fun ppf () -> print ppf absent) in
@@ -286,8 +297,8 @@ let opt ?(docv = "VAL") ?(doc = sadly_undocumented) ?env names (parse, print)
               else (set_parse @@ Perror (err_dupe opt opt'); absent)
           | Error e -> (* well... *) set_parse (Perror e); absent
 
-let opt_all ?(docv = "VAL") ?(doc = sadly_undocumented) ?env names
-    (parse, print) ~absent
+let opt_all ?(docv = "VAL") ?(doc = undocumented) ?env names (parse, print)
+    ~absent
   =
   let names = make_opt_names names in
   let opt = Opt (doc, docv, fun ppf () -> Fmt.(list ~sep:sp print) ppf absent)in
@@ -314,14 +325,12 @@ let opt_all ?(docv = "VAL") ?(doc = sadly_undocumented) ?env names
 
 (* Parsing *)
 
-let get_pp_usage opt_docs ~pos = function
+let get_pp_usage ~pos = function
 | Some u -> Fmt.(const string) u
 | None ->
     fun ppf () ->
-      if opt_docs <> []
-      then Fmt.pf ppf "[%a]..." Fmt.(styled_unit `Underline "OPTION") ();
-      if pos
-      then Fmt.pf ppf " %a..." Fmt.(styled_unit `Underline "ARG") ()
+      Fmt.pf ppf "[%a]..." Fmt.(styled_unit `Underline "OPTION") ();
+      if pos then Fmt.pf ppf " %a..." Fmt.(styled_unit `Underline "ARG") ()
 
 let pp_usage ppf usage = Fmt.pf ppf "Usage: %s %a@." exec usage ()
 let pp_usage_try_help ppf usage =
@@ -335,22 +344,25 @@ let parse_error ~usage msg =
   Fmt.epr "%a" pp_usage_try_help usage;
   exit 1
 
-let maybe_help ~doc ~usage opt_docs =
+let maybe_help ~doc ~usage =
+  let help_opts = ["-h"; "-help"; "--help" ] in
   let rec find_help = function
   | "--" :: _ | [] -> false
-  | s :: ss -> List.mem s ["-h"; "-help"; "--help" ] || find_help ss
+  | s :: ss -> List.mem s help_opts || find_help ss
   in
   if not (find_help raw_args) then () else
   begin
+    add_opt_doc { names = help_opts; env = None; repeat = false;
+                  kind = Flag "Show this help." };
     Fmt.(pf stdout "%s - @[%a@]@." Bos_path.(base @@ v exec) text doc);
     Fmt.(pf stdout "%a" pp_usage usage);
-    Fmt.(pf stdout "%a@." pp_opt_docs opt_docs);
+    Fmt.(pf stdout "%a@." pp_opt_docs (get_opt_docs ()));
     exit 0
   end
 
-let parse_opts ?(doc = sadly_undocumented) ?usage () =
-  let usage = get_pp_usage (get_opt_docs ()) ~pos:false usage in
-  maybe_help ~doc ~usage (get_opt_docs ());
+let parse_opts ?(doc = undocumented) ?usage () =
+  let usage = get_pp_usage ~pos:false usage in
+  maybe_help ~doc ~usage;
   match get_parse () with
   | Line [] -> ()
   | Line l ->
@@ -369,9 +381,9 @@ let parse_pos_args parse ps =
   in
   loop [] ps
 
-let parse ?(doc = sadly_undocumented) ?usage ~pos:(parse, print) () =
-  let usage = get_pp_usage (get_opt_docs ()) ~pos:true usage in
-  maybe_help ~doc ~usage (get_opt_docs ());
+let parse ?(doc = undocumented) ?usage ~pos:(parse, print) () =
+  let usage = get_pp_usage ~pos:true usage in
+  maybe_help ~doc ~usage;
   match get_parse () with
   | Done -> invalid_arg err_done
   | Perror (`Msg e) -> parse_error ~usage e

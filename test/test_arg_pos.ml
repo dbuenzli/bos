@@ -6,7 +6,7 @@
 
 open Bos
 
-let debug = OS.Arg.(flag ["g"; "debug"] ~env:"DEBUG" ~doc:"debug mode.")
+let debug = OS.Arg.(flag ["g"; "debug"] ~env:"DEBUG" ~doc:"Debug mode.")
 
 let print_parse depth ints =
   Log.show "debug: %b" debug;
@@ -17,7 +17,7 @@ let print_parse depth ints =
 let main () =
   let depth =
     OS.Arg.(opt ["d"; "depth"] int ~absent:2
-              ~doc:"specifies depth of $(docv) iterations." ~docv:"INT")
+              ~doc:"Specifies depth of $(docv) iterations." ~docv:"INT")
   in
   let doc = "Testing the OS.Arg module." in
   print_parse depth (OS.Arg.(parse ~doc ~pos:int ()))
