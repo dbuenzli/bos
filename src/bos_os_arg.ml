@@ -133,10 +133,15 @@ let get_opt_docs, add_opt_doc =
 let pp_opt_doc ppf = function
 | Flag d -> Fmt.text ppf d
 | Opt (d, docv, _) ->
+    let b = Buffer.create 244 in
+    let bppf = Format.formatter_of_buffer b in
+    let () = Fmt.set_style_renderer bppf (Fmt.style_renderer ppf) in
     let d =
       try
-        let b = Buffer.create 244 in
-        let subst = function "docv" -> docv | s -> strf "$(%s)" s in
+        let subst = function
+        | "docv" -> Fmt.pf bppf "%a@?" Fmt.(styled `Underline string) docv; ""
+        | s -> strf "$(%s)" s
+        in
         Buffer.add_substitute b subst d;
         Buffer.contents b
       with Not_found -> d

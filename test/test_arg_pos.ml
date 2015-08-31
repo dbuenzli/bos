@@ -8,6 +8,8 @@ open Bos
 
 let debug = OS.Arg.(flag ["g"; "debug"] ~env:"DEBUG" ~doc:"Debug mode.")
 
+let () = Fmt.(set_style_renderer stdout `Ansi_tty)
+
 let print_parse depth ints =
   Log.show "debug: %b" debug;
   Log.show "depth: %d" depth;
