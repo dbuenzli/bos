@@ -33,7 +33,9 @@ let compare l l' = Pervasives.compare l l'
 (* Conversions and pretty printing *)
 
 let to_list line = List.rev line
-let of_list line = List.rev line
+let of_list ?slip line = match slip with
+| None -> List.rev line
+| Some slip -> List.fold_left (fun acc v -> v :: slip :: acc) [] line
 
 let pp ppf = function
 | [] -> ()

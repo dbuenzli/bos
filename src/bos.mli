@@ -841,8 +841,10 @@ module Cmd : sig
   val to_list : t -> string list
   (** [to_list l] is [l] as a list of strings. *)
 
-  val of_list : string list -> t
-  (** [of_list l] is a command line from the list [l]. *)
+  val of_list : ?slip:string -> string list -> t
+  (** [of_list ?slip l] is a command line from the list [l]. If [slip]
+      is specified it is added on the command line before each element
+      of [l]. *)
 
   val pp : Format.formatter -> t -> unit
   (** [pp ppf l] formats an unspecified representation of [l] on
