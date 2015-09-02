@@ -830,8 +830,7 @@ module Cmd : sig
   (** {1:predicates Predicates and comparison} *)
 
   val equal : t -> t -> bool
-  (** [equal l l'] is [true] iff [l] and [l'] are litterally the
-      equal. *)
+  (** [equal l l'] is [true] iff [l] and [l'] are litterally equal. *)
 
   val compare : t -> t -> int
   (** [compare l l'] is a total order on lines. *)
