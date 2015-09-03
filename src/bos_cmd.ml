@@ -37,12 +37,12 @@ let of_list ?slip line = match slip with
 | None -> List.rev line
 | Some slip -> List.fold_left (fun acc v -> v :: slip :: acc) [] line
 
-let pp ppf = function
+let pp ppf cmd = match List.rev cmd with
 | [] -> ()
 | cmd :: [] -> Fmt.(pf ppf "%s" cmd)
 | cmd :: args -> Fmt.(pf ppf "@[<2>%s@ %a@]" cmd (list ~sep:sp string) args)
 
-let dump = Fmt.Dump.(list String.dump)
+let dump ppf cmd = Fmt.Dump.(list String.dump) ppf (List.rev cmd)
 
 (*---------------------------------------------------------------------------
    Copyright (c) 2015 Daniel C. Bünzli.
