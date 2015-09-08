@@ -69,16 +69,19 @@ let debug ?header fmt = msg ?header Debug fmt
 
 (* Log error Results *)
 
-let on_error ?(level = Error) ~pp ~use = function
+let on_error ?header ?(level = Error) ~pp ~use = function
 | Rresult.Ok v -> v
-| Rresult.Error e -> kmsg (fun () -> use) level "@[%a@]" pp e
+| Rresult.Error e -> kmsg ?header (fun () -> use) level "@[%a@]" pp e
 
-let kon_error ?(level = Error) ~pp ~use = function
+let kon_error ?header ?(level = Error) ~pp ~use = function
 | Rresult.Ok _ as r -> r
-| Rresult.Error e -> kmsg (fun () -> use) level "@[%a@]" pp e
+| Rresult.Error e -> kmsg ?header (fun () -> use) level "@[%a@]" pp e
 
-let on_error_msg ?level ~use = on_error ?level ~pp:Rresult.R.pp_msg ~use
-let kon_error_msg ?level ~use = kon_error ?level ~pp:Rresult.R.pp_msg ~use
+let on_error_msg ?header ?level ~use =
+  on_error ?header ?level ~pp:Rresult.R.pp_msg ~use
+
+let kon_error_msg ?header ?level ~use =
+  kon_error ?header ?level ~pp:Rresult.R.pp_msg ~use
 
 (* Log monitoring *)
 

@@ -144,8 +144,8 @@ module Log : sig
 
   (** {1 Log error {!Rresult}s} *)
 
-  val on_error : ?level:level -> pp:(Format.formatter -> 'b -> unit) ->
-    use:'a -> ('a, 'b) result -> 'a
+  val on_error : ?header:string -> ?level:level ->
+    pp:(Format.formatter -> 'b -> unit) -> use:'a -> ('a, 'b) result -> 'a
   (** [on_error ~level ~pp ~use r] is:
       {ul
       {- [v] if [r = `Ok v]}
@@ -153,8 +153,9 @@ module Log : sig
          {{!Log}logged} with [pp] on  level [level]
          (defaults to {!Log.Error})}} *)
 
-  val kon_error : ?level:level -> pp:(Format.formatter -> 'b -> unit) ->
-    use:('a, 'c) result -> ('a, 'b) result -> ('a, 'c) result
+  val kon_error : ?header:string -> ?level:level ->
+    pp:(Format.formatter -> 'b -> unit) -> use:('a, 'c) result ->
+    ('a, 'b) result -> ('a, 'c) result
   (** [kon_error ~log ~pp ~use r] is:
       {ul
       {- [v] if [r = `Ok v]}
@@ -162,11 +163,12 @@ module Log : sig
          {{!Log}logged} with [pp] on level [level]
          (defaults to {!Log.Error})}} *)
 
-  val on_error_msg : ?level:level -> use:'a -> ('a, R.msg) result -> 'a
+  val on_error_msg : ?header:string -> ?level:level -> use:'a ->
+    ('a, R.msg) result -> 'a
   (** [on_error_msg ~level ~use] is [error ~log ~pp:pp_msg ~use]. *)
 
-  val kon_error_msg : ?level:level -> use:('a, 'c) result ->
-    ('a, R.msg) result -> ('a, 'c) result
+  val kon_error_msg : ?header:string -> ?level:level -> use:('a, 'c) result
+    -> ('a, R.msg) result -> ('a, 'c) result
   (** [kon_error_msg ~log ~use] is [errork ~log ~pp:pp_msg ~use]. *)
 
   (** {1 Log monitoring} *)
