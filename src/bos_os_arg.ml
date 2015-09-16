@@ -156,16 +156,15 @@ let pp_opt_docs ppf opt_docs =
   let pp_var = Fmt.(styled `Underline string) in
   let pp_short var ppf name = Fmt.pf ppf "%a %a" pp_name name pp_var var in
   let pp_long var ppf name = Fmt.pf ppf "%a=%a" pp_name name pp_var var in
-  let pp_absent ppf absent =
-    let absent = strf "@[<h>%a@]" absent () in
-    if absent <> "" then Fmt.pf ppf "@ (absent=%s)" absent
+  let pp_env = Fmt.(styled `Underline string) in
+  let pp_absent ppf absent env = match absent, env with
+  | "", None -> ()
+  | "", Some v -> Fmt.pf ppf "@ (or %a env)" pp_env v
+  | absent, None -> Fmt.pf ppf "@ (absent=%s)" absent
+  | absent, Some v -> Fmt.pf ppf "@ (absent=%s or %a env)" absent pp_env v
   in
   let pp_opt var ppf n =
     if is_short_opt n then pp_short var ppf n else pp_long var ppf n
-  in
-  let pp_env ppf var = match var with
-  | None -> ()
-  | Some var -> Fmt.pf ppf "@ (env=%a)" Fmt.(styled `Underline string) var
   in
   let pp_opts ppf o =
     let compare n n' = match compare (String.length n) (String.length n') with
@@ -174,17 +173,20 @@ let pp_opt_docs ppf opt_docs =
     in
     let names = List.sort compare o.names in
     match o.kind with
-    | Flag _ -> Fmt.(list ~sep:(unit ",@ ") pp_name) ppf names;
+    | Flag _ ->
+        Fmt.(list ~sep:(unit ",@ ") pp_name) ppf names;
+        pp_absent ppf "" o.env
     | Opt (_, var, absent) ->
         Fmt.(list ~sep:(unit ",@ ") (pp_opt var)) ppf names;
-        pp_absent ppf absent;
+        let absent = strf "@[<h>%a@]" absent () in
+        pp_absent ppf absent o.env;
   in
   let pp_opt_doc ppf o = match o.names with
   | [n] when is_short_opt n && o.env = None && is_flag o ->
       Fmt.pf ppf "@[@[%a@]  @[%a@]@]" pp_opts o pp_opt_doc o.kind
   | _ ->
-      Fmt.pf ppf "@[<v4>@[%a%a@]@,@[%a@]@]"
-        pp_opts o pp_env o.env pp_opt_doc o.kind
+      Fmt.pf ppf "@[<v4>@[%a@]@,@[%a@]@]"
+        pp_opts o pp_opt_doc o.kind
   in
   if opt_docs = [] then () else
   Fmt.pf ppf "@[<v>Options:@,@,  @[<v>%a@]@]"
