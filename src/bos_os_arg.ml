@@ -1,3 +1,4 @@
+
 (*---------------------------------------------------------------------------
    Copyright (c) 2015 Daniel C. Bünzli. All rights reserved.
    Distributed under the BSD3 license, see license at the end of the file.
@@ -134,8 +135,7 @@ let pp_opt_doc ppf = function
 | Flag d -> Fmt.text ppf d
 | Opt (d, docv, _) ->
     let b = Buffer.create 244 in
-    let bppf = Format.formatter_of_buffer b in
-    let () = Fmt.set_style_renderer bppf (Fmt.style_renderer ppf) in
+    let bppf = Fmt.with_buffer ~like:ppf b in
     let d =
       try
         let subst = function
