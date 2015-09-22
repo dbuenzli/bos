@@ -12,13 +12,13 @@ let uerror = Unix.error_message
 (* Existence and move *)
 
 let exists path =
-  try Ok (ignore @@ Unix.((stat path).st_kind); true) with
+  try Ok (ignore @@ Unix.stat path; true) with
   | Unix.Unix_error (Unix.ENOENT, _, _) -> Ok false
   | Unix.Unix_error (e, _, _) ->
       R.error_msgf "%a: %s" Bos_path.pp path (uerror e)
 
 let must_exist path =
-  try Ok (ignore @@ Unix.((stat path))) with
+  try Ok (ignore @@ Unix.stat path) with
   | Unix.Unix_error (Unix.ENOENT, _, _) -> R.error_msgf "%s: No such path" path
   | Unix.Unix_error (e, _, _) ->
       R.error_msgf "%a: %s" Bos_path.pp path (uerror e)
@@ -82,69 +82,119 @@ let rec symlink_stat p = try Ok (Unix.lstat p) with
 | Unix.Unix_error (e, _, _) ->
     R.error_msgf "symlink stat %a: %s" Bos_path.pp p (uerror e)
 
-(* Matching paths *)
+(* Matching paths. *)
 
-let pats_of_path p =
-  let buf = Buffer.create 255 in
-  let parse_seg acc s =
-    acc
-    >>= fun acc -> Bos_pat.of_string ~buf s
-    >>= fun pat -> Ok (pat :: acc)
+(* The following code is horribly messy mainly due to volume
+   handling. Could certainly be improved. *)
+
+let rec match_segment dotfiles ~env acc path seg =
+  (* N.B. path can be empty, usually for relative patterns without volume. *)
+  let rec readdir dh acc =
+    match (try Some (Unix.readdir dh) with End_of_file -> None) with
+    | None -> Ok acc
+    | Some (".." | ".") -> readdir dh acc
+    | Some e when String.length e > 1 && e.[0] = '.' && not dotfiles ->
+        readdir dh acc
+    | Some e ->
+        match Bos_path.is_seg_valid e with
+        | true ->
+            begin match Bos_pat.match_pat ~env 0 e seg with
+            | None -> readdir dh acc
+            | Some _ as m ->
+                let p = if path = "" then e else Bos_path.add_seg path e in
+                readdir dh ((p, m) :: acc)
+            end
+        | false ->
+            R.error_msgf
+              "directory %a: cannot parse element to a path (%a)"
+              Bos_path.pp path String.dump e
   in
-  let parse_segs ss = List.fold_left parse_seg (Ok []) ss in
-  match Bos_path.segs p with
-  | "" :: ss -> parse_segs ss >>= fun ss -> Ok ("/", List.rev ss)
-  | ss -> parse_segs ss >>= fun ss -> Ok (".", List.rev ss)
+  try
+    let path = if path = "" then "." else path in
+    let dh = Unix.opendir path in
+    Bos_base.apply (readdir dh) acc ~finally:Unix.closedir dh
+  with
+  | Unix.Unix_error (Unix.ENOTDIR, _, _) -> Ok acc
+  | Unix.Unix_error (Unix.ENOENT, _, _) -> Ok acc
+  | Unix.Unix_error (Unix.EINTR, _, _) ->
+      match_segment dotfiles ~env acc path seg
+  | Unix.Unix_error (e, _, _) ->
+      R.error_msgf "directory %a: %s" Bos_path.pp path (uerror e)
 
-let match_segment ~env acc path seg = match acc with
-| Error _ as e -> e
-| Ok acc ->
-    try
-      let occs =
-        if not (Sys.file_exists path) then [||] else
-        if Sys.is_directory path then (Sys.readdir path) else
-        [||]
+let match_path ?(dotfiles = false) ~env p =
+  let err _ = R.msgf "Unexpected error while matching `%s'" p in
+  let buf = Buffer.create 256 in
+  let vol, start, segs =
+    let vol, segs = Bos_path.split_volume p in
+    match Bos_path.segs segs with
+    | "" :: "" :: [] (* root *) ->  vol, Bos_path.dir_sep, []
+    | "" :: ss -> vol, Bos_path.dir_sep, ss
+    | ss -> vol, "", ss (* N.B. ss is non empty. *)
+  in
+  let rec match_segs acc = function
+  | [] -> Ok acc
+  | "" :: [] -> (* final empty segment "", keep only directories. *)
+      let rec loop acc = function
+      | [] -> Ok acc
+      | (p, env) :: matches ->
+          let r = try Ok (Unix.((stat p).st_kind = Unix.S_DIR)) with
+          | Unix.Unix_error (e, _, _) -> R.error_msgf "%s: %s" p (uerror e)
+          in
+          match r with
+          | Error _ as e -> e
+          | Ok false -> loop acc matches
+          | Ok true ->
+              let acc' = (Bos_path.add_seg p "", env) :: acc in
+              loop acc' matches
       in
-      let add_match acc f = match (Bos_pat.match_pat ~env 0 f seg) with
-      | None -> acc
-      | Some _ as m -> (strf "%s%s%s" path Filename.dir_sep f, m) :: acc
+      loop [] acc
+  | (".." | "." as e) :: segs ->
+      (* We simply add the segment to current matches. No need
+         to test if the resulting path exists. We can always go up (root
+         absorbs) or stay at the same level. *)
+      let rec loop acc = function
+      | [] -> acc
+      | (p, env) :: matches ->
+          let p = if p = vol then p ^ e (* C:.. *) else Bos_path.add_seg p e in
+          loop ((p, env) :: acc) matches
       in
-      Ok (Array.fold_left add_match acc occs)
-    with Sys_error e ->
-      let err _ = R.msgf "Unexpected error while matching `%s'" path in
-      R.error_msg e |> R.reword_error_msg err
-
-let match_path ~env p =
-  let rec loop acc = function
+      match_segs (loop [] acc) segs
   | seg :: segs ->
-      let add_seg acc (p, env) = match_segment ~env acc p seg in
-      begin match acc with
+      match Bos_pat.of_string ~buf seg with
       | Error _ as e -> e
-      | Ok acc -> loop (List.fold_left add_seg (Ok []) acc) segs
-      end
-  | [] -> acc
+      | Ok seg ->
+          let rec loop acc = function
+          | [] -> Ok acc
+          | (p, env) :: matches ->
+              match match_segment dotfiles ~env acc p seg with
+              | Error _ as e -> e
+              | Ok acc -> loop acc matches
+          in
+          match loop [] acc with
+          | Error _ as e -> e
+          | Ok acc -> match_segs acc segs
   in
-  pats_of_path p >>= fun (root, segs) ->
-  match segs with
-  | [] -> Ok []
-  | segs -> loop (Ok [root, env]) segs
+  let start_exists vol start =
+    let start = if start = "" then "." else start in
+    exists (vol ^ start)
+  in
+  start_exists vol start >>= function
+  | false -> Ok []
+  | true ->
+      let start = if start = "" then vol else vol ^ start in
+      R.reword_error_msg err @@ match_segs [start, env] segs
 
-let matches p =
-  let pathify acc (p, _) = p :: acc in
-  match_path ~env:None p >>| List.fold_left pathify []
+let matches ?dotfiles p =
+  let get_path acc (p, _) = p :: acc in
+  match_path ?dotfiles ~env:None p >>| List.fold_left get_path []
 
-let unify ?(init = String.Map.empty) p =
+let unify ?dotfiles ?(init = String.Map.empty) p =
   let env = Some init in
-  let pathify acc (p, map) = match map with
+  let unopt_map acc (p, map) = match map with
   | None -> assert false
-  | Some map ->
-      let p = match Bos_path.of_string p with
-      | None -> failwith "TODO"
-      | Some p -> p
-      in
-      (p, map) :: acc
+  | Some map -> (p, map) :: acc
   in
-  match_path ~env p >>| List.fold_left pathify []
+  match_path ?dotfiles ~env p >>| List.fold_left unopt_map []
 
 (* Folding over file system hierarchies *)
 

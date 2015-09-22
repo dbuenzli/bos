@@ -1281,7 +1281,7 @@ let main () = main ()
     (** [symlink_stat p] is the same as {!stat} but if [p] is a link
         returns information about the link itself. *)
 
-    (** {1:pathmatch Matching path patterns}
+    (** {1:pathmatch Matching path patterns against the file system}
 
         A path pattern [pat] is a path whose segments are made of
         {{!Pat}named string patterns}. Each variable of the pattern
@@ -1290,14 +1290,22 @@ let main () = main ()
 {[
         Path.(v "data" / "$(dir)" / "$(file).txt")
 ]}
-        matches any existing path the glob pattern [data/*/*.txt] would. *)
+        matches any existing path of the file system that matches the
+        regexp  [data/.*/.*\.txt].
 
+        {b Warning.} When segments with pattern variables are matched
+        against the file system they never match ["."]  and
+        [".."]. For example the pattern ["$(file).$(ext)"] does not
+        match ["."]. *)
 
-    val matches : Path.t -> path list result
-    (** [matches pat] is the list of paths in the file system that
-        match the path pattern [pat]. *)
+    val matches : ?dotfiles:bool -> Path.t -> path list result
+    (** [matches ~dotfiles pat] is the list of paths in the file
+        system that match the path pattern [pat]. If [dotfiles] is
+        [false] (default) paths which have at least one segment that
+        starts with a ['.'] character are not part of the list. *)
 
-    val unify : ?init:Pat.env -> Path.t -> (path * Pat.env) list result
+    val unify : ?dotfiles:bool -> ?init:Pat.env -> Path.t ->
+      (path * Pat.env) list result
     (** [unify ~init pat] is like {!matches} except each matching path
         is returned with an environment mapping pattern variables to
         their matched part in the path. For each path the mappings are

@@ -72,7 +72,7 @@ let rec contents ?(rel = false) dir =
             readdir dh ((if rel then f else Bos_path.(dir // f)) :: acc)
         | None ->
             R.error_msgf
-              "director %a contents: cannot parse element to a path (%a)"
+              "directory %a contents: cannot parse element to a path (%a)"
               Bos_path.pp dir String.dump f
   in
   try
