@@ -18,39 +18,32 @@ open Astring
 
 (** Named string patterns.
 
-    Named string patterns are strings with variables of the form ["$(VAR)"]
-    where [VAR] is any sequence of bytes except [')'] or [',']. In these
-    strings a ["$"] litteral must be written ["$$"].*)
+    Named string patterns are strings with variables of the form
+    ["$(VAR)"] where [VAR] is any sequence of bytes except [')'] or
+    [',']. In a named string pattern a ["$"] litteral must be escaped
+    by ["$$"].
+
+    Named string patterns can be used to {{!format}format} strings or
+    to {{!match}match} data. *)
 module Pat : sig
 
-  (** {1 Patterns} *)
+  (** {1:pats Patterns} *)
 
-  type t = [ `Lit of string | `Var of string ] list
-  (** The type for patterns. A list of either a string literal or a
-      variable. *)
-
-  type env = string String.Map.t
-  (** Type type for pattern environments. Maps pattern variable names
-      to string values. *)
+  type t
+  (** The type for patterns. *)
 
   val v : string -> t
-  (** [v s] parses [s] according to the pattern syntax.
+  (** [v s] is a pattern from the string [s].
+
       @raise Invalid_argument if [s] is not a valid pattern. Use
       {!of_string} to deal with errors. *)
-
-  val of_string : ?buf:Buffer.t -> string -> (t, [> R.msg]) result
-  (** [of_string ?buf s] parses [s] according to the pattern syntax.
-      [buf] can specify the temporary buffer to use. *)
-
-  val to_string : ?buf:Buffer.t -> t -> string
-  (** [to_string p] converts [p] to a string according to the pattern
-      syntax. [buf] can specify the temporary buffer to use.  *)
 
   val dom : t -> String.Set.t
   (** [dom p] is the set of variables in [p]. *)
 
-  val pp : Format.formatter -> t -> unit
-  (** [pp ppf p] prints [p] on [ppf] according ot the pattern syntax. *)
+  val subst : t -> (string -> string option) -> t
+  (** [subst p subst] substitutes variables in [p] by the value
+      they map to in [subst] (if any). See also {!subst_env}. *)
 
   val equal : t -> t -> bool
   (** [equal p p'] is [p = p']. *)
@@ -58,34 +51,68 @@ module Pat : sig
   val compare : t -> t -> int
   (** [compare p p'] is {!Pervasives.compare}[ p p']. *)
 
-  (** {1 Matching}
+  val of_string : ?buf:Buffer.t -> string -> (t, [> R.msg]) result
+  (** [of_string ?buf s] parses [s] according to the pattern syntax
+      (i.e.  a '$' will be represented by ["$$"]). [buf] can specify a
+      temporary buffer to use. *)
 
-      Pattern variables greedily match from zero to more bytes (i.e.
-      [.*] in regexp speak). *)
+  val to_string : ?buf:Buffer.t -> t -> string
+  (** [to_string p] converts [p] to a string according to the pattern
+      syntax. [buf] can specify a temporary buffer to use.  *)
+
+  val pp : Format.formatter -> t -> unit
+  (** [pp ppf p] prints [p] on [ppf] according to the pattern syntax. *)
+
+  val dump : Format.formatter -> t -> unit
+  (** [dump ppf p] prints [p] as a syntactically valid OCaml string on
+      [ppf]. *)
+
+  (** {1:envs Pattern environments} *)
+
+  type env = string String.Map.t
+  (** Type type for pattern environments. Maps pattern variable names
+      to string values. *)
+
+  val subst_env : t -> env -> t
+  (** [subst_env p env] substitutes variables in [p] by the value
+      they map to in [env]. The {{!dom}domain} of the resulting pattern
+      is [String.Set.diff (dom p) (String.Map.dom env)]. *)
+
+  val format : ?buf:Buffer.t -> ?undef:(string -> string) -> t -> env ->
+    string
+  (** [format p env] formats a string by substituting the variables of
+      [p] with their value as found in [env]. The resulting string is
+      is not in pattern syntax (a ['$'] will be represented by ['$'] in
+      the result). [buf] can specify a temporary buffer to use.
+
+      If [undef] is provided and a variable [v] of [p] is undefined in
+      [env] the value of [undef v] is substituted.
+
+      @raise Invalid_argument if [dom p] is not included in
+      [String.Map.dom env] and [undef] is unspecified. *)
+
+  (** {1:match Matching}
+
+      Pattern variables greedily match from zero to more bytes from
+      left to right. This is [.*] in regexp speak. *)
 
   val matches : t -> string -> bool
-  (** [matches p s] is [true] iff [s] matches [p]. *)
+  (** [matches p s] is [true] iff the string [s] matches [p]. Here are a few
+      examples:
+      {ul
+      {- [matches (v "$(mod).mli") "string.mli"] is [true].}
+      {- [matches (v "$(mod).mli") "string.mli "] is [false].}
+      {- [matches (v "$(mod).mli") ".mli"] is [true].}
+      {- [matches (v "$(mod).$(suff)") "string.mli"] is [true].}
+      {- [matches (v "$(mod).$(suff)") "string.mli "] is [true].}} *)
 
   val unify : ?init:env -> t -> string -> env option
   (** [unify ~init p s] is like {!matches} except that a matching
       string returns an environment mapping each pattern variable to
       its matched part in the string (mappings are added to [init],
-      defaults to {!String.Map.empty}). If a variable appears
-      more than once in [pat] the actual mapping for the variable is
-      unspecified. *)
-
-  (** {1 Formatting} *)
-
-  val format : ?buf:Buffer.t -> t -> env -> string
-  (** [format p env] formats a string according to [p] and the bindings
-      of [env]. [buf] can specify the temporary buffer to use.
-
-      @raise Invalid_argument if [dom p] is not included in
-      [String.Map.dom env]. *)
-
-  val pp_format : t -> Format.formatter -> env -> unit
-  (** [pp_format p ppf env] is like {!format} but prints the result
-      on [ppf]. *)
+      defaults to {!String.Map.empty}) or [None] if [s] doesn't match
+      [p].  If a variable appears more than once in [pat] the actual
+      mapping for the variable is unspecified. *)
 end
 
 (** Logging. *)

@@ -6,6 +6,7 @@
 
 open Bos;;
 
+#install_printer Pat.dump;;
 #install_printer Path.pp;;
 
 (*---------------------------------------------------------------------------
