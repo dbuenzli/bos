@@ -10,12 +10,13 @@ Bos can be seen as an enhanced `Sys` and `Unix` module for scripts and
 command line programs with light OS interaction requirements. It
 (should) work equally well on POSIX and Windows systems.
 
-Bos depends on [Rresult][1], [Astring][2], [Fmt][3] and the OCaml Unix
-library. It is distributed under the BSD3 license.
+Bos depends on [Rresult][1], [Astring][2], [Fmt][3] and [Logs][4] and the
+OCaml Unix library. It is distributed under the BSD3 license.
 
 [1]: http://erratique.ch/software/rresult
 [2]: http://erratique.ch/software/astring
 [3]: http://erratique.ch/software/fmt
+[4]: http://erratique.ch/software/logs]
 
 Home page: http://erratique.ch/software/bos  
 Contact: Daniel Bünzli `<daniel.buenzl i@erratique.ch>`

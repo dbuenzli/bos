@@ -15,6 +15,7 @@ depends: [
   "rresult"
   "astring"
   "fmt"
+  "logs"
   "mtime" {test}
 ]
 build:

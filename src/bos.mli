@@ -11,7 +11,7 @@
 
     {e Release %%VERSION%% - %%MAINTAINER%% } *)
 
-(** {1 Patterns and logging} *)
+(** {1 Basic types} *)
 
 open Rresult
 open Astring
@@ -114,101 +114,6 @@ module Pat : sig
       [p].  If a variable appears more than once in [pat] the actual
       mapping for the variable is unspecified. *)
 end
-
-(** Logging. *)
-module Log : sig
-
-  (** {1 Log level and output} *)
-
-  (** The type for log levels. *)
-  type level = Show | Error | Warning | Info | Debug
-
-  val level : unit -> level option
-  (** [level ()] is the log level (if any). If the log level is [(Some l)]
-      any message whose level is [<= l] is logged. If level is [None]
-      no message is ever logged. Initially the level is [(Some Warning)]. *)
-
-  val set_level : level option -> unit
-  (** [set_level l] sets the log level to [l]. See {!level}. *)
-
-  val set_formatter : [`All | `Level of level ] -> Format.formatter -> unit
-  (** [set_formatter spec ppf] sets the formatter for a given level or
-      for all the levels according to [spec]. Initially the formatter
-      of level [Show] is {!Format.std_formatter} and all the other level
-      formatters are {!Format.err_formatter}. *)
-
-  (** {1 Log messages} *)
-
-  val msg : ?header:string -> level ->
-    ('a, Format.formatter, unit, unit) format4 -> 'a
-  (** [msg header l fmt ...] logs a message with level [l]. [header] is
-      the message header, default depends on [l]. *)
-
-  val kmsg : ?header:string ->
-    (unit -> 'a) -> level -> ('b, Format.formatter, unit, 'a) format4 -> 'b
-  (** [kmsg header k l fmt ...] is like [msg header l fmt] but calls [k ()]
-      before returning. *)
-
-  val show : ?header:string -> ('a, Format.formatter, unit, unit) format4 -> 'a
-  (** [show fmt ...] logs a message with level [Show]. [header] defaults
-      to [None]. *)
-
-  val err : ?header:string -> ('a, Format.formatter, unit, unit) format4 -> 'a
-  (** [err fmt ...] logs a message with level [Error]. [header] defaults
-      to ["ERROR"]. *)
-
-  val warn : ?header:string -> ('a, Format.formatter, unit, unit) format4 -> 'a
-  (** [warn fmt ...] logs a message with level [Warning]. [header] defaults
-      to ["WARNING"]. *)
-
-  val info : ?header:string -> ('a, Format.formatter, unit, unit) format4 -> 'a
-  (** [info fmt ...] logs a message with level [Info]. [header] defaults
-      to ["INFO"]. *)
-
-  val debug : ?header:string -> ('a, Format.formatter, unit, unit) format4 -> 'a
-  (** [debug info ...] logs a message with level [Debug]. [header] defaults
-      to ["DEBUG"]. *)
-
-  (** {1 Log error {!Rresult}s} *)
-
-  val on_error : ?header:string -> ?level:level ->
-    pp:(Format.formatter -> 'b -> unit) -> use:'a -> ('a, 'b) result -> 'a
-  (** [on_error ~level ~pp ~use r] is:
-      {ul
-      {- [v] if [r = `Ok v]}
-      {- [use] if [r = `Error msg]. As a side effect [msg] is
-         {{!Log}logged} with [pp] on  level [level]
-         (defaults to {!Log.Error})}} *)
-
-  val kon_error : ?header:string -> ?level:level ->
-    pp:(Format.formatter -> 'b -> unit) -> use:('a, 'c) result ->
-    ('a, 'b) result -> ('a, 'c) result
-  (** [kon_error ~log ~pp ~use r] is:
-      {ul
-      {- [v] if [r = `Ok v]}
-      {- [use] if [r = `Error e]. As a side effect [e] is
-         {{!Log}logged} with [pp] on level [level]
-         (defaults to {!Log.Error})}} *)
-
-  val on_error_msg : ?header:string -> ?level:level -> use:'a ->
-    ('a, R.msg) result -> 'a
-  (** [on_error_msg ~level ~use] is [error ~log ~pp:pp_msg ~use]. *)
-
-  val kon_error_msg : ?header:string -> ?level:level -> use:('a, 'c) result
-    -> ('a, R.msg) result -> ('a, 'c) result
-  (** [kon_error_msg ~log ~use] is [errork ~log ~pp:pp_msg ~use]. *)
-
-  (** {1 Log monitoring} *)
-
-  val err_count : unit -> int
-  (** [err_count ()] is the number of messages logged with level [Error]. *)
-
-  val warn_count : unit -> int
-  (** [warn_count ()] is the number of messages logged with level
-      [Warning]. *)
-end
-
-(** {1 Paths}  *)
 
 type path
 (** The type for file paths. *)
@@ -806,8 +711,6 @@ $(drive):
   end
 end
 
-(** {1 Command line specification} *)
-
 (** Command lines.
 
     For API usability reasons we represent both command lines and
@@ -980,7 +883,7 @@ module OS : sig
     val some : 'a parser -> 'a option parser
     (** [some p] is wraps [p]'s parse result in [Some]. *)
 
-    val value : ?log:Log.level -> string -> 'a parser -> absent:'a -> 'a
+    val value : ?log:Logs.level -> string -> 'a parser -> absent:'a -> 'a
     (** [value ~log name parse ~absent] is:
         {ul
         {- [absent] if [Env.var name = None]}
@@ -1334,7 +1237,7 @@ let main () = main ()
         error. If the function returns [`Ok ()] the path is ignored
         for the operation and the fold continues. *)
 
-    val log_fold_error : level:Log.level -> 'a fold_error
+    val log_fold_error : level:Logs.level -> 'a fold_error
     (** [log_fold_error level] is a {!fold_error} function that logs
         error with level [level] and always returns [`Ok ()]. *)
 

@@ -217,7 +217,7 @@ type 'a fold_error = Bos_path.t -> 'a res -> unit res
 
 let log_fold_error ~level =
   fun p -> function
-  | Error (`Msg m) -> Bos_log.msg level "%s" m; R.ok ()
+  | Error (`Msg m) -> (Bos_log.msg level "%s" @@ fun fmt -> fmt m); Ok ()
   | Ok _ -> assert false
 
 exception Fold_stop of R.msg
@@ -256,7 +256,7 @@ let readdir_fun err =
   err_fun err readdir ~backup_value:[||]
 
 let fold
-    ?(err = log_fold_error ~level:Bos_log.Error) ?(over = `Any)
+    ?(err = log_fold_error ~level:Logs.Error) ?(over = `Any)
     ?(traverse = `All) f acc paths
   =
   try

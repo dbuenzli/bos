@@ -10,11 +10,12 @@ let debug = OS.Arg.(flag ["g"; "debug"] ~env:"DEBUG" ~doc:"Debug mode.")
 let count = OS.Arg.(flag_all ["c"] ~doc:"Count me.")
 
 let print_parse () =
-  Log.show "debug: %b" debug;
-  Log.show "count: %d" count;
+  Logs.app "debug: %b" (fun msg -> msg debug);
+  Logs.app "count: %d" (fun msg -> msg count);
   ()
 
 let main () =
+  Logs.set_reporter (Logs_stdo.reporter ());
   OS.Arg.parse_opts ();
   print_parse ();
   ()

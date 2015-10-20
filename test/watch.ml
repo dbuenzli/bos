@@ -20,9 +20,9 @@ module Db = struct
       (OS.Path.stat p >>= fun stats ->
        if stats.Unix.st_kind <> Unix.S_REG then Ok acc else
        Ok ((p, stats.Unix.st_mtime) :: acc))
-      |> Log.on_error_msg ~use:acc
+      |> Logs.on_error_msg ~use:acc
     in
-    Log.show "Scanning files";
+    Logs.app "Scanning files" Logs.unit;
     OS.Dir.current ()
     >>= fun dir -> OS.Dir.contents_fold ~over:`Files add [] dir
 
@@ -30,7 +30,8 @@ module Db = struct
   let slurp ic () = Ok (Marshal.from_channel ic : float Path.Map.t)
 
   let create files =
-    Log.show "Writing modification time database %a" Path.pp db_file;
+    Logs.app "Writing modification time database %a"
+      (fun msg -> msg Path.pp db_file);
     let count = ref 0 in
     let add acc (f, time) = incr count; Path.Map.add f time acc in
     let db = List.fold_left add Path.Map.empty files in
@@ -39,11 +40,13 @@ module Db = struct
   let check files =
     let count = ref 0 in
     let changes db (f, time) = match (incr count; Path.Map.find f db) with
-    | None -> Log.show "New file: %a" Path.pp f
-    | Some stamp when stamp <> time -> Log.show "File changed: %a" Path.pp f
+    | None ->
+        Logs.app "New file: %a" (fun msg -> msg Path.pp f)
+    | Some stamp when stamp <> time ->
+        Logs.app "File changed: %a" (fun msg -> msg Path.pp f)
     | _ -> ()
     in
-    Log.show "Checking against %a" Path.pp db_file;
+    Logs.app "Checking against %a" (fun msg -> msg Path.pp db_file);
     OS.File.with_ic db_file slurp ()
     >>= fun db -> List.iter (changes db) files; Ok !count
 end
@@ -55,9 +58,10 @@ let watch () =
 
 let main () =
   let c = Mtime.counter () in
-  let count = watch () |> Log.on_error_msg ~use:0 in
-  Log.show "Watch completed for %d files in %a on %a"
-    count Mtime.pp_span (Mtime.count c) OS.Time.(pp_stamp_now ~human:true) ()
+  let count = watch () |> Logs.on_error_msg ~use:0 in
+  Logs.app "Watch completed for %d files in %a on %a"
+    (fun msg -> msg count Mtime.pp_span (Mtime.count c)
+        OS.Time.(pp_stamp_now ~human:true) ())
 
 let () = main ()
 

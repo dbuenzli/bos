@@ -64,13 +64,15 @@ let some p =
   | Ok v -> Ok (Some v)
   | Error _ as e -> e
 
-let value ?(log = Bos_log.Error) name parse ~absent = match var name with
+let value ?(log = Logs.Error) name parse ~absent = match var name with
 | None -> absent
 | Some s ->
     match parse s with
     | Ok v -> v
     | Error (`Msg m) ->
-        Bos_log.msg log "environment variable %s: %s" name m; absent
+        (Bos_log.msg log "environment variable %s: %s" @@ fun fmt ->
+         fmt name m);
+        absent
 
 (*---------------------------------------------------------------------------
    Copyright (c) 2015 Daniel C. Bünzli.
