@@ -141,8 +141,7 @@ let create_tmp_path mode dir pat =
     | Unix.Unix_error (Unix.EEXIST, _, _) -> loop (count - 1)
     | Unix.Unix_error (Unix.EINTR, _, _) -> loop count
     | Unix.Unix_error (e, _, _) ->
-        R.error_msgf "create temporary file %s in %a: %s"
-          (strf pat "XXXXXX") Bos_path.pp file (uerror e)
+        R.error_msgf "create temporary file %a: %s" Bos_path.pp file (uerror e)
   in
   loop 10000
 
