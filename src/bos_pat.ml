@@ -212,7 +212,7 @@ let match_pat ~env pos s pat =
   loop pos pat
 
 let matches p s = (match_pat ~env:None 0 s p) <> None
-let unify ?(init = String.Map.empty) p s = match_pat ~env:(Some init) 0 s p
+let query ?(init = String.Map.empty) p s = match_pat ~env:(Some init) 0 s p
 
 (*---------------------------------------------------------------------------
    Copyright (c) 2015 Daniel C. Bünzli.

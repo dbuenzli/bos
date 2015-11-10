@@ -188,7 +188,7 @@ let matches ?dotfiles p =
   let get_path acc (p, _) = p :: acc in
   match_path ?dotfiles ~env:None p >>| List.fold_left get_path []
 
-let unify ?dotfiles ?(init = String.Map.empty) p =
+let query ?dotfiles ?(init = String.Map.empty) p =
   let env = Some init in
   let unopt_map acc (p, map) = match map with
   | None -> assert false

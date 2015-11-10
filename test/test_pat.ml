@@ -76,8 +76,8 @@ let matches = test "Pat.matches" @@ fun () ->
   eq_bool (m "$()a$()aa$()" "aaa") true;
   ()
 
-let unify = test "Pat.unify" @@ fun () ->
-  let u ?init p s = Pat.(unify ?init (v p) s) in
+let query = test "Pat.query" @@ fun () ->
+  let u ?init p s = Pat.(query ?init (v p) s) in
   let eq = eq_option
       ~eq:(String.Map.equal String.equal) ~pp:(String.Map.dump String.dump)
   in
@@ -102,7 +102,7 @@ let suite = suite "Pat module"
       subst_env;
       format;
       matches;
-      unify; ]
+      query; ]
 
 (*---------------------------------------------------------------------------
    Copyright (c) 2015 Daniel C. Bünzli.

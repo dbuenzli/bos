@@ -106,8 +106,8 @@ module Pat : sig
       {- [matches (v "$(mod).$(suff)") "string.mli"] is [true].}
       {- [matches (v "$(mod).$(suff)") "string.mli "] is [true].}} *)
 
-  val unify : ?init:env -> t -> string -> env option
-  (** [unify ~init p s] is like {!matches} except that a matching
+  val query : ?init:env -> t -> string -> env option
+  (** [query ~init p s] is like {!matches} except that a matching
       string returns an environment mapping each pattern variable to
       its matched part in the string (mappings are added to [init],
       defaults to {!String.Map.empty}) or [None] if [s] doesn't match
@@ -1207,9 +1207,9 @@ let main () = main ()
         [false] (default) paths which have at least one segment that
         starts with a ['.'] character are not part of the list. *)
 
-    val unify : ?dotfiles:bool -> ?init:Pat.env -> Path.t ->
+    val query : ?dotfiles:bool -> ?init:Pat.env -> Path.t ->
       (path * Pat.env) list result
-    (** [unify ~init pat] is like {!matches} except each matching path
+    (** [query ~init pat] is like {!matches} except each matching path
         is returned with an environment mapping pattern variables to
         their matched part in the path. For each path the mappings are
         added to [init] (defaults to {!String.Map.empty}). *)
