@@ -561,6 +561,12 @@ let set_ext ?multi e p =
   in
   String.Sub.(to_string (concat [p; maybe_dot; String.sub e]))
 
+let split_ext ?multi p =
+  let ext = ext_sub ?multi (filename_sub p) in
+  if String.Sub.is_empty ext then (p, "") else
+  (String.with_pos_range p ~stop:(String.Sub.start_pos ext),
+   String.Sub.to_string ext)
+
 let ( + ) p e = add_ext e p
 
 (* Path sets and maps *)

@@ -584,6 +584,14 @@ $(drive):
 
       @raise Invalid_argument if {!is_seg_valid}[ ext] is [false]. *)
 
+  val split_ext : ?multi:bool -> path -> path * ext
+  (** [split_ext ?multi p] is [(rem_ext ?multi p, ext ?multi p)].
+
+      Using [(p', ext)] for the resulting pair, the following invariant
+      holds:
+      {ul
+      {- [equal (v (to_string p' ^ ext)) p]}} *)
+
   val ( + ) : path -> ext -> path
   (** [p + ext] is [add_ext ext p]. Left associative. *)
 

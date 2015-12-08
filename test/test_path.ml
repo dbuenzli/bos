@@ -642,6 +642,22 @@ let set_ext = test "Path.set_ext" @@ fun () ->
   eqp (Path.set_ext ~multi:true "" (v "f.tar.gz")) (v "f.");
   ()
 
+let split_ext = test "Path.split_ext" @@ fun () ->
+  let eq_split ?multi p q ext =
+    let p = v p in
+    let q', ext' = Path.split_ext ?multi p in
+    eq_str ext ext';
+    eqp (v q) q';
+    eqp (v (Path.to_string q' ^ ext')) p
+  in
+  eq_split "/a/b" "/a/b" "";
+  eq_split "/a/b.mli" "/a/b" ".mli";
+  eq_split "a/.ocamlinit" "a/.ocamlinit" "";
+  eq_split "f.tar.gz" "f.tar" ".gz";
+  eq_split ~multi:true "f.tar.gz" "f" ".tar.gz";
+  ()
+
+
 let suite = suite "Path module"
     [ of_string;
       add_seg;
@@ -667,7 +683,8 @@ let suite = suite "Path module"
       has_ext;
       add_ext;
       rem_ext;
-      set_ext; ]
+      set_ext;
+      split_ext; ]
 
 (*---------------------------------------------------------------------------
    Copyright (c) 2015 Daniel C. Bünzli.
