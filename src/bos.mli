@@ -372,16 +372,15 @@ $(drive):
       [false]), returns the multiple file
       extension. {{!ex_ext}Examples}. *)
 
-  val ext_is : ext -> path -> bool
-  (** [ext_is e p] is [true] iff [ext p = e || ext ~multi:true p = e].
+  val has_ext : ext -> path -> bool
+  (** [has_ext e p] is [true] iff [ext p = e || ext ~multi:true p = e].
       If [e] doesn't start with a ['.'] one is prefixed before making
-      the test. {{!ex_ext_is}Examples}. *)
+      the test. {{!ex_has_ext}Examples}. *)
 
-  val has_ext : ?multi:bool -> path -> bool
-  (** [has_ext ~multi p] is [true] iff [p]'s last segment has an extension.
+  val ext_exists : ?multi:bool -> path -> bool
+  (** [ext_exists ~multi p] is [true] iff [p]'s last segment has an extension.
       If [multi] is [true] (default to [false]) returns [true] iff
-      [p] has {e more than one} extension. This can be understood as:
-      {{!ex_has_ext}Examples}. *)
+      [p] has {e more than one} extension. {{!ex_ext_exists}Examples}. *)
 
   val add_ext : ext -> path -> path
   (** [add_ext ext p] is [p] with the string [ext] concatenated to [p]'s
@@ -735,27 +734,27 @@ $(drive):
       {- [ext ~multi:true (v "a.tar.gz") = ".tar.gz"]}
       {- [ext ~multi:true (v "a/.emacs.d") = ".d"]}}
 
-      {2:ex_ext_is {!ext_is}}
-
-      {ul
-      {- [ext_is ".mli" (v "a/b.mli")  = true]}
-      {- [ext_is "mli" (v "a/b.mli")  = true]}
-      {- [ext_is "mli" (v "a/bmli")  = false]}
-      {- [ext_is ".tar.gz" (v "a/f.tar.gz") = true]}
-      {- [ext_is "tar.gz" (v "a/f.tar.gz") = true]}
-      {- [ext_is ".tar" (v "a/f.tar.gz") = false]}}
-
       {2:ex_has_ext {!has_ext}}
 
       {ul
-      {- [has_ext (v "a/f") = false]}
-      {- [has_ext (v "a/f.") = true]}
-      {- [has_ext (v "a/f.gz") = true]}
-      {- [has_ext (v "a/f.tar.gz") = true]}
-      {- [has_ext (v ".emacs.d") = true]}
-      {- [has_ext ~multi:true (v "a/f.gz") = false]}
-      {- [has_ext ~multi:true (v "a/f.tar.gz") = true]}
-      {- [has_ext ~multi:true (v ".emacs.d") = false]}}
+      {- [has_ext ".mli" (v "a/b.mli")  = true]}
+      {- [has_ext "mli" (v "a/b.mli")  = true]}
+      {- [has_ext "mli" (v "a/bmli")  = false]}
+      {- [has_ext ".tar.gz" (v "a/f.tar.gz") = true]}
+      {- [has_ext "tar.gz" (v "a/f.tar.gz") = true]}
+      {- [has_ext ".tar" (v "a/f.tar.gz") = false]}}
+
+      {2:ex_ext_exists {!ext_exists}}
+
+      {ul
+      {- [ext_exists (v "a/f") = false]}
+      {- [ext_exists (v "a/f.") = true]}
+      {- [ext_exists (v "a/f.gz") = true]}
+      {- [ext_exists (v "a/f.tar.gz") = true]}
+      {- [ext_exists (v ".emacs.d") = true]}
+      {- [ext_exists ~multi:true (v "a/f.gz") = false]}
+      {- [ext_exists ~multi:true (v "a/f.tar.gz") = true]}
+      {- [ext_exists ~multi:true (v ".emacs.d") = false]}}
 
       {2:ex_add_ext {!add_ext}}
 

@@ -518,7 +518,7 @@ let ext_sub ?(multi = false) seg =
 
 let ext ?multi p = String.Sub.to_string (ext_sub ?multi (filename_sub p))
 
-let ext_is e p =
+let has_ext e p =
   let seg = String.Sub.drop ~sat:eq_ext_sep (filename_sub p) in
   if not (String.Sub.is_suffix (String.sub e) seg) then false else
   if not (String.is_empty e) && e.[0] = ext_sep_char then true else
@@ -527,7 +527,7 @@ let ext_is e p =
   if dot_index <= 0 then false else
   String.Sub.get seg dot_index = ext_sep_char
 
-let has_ext ?(multi = false) p =
+let ext_exists ?(multi = false) p =
   let ext = ext_sub ~multi (filename_sub p) in
   if not multi then not (String.Sub.is_empty ext) else
   if String.Sub.is_empty ext then false else

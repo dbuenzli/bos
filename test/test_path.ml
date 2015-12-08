@@ -555,58 +555,58 @@ let ext = test "Path.ext" @@ fun () ->
   eq_str (Path.ext ~multi:true @@ v "./.a..") "..";
   ()
 
-let ext_is = test "Path.ext_is" @@ fun () ->
-  eq_bool (Path.ext_is "." @@ v ".") false;
-  eq_bool (Path.ext_is "." @@ v "..") false;
-  eq_bool (Path.ext_is "." @@ v "...") false;
-  eq_bool (Path.ext_is "." @@ v "...a") false;
-  eq_bool (Path.ext_is "." @@ v "...a.") true;
-  eq_bool (Path.ext_is "." @@ v "...a..") true;
-  eq_bool (Path.ext_is "" @@ v ".") false;
-  eq_bool (Path.ext_is "" @@ v "..") false;
-  eq_bool (Path.ext_is "" @@ v "...") false;
-  eq_bool (Path.ext_is "" @@ v "...a") false;
-  eq_bool (Path.ext_is "" @@ v "...a.") true;
-  eq_bool (Path.ext_is "" @@ v "...a..") true;
-  eq_bool (Path.ext_is ".." @@ v ".") false;
-  eq_bool (Path.ext_is ".." @@ v "..") false;
-  eq_bool (Path.ext_is ".." @@ v "..a.") false;
-  eq_bool (Path.ext_is ".." @@ v "..a..") true;
-  eq_bool (Path.ext_is ".." @@ v "...") false;
-  eq_bool (Path.ext_is ".." @@ v "...a.") false;
-  eq_bool (Path.ext_is ".." @@ v "...a..") true;
-  eq_bool (Path.ext_is "..." @@ v "..") false;
-  eq_bool (Path.ext_is "..." @@ v "...") false;
-  eq_bool (Path.ext_is "..." @@ v "....") false;
-  eq_bool (Path.ext_is "..." @@ v ".a...") true;
-  eq_bool (Path.ext_is ".mli" @@ v "a/b.mli") true;
-  eq_bool (Path.ext_is "mli" @@ v "a/b.mli") true;
-  eq_bool (Path.ext_is "mli" @@ v "a/bmli") false;
-  eq_bool (Path.ext_is "mli" @@ v "a/.mli") false;
-  eq_bool (Path.ext_is ".tar.gz" @@ v "a/f.tar.gz") true;
-  eq_bool (Path.ext_is "tar.gz" @@ v "a/f.tar.gz") true;
-  eq_bool (Path.ext_is "tar.gz" @@ v "a/ftar.gz") false;
-  eq_bool (Path.ext_is "tar.gz" @@ v "a/tar.gz") false;
-  eq_bool (Path.ext_is "tar.gz" @@ v "a/.tar.gz") false;
-  eq_bool (Path.ext_is ".tar" @@ v "a/f.tar.gz") false;
-  eq_bool (Path.ext_is ".ocamlinit" @@ v ".ocamlinit") false;
-  eq_bool (Path.ext_is ".ocamlinit" @@ v "..ocamlinit") false;
-  eq_bool (Path.ext_is "..ocamlinit" @@ v "...ocamlinit") false;
-  eq_bool (Path.ext_is "..ocamlinit" @@ v ".a..ocamlinit") true;
-  eq_bool (Path.ext_is "..a" @@ v "..") false;
+let has_ext = test "Path.has_ext" @@ fun () ->
+  eq_bool (Path.has_ext "." @@ v ".") false;
+  eq_bool (Path.has_ext "." @@ v "..") false;
+  eq_bool (Path.has_ext "." @@ v "...") false;
+  eq_bool (Path.has_ext "." @@ v "...a") false;
+  eq_bool (Path.has_ext "." @@ v "...a.") true;
+  eq_bool (Path.has_ext "." @@ v "...a..") true;
+  eq_bool (Path.has_ext "" @@ v ".") false;
+  eq_bool (Path.has_ext "" @@ v "..") false;
+  eq_bool (Path.has_ext "" @@ v "...") false;
+  eq_bool (Path.has_ext "" @@ v "...a") false;
+  eq_bool (Path.has_ext "" @@ v "...a.") true;
+  eq_bool (Path.has_ext "" @@ v "...a..") true;
+  eq_bool (Path.has_ext ".." @@ v ".") false;
+  eq_bool (Path.has_ext ".." @@ v "..") false;
+  eq_bool (Path.has_ext ".." @@ v "..a.") false;
+  eq_bool (Path.has_ext ".." @@ v "..a..") true;
+  eq_bool (Path.has_ext ".." @@ v "...") false;
+  eq_bool (Path.has_ext ".." @@ v "...a.") false;
+  eq_bool (Path.has_ext ".." @@ v "...a..") true;
+  eq_bool (Path.has_ext "..." @@ v "..") false;
+  eq_bool (Path.has_ext "..." @@ v "...") false;
+  eq_bool (Path.has_ext "..." @@ v "....") false;
+  eq_bool (Path.has_ext "..." @@ v ".a...") true;
+  eq_bool (Path.has_ext ".mli" @@ v "a/b.mli") true;
+  eq_bool (Path.has_ext "mli" @@ v "a/b.mli") true;
+  eq_bool (Path.has_ext "mli" @@ v "a/bmli") false;
+  eq_bool (Path.has_ext "mli" @@ v "a/.mli") false;
+  eq_bool (Path.has_ext ".tar.gz" @@ v "a/f.tar.gz") true;
+  eq_bool (Path.has_ext "tar.gz" @@ v "a/f.tar.gz") true;
+  eq_bool (Path.has_ext "tar.gz" @@ v "a/ftar.gz") false;
+  eq_bool (Path.has_ext "tar.gz" @@ v "a/tar.gz") false;
+  eq_bool (Path.has_ext "tar.gz" @@ v "a/.tar.gz") false;
+  eq_bool (Path.has_ext ".tar" @@ v "a/f.tar.gz") false;
+  eq_bool (Path.has_ext ".ocamlinit" @@ v ".ocamlinit") false;
+  eq_bool (Path.has_ext ".ocamlinit" @@ v "..ocamlinit") false;
+  eq_bool (Path.has_ext "..ocamlinit" @@ v "...ocamlinit") false;
+  eq_bool (Path.has_ext "..ocamlinit" @@ v ".a..ocamlinit") true;
+  eq_bool (Path.has_ext "..a" @@ v "..") false;
   ()
 
-let has_ext = test "Path.has_ext" @@ fun () ->
-  eq_bool (Path.has_ext @@ v "a/f") false;
-  eq_bool (Path.has_ext @@ v "a/f.") true;
-  eq_bool (Path.has_ext @@ v "a/f.gz") true;
-  eq_bool (Path.has_ext @@ v "a/f.tar.gz") true;
-  eq_bool (Path.has_ext ~multi:true @@ v "a/f") false;
-  eq_bool (Path.has_ext ~multi:true @@ v "a/f.") false;
-  eq_bool (Path.has_ext ~multi:true @@ v "a/f.gz") false;
-  eq_bool (Path.has_ext ~multi:true @@ v "a/f.tar.gz") true;
-  eq_bool (Path.has_ext ~multi:true @@ v "a/.a..") true;
-  eq_bool (Path.has_ext ~multi:true @@ v "a/.a.") false;
+let ext_exists = test "Path.ext_exists" @@ fun () ->
+  eq_bool (Path.ext_exists @@ v "a/f") false;
+  eq_bool (Path.ext_exists @@ v "a/f.") true;
+  eq_bool (Path.ext_exists @@ v "a/f.gz") true;
+  eq_bool (Path.ext_exists @@ v "a/f.tar.gz") true;
+  eq_bool (Path.ext_exists ~multi:true @@ v "a/f") false;
+  eq_bool (Path.ext_exists ~multi:true @@ v "a/f.") false;
+  eq_bool (Path.ext_exists ~multi:true @@ v "a/f.gz") false;
+  eq_bool (Path.ext_exists ~multi:true @@ v "a/f.tar.gz") true;
+  eq_bool (Path.ext_exists ~multi:true @@ v "a/.a..") true;
+  eq_bool (Path.ext_exists ~multi:true @@ v "a/.a.") false;
   ()
 
 let add_ext = test "Path.add_ext" @@ fun () ->
@@ -679,8 +679,8 @@ let suite = suite "Path module"
       rooted;
       relativize;
       ext;
-      ext_is;
       has_ext;
+      ext_exists;
       add_ext;
       rem_ext;
       set_ext;
