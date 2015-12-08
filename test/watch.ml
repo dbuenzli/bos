@@ -20,7 +20,7 @@ module Db = struct
       (OS.Path.stat p >>= fun stats ->
        if stats.Unix.st_kind <> Unix.S_REG then Ok acc else
        Ok ((p, stats.Unix.st_mtime) :: acc))
-      |> Logs.on_error_msg ~use:acc
+      |> Logs.on_error_msg ~use:(fun _ -> acc)
     in
     Logs.app "Scanning files" Logs.unit;
     OS.Dir.current ()
@@ -58,7 +58,7 @@ let watch () =
 
 let main () =
   let c = Mtime.counter () in
-  let count = watch () |> Logs.on_error_msg ~use:0 in
+  let count = watch () |> Logs.on_error_msg ~use:(fun _ -> 0) in
   Logs.app "Watch completed for %d files in %a on %a"
     (fun msg -> msg count Mtime.pp_span (Mtime.count c)
         OS.Time.(pp_stamp_now ~human:true) ())
