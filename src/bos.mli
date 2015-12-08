@@ -158,14 +158,7 @@ module Path : sig
 
   val add_seg : path -> string -> path
   (** [add_seg p seg] adds [seg] at the end of [p]. An empty [seg]
-      is only added if [p] hasn't one yet. Examples:
-      {ul
-      {- [equal (add_seg (v "/a") "b") (v "/a/b")]}
-      {- [equal (add_seg (v "/a/") "b") (v "/a/b")]}
-      {- [equal (add_seg (v "/a/b") "") (v "/a/b/")]}
-      {- [equal (add_seg (v "/a/b/") "") (v "/a/b/")]}
-      {- [equal (add_seg (v "/") "") (v "/")]}
-      {- [equal (add_seg (v "/") "a") (v "/a")]}}
+      is only added if [p] hasn't one yet. {{!ex_add_seg}Examples}.
 
       @raise Invalid_argument if {!is_seg_valid}[ seg] is [false]. *)
 
@@ -175,13 +168,7 @@ module Path : sig
       {- If [p'] is absolute or has a non-empty {{!split_volume}volume} then
          [p'] is returned.}
       {- Otherwise appends [p'] to [p] using a {!dir_sep} if needed.}}
-      Examples:
-      {ul
-      {- [equal (append (v "/a/b/") (v "e/f")) (v "/a/b/e/f")]}
-      {- [equal (append (v "/a/b") (v "e/f")) (v "/a/b/e/f")]}
-      {- [equal (append (v "/a/b/") (v "/e/f")) (v "/e/f")]}
-      {- [equal (append (v "a/b/") (v "e/f")) (v "a/b/e/f")]}
-      {- [equal (append (v "a/b") (v "C:e")) (v "C:e")] (Windows)}} *)
+      {{!ex_append}Examples}. *)
 
   val ( / ) : path -> string -> path
   (** [p / seg] is {!add_seg}[ p seg]. Left associative. *)
@@ -216,17 +203,8 @@ module Path : sig
   (** [is_prefix ~root p] is [true] if [root] is a prefix of [p].  This
       checks that [root] has the same optional volume as [p], the same
       optional root directory separator and that the list of segments
-      of [root] is a prefix of the segments of [p]. Examples:
-      {ul
-      {- [is_prefix (v "/a/b") (v "/a/b") = true]}
-      {- [is_prefix (v "/a/b") (v "/a/b/") = true]}
-      {- [is_prefix (v "/a/b") (v "/a/bc") = false]}
-      {- [is_prefix (v "/a/b") (v "/a/b/c") = true]}
-      {- [is_prefix (v "/a/b/") (v "/a/b") = false]}
-      {- [is_prefix (v "a/b") (v "/a/b") = false]}
-      {- [is_prefix (v "a/b") (v "a/b") = true]}
-      {- [is_prefix (v "//a/b") (v "/a/b") = false]}
-      {- [is_prefix (v "C:a") (v "a") = false] (Windows)}} *)
+      of [root] is a prefix of the segments of [p]. {{!ex_is_prefix}Examples}.
+  *)
 
   val equal : path -> path -> bool
   (** [equal p p'] is [true] if [p] and [p'] have the same volume
@@ -265,19 +243,7 @@ $(drive):
   val segs : path -> string list
   (** [segs p] is [p]'s (non-empty) list of segments. Absolute paths have an
       initial empty string added, this allows to recover the path with
-      {!String.concat}[ ~sep:dir_sep]. Examples:
-      {ul
-      {- [segs (v "/a/b/") = [""; "a"; "b"; ""]]}
-      {- [segs (v "/a/b") = [""; "a"; "b"]]}
-      {- [segs (v "a/b/") = ["a"; "b"; ""]]}
-      {- [segs (v "a/b") = ["a"; "b"]]}
-      {- [segs (v "a") = ["a"]]}
-      {- [segs (v "") = ["."]]}
-      {- [segs (v "/") = [""; ""]]}
-      {- [segs (v "\\\\.\\dev\\") = ["";""]] (Windows)}
-      {- [segs (v "\\\\server\\share\\a") = ["";"a"]] (Windows)}
-      {- [segs (v "C:a") = ["a"]] (Windows)}
-      {- [segs (v "C:\\a") = ["";"a"]] (Windows)}}
+      {!String.concat}[ ~sep:dir_sep]. {{!ex_segs}Examples.}
 
       The following invariant holds:
       {ul
@@ -286,78 +252,26 @@ $(drive):
 
   val filename : path -> string
   (** [filename p] is the filename of [p], that is the last segment of
-      [p]. Examples:
-      {ul
-      {- [filename (v "/a/b/") = ""]}
-      {- [filename (v "/a/b") = "b"]}
-      {- [filename (v "a") = "a"]}
-      {- [filename (v "/") = ""]}
-      {- [filename (v "C:\\") = ""] (Windows)}
-      {- [filename (v "C:a") = "a"] (Windows)}} *)
+      [p]. {{!ex_filename}Examples}. *)
 
   val base : path -> path
   (** [base p] is the path made of the last {e non-empty} segment of
-      [p] or [p] itself on root paths.
-      Examples:
-      {ul
-      {- [equal (base @@ v "/a/b/") (v "b")]}
-      {- [equal (base @@ v "/a/b") (v "b")]}
-      {- [equal (base @@ v "a") (v "a")]}
-      {- [equal (base @@ v ".") (v ".")]}
-      {- [equal (base @@ v "..") (v "..")]}
-      {- [equal (base @@ v "/") (v "/")]}
-      {- [equal (base @@ v "\\\\server\\share\\") (v "\\\\server\\share\\")]
-         (Windows)}
-      {- [equal (base @@ v "C:\\") (v "C:\\")] (Windows)}} *)
+      [p] or [p] itself on root paths. {{!ex_base}Examples}. *)
 
   val parent : path -> path
   (** [parent p] is the parent path of [p]. This is defined as [p] without
       its last {e non-empty} segment or [p] if there is no such segment
-      or {!cur_dir} for a single segment relative path. Examples:
-      {ul
-      {- [equal (parent @@ v "/a/b") (v "/a")]}
-      {- [equal (parent @@ v "/a/b/") (v "/a")]}
-      {- [equal (parent @@ v "/a") (v "/")]}
-      {- [equal (parent @@ v "/a/") (v "/")]}
-      {- [equal (parent @@ v "a/b/") (v "a")]}
-      {- [equal (parent @@ v "a/b") (v "a")]}
-      {- [equal (parent @@ v "a") (v ".")]}
-      {- [equal (parent @@ v "a/") (v ".")]}
-      {- [equal (parent @@ v ".") (v ".")]}
-      {- [equal (parent @@ v "..") (v ".")]}
-      {- [equal (parent @@ v "/") (v "/")]}
-      {- [equal (parent @@ v "\\\\server\\share\\") (v "\\\\server\\share\\")]
-         (Windows)}
-      {- [equal (parent @@ v "C:a") (v "C:.")] (Windows)}
-      {- [equal (parent @@ v "C:\\") (v "C:\\")] (Windows)}} *)
+      or {!cur_dir} for a single segment relative path.
+      {{!ex_parent}Examples}. *)
 
   val file_to_dir : path -> path
   (** [file_to_dir p] is {!add_seg}[ p ""]. It ensures the result has a
-      trailing {!dir_sep}. Examples:
-      {ul
-      {- [equal (file_to_dir @@ v "/a/b") (v "/a/b/")]}
-      {- [equal (file_to_dir @@ v "/a/b/") (v "/a/b/")]}
-      {- [equal (file_to_dir @@ v "a") (v "a/")]}
-      {- [equal (file_to_dir @@ v "/") (v "/")]}
-      {- [equal (file_to_dir @@ v "\\\\server\\share\\")
-         (v "\\\\server\\share\\")]
-         (Windows)}
-      {- [equal (file_to_dir @@ v "C:a") (v "C:a/")] (Windows)}
-      {- [equal (file_to_dir @@ v "C:\\") (v "C:\\")] (Windows)}} *)
+      trailing {!dir_sep}. {{!ex_file_to_dir}Examples}. *)
 
   val dir_to_file : path -> path
   (** [dir_to_file p] removes the last segment of [p] if it is empty.
-      It ensures the result has no trailing {!dir_sep}. Examples:
-      {ul
-      {- [equal (dir_to_file @@ v "/a/b") (v "/a/b")]}
-      {- [equal (dir_to_file @@ v "/a/b/") (v "/a/b")]}
-      {- [equal (dir_to_file @@ v "a/") (v "a")]}
-      {- [equal (dir_to_file @@ v "/") (v "/")]}
-      {- [equal (dir_to_file @@ v "\\\\server\\share\\")
-         (v "\\\\server\\share\\")]
-         (Windows)}
-      {- [equal (dir_to_file @@ v "C:a/") (v "C:a")] (Windows)}
-      {- [equal (dir_to_file @@ v "C:\\") (v "C:\\")] (Windows)}} *)
+      It ensures the result has no trailing {!dir_sep}.
+      {{!ex_dir_to_file}Examples}. *)
 
   val find_prefix : path -> path -> path option
   (** [find_prefix p p'] is [Some root] if there exists [root] such that
@@ -365,29 +279,13 @@ $(drive):
       [is_prefix root p && is_prefix root p' = true] and [None] otherwise.
       Note that if both [p] and [p'] are relative or absolute
       and have the same volume then a prefix exists.
-      {ul
-      {- [find_prefix (v "a/b/c") (v "a/b/d")] is [Some (v "a/b/")]}
-      {- [find_prefix (v "a/b/c") (v "a/b/cd")] is [Some (v "a/b/")]}
-      {- [find_prefix (v "/a/b/c") (v "/a/b/d")] is [Some (v "/a/b/")]}
-      {- [find_prefix (v "a/b") (v "e/f")] is [Some (v ".")]}
-      {- [find_prefix (v "/a/b") (v "/e/f")] is [Some (v "/")]}
-      {- [find_prefix (v "/a/b") (v "e/f")] is [None]}
-      {- [find_prefix (v "C:\\a") (v "\\a")] is [None]} (Windows)} *)
+      {{!ex_find_prefix}Examples}. *)
 
   val rem_prefix : root:path -> path -> path option
   (** [rem_prefix root p] is [Some q] if [root] is a
       {{!is_prefix}prefix} of [p]; [q] is [p] without the [root]
       prefix but interpreted as a {{!file_to_dir}directory} (hence [q]
-      is always relative). Examples:
-      {ul
-      {- [rem_prefix (v "/a/b") (v "/a/bc")] is [None]}
-      {- [rem_prefix (v "/a/b") (v "/a/b")] is [Some (v ".")]}
-      {- [rem_prefix (v "/a/b/") (v "/a/b")] is [None]}
-      {- [rem_prefix (v "/a/b") (v "/a/b/")] is [Some (v ".")]}
-      {- [rem_prefix (v "/a/b/") (v "/a/b/")] is [Some (v ".")]}
-      {- [rem_prefix (v "/a/b") (v "/a/b/c")] is [Some (v "c")]}
-      {- [rem_prefix (v "/a/b/") (v "/a/b/c")] is [Some (v "c")]}
-      {- [rem_prefix (v "a") (v "a/b/c")] is [Some (v "b/c")]}}
+      is always relative). {{!ex_rem_prefix}Examples}.
 
       {b Note.} If you {{!find_prefix}find} a prefix and this
       prefix is ["."], [rem_prefix] may return [None] on that
@@ -400,17 +298,7 @@ $(drive):
       segments. If [p] is relative it has no {!cur_dir} and may only
       have potential {!par_dir} as initial segments. Note that except
       if the path is a root, the path never has a trailing directory
-      separator. Examples:
-      {ul
-      {- [equal (normalize @@ v "./a/..") (v ".")]}
-      {- [equal (normalize @@ v "/a/b/./..") (v "/a")]}
-      {- [equal (normalize @@ v "/../..") (v "/")]}
-      {- [equal (normalize @@ v "/a/../..") (v "/")]}
-      {- [equal (normalize @@ v "./../..") (v "../..")]}
-      {- [equal (normalize @@ v "../../a/") (v "../../a")]}
-      {- [equal (normalize @@ v "/a/b/c/./../../g") (v "/a/g")]}
-      {- [equal (normalize @@ v "\\\\?\\UNC\\server\\share\\..")
-         (v "\\\\?\\UNC\\server\\share\\")] (Windows)}} *)
+      separator. {{!ex_normalize}Examples}. *)
 
   val rooted : root:path -> path -> path option
   (** [rooted ~root p] is:
@@ -420,18 +308,7 @@ $(drive):
       {- [Some (normalize @@ append root p)] otherwise.}}
       In other words it ensures that an absolute path [p] or a relative
       path [p] expressed w.r.t. [root] expresses a path that is
-      within the [root] file hierarchy. Examples:
-      {ul
-      {- [rooted (v "/a/b") (v "c")] is [Some (v "/a/b/c")]}
-      {- [rooted (v "/a/b") (v "/a/b/c")] is [Some (v "/a/b/c")]}
-      {- [rooted (v "/a/b") (v "/a/b/c/")] is [Some (v "/a/b/c")]}
-      {- [rooted (v "/a/b") (v "/a/b/c/.")] is [Some (v "/a/b/c")]}
-      {- [rooted (v "/a/b") (v "../c")] is [None]}
-      {- [rooted (v "a/b") (v "c")] is [Some (v "a/b/c")]}
-      {- [rooted (v "a/b") (v "/c")] is [None]}
-      {- [rooted (v "a/b") (v "../c")] is [None]}
-      {- [rooted (v "a/b") (v "c/..")] is [Some (v "a/b")]}
-      {- [rooted (v "a/b") (v "c/../..")] is [None]}} *)
+      within the [root] file hierarchy. {{!ex_rooted}Examples}. *)
 
   val relativize : root:path -> path -> path option
   (** [relativize ~root p] expresses [p] relative to [root] without
@@ -444,24 +321,7 @@ $(drive):
          the current working directory).}
       {- [Some q] otherwise with [q] such that
          [equal (normalize (append root q)) (normalize p) = true].}}
-      Examples:
-      {ul
-      {- [relativize (v "/a/b") (v "c")] is [None]}
-      {- [relativize (v "/a/b") (v "/c")] is [Some (v "../../c")]}
-      {- [relativize (v "/a/b") (v "/c/")] is [Some (v "../../c")]}
-      {- [relativize (v "/a/b") (v "/a/b/c")] is [Some (v "c")]}
-      {- [relativize (v "/a/b") (v "/a/b")] is [Some (v ".")]}
-      {- [relativize (v "/a/b") (v "/a/b/")] is [Some (v ".")]}
-      {- [relativize (v "a/b") (v "/c")] is [None].}
-      {- [relativize (v "a/b") (v "c")] is [Some (v "../../c")]}
-      {- [relativize (v "a/b") (v "c/")] is [Some (v "../../c")]}
-      {- [relativize (v "a/b") (v "a/b/c")] is [Some (v "c")]}
-      {- [relativize (v "a/b") (v "a/b")] is [Some (v ".")]}
-      {- [relativize (v "a/b") (v "a/b/")] is [Some (v ".")]}
-      {- [relativize (v "../a") (v "b")] is [None]}
-      {- [relativize (v "../../a") (v "../b")] is [None]}
-      {- [relativize (v "../a") (v "../../b")] is [(Some "../../b")]}}
-  *)
+      {{!ex_relativize}Examples.} *)
 
   (** {1:conversions Conversions and pretty printing} *)
 
@@ -510,77 +370,33 @@ $(drive):
   (** [ext p] is [p]'s last segment file extension or the empty
       string if there is no extension. If [multi] is [true] (defaults to
       [false]), returns the multiple file
-      extension.
-      Examples:
-      {ul
-      {- [ext (v "/a/b") = ""]}
-      {- [ext (v "a/.") = ""]}
-      {- [ext (v "a/..") = ""]}
-      {- [ext (v "a/.ocamlinit") = ""]}
-      {- [ext (v "/a/b.") = "."]}
-      {- [ext (v "/a/b.mli") = ".mli"]}
-      {- [ext (v "a.tar.gz") = ".gz"]}
-      {- [ext (v "a/.emacs.d") = ".d"]}
-      {- [ext ~multi:true (v "/a/b.mli") = ".mli"]}
-      {- [ext ~multi:true (v "a.tar.gz") = ".tar.gz"]}
-      {- [ext ~multi:true (v "a/.emacs.d") = ".d"]}} *)
+      extension. {{!ex_ext}Examples}. *)
 
   val ext_is : ext -> path -> bool
   (** [ext_is e p] is [true] iff [ext p = e || ext ~multi:true p = e].
       If [e] doesn't start with a ['.'] one is prefixed before making
-      the test.
-      {ul
-      {- [ext_is ".mli" (v "a/b.mli")  = true]}
-      {- [ext_is "mli" (v "a/b.mli")  = true]}
-      {- [ext_is "mli" (v "a/bmli")  = false]}
-      {- [ext_is ".tar.gz" (v "a/f.tar.gz") = true]}
-      {- [ext_is "tar.gz" (v "a/f.tar.gz") = true]}
-      {- [ext_is ".tar" (v "a/f.tar.gz") = false]}} *)
+      the test. {{!ex_ext_is}Examples}. *)
 
   val has_ext : ?multi:bool -> path -> bool
   (** [has_ext ~multi p] is [true] iff [p]'s last segment has an extension.
       If [multi] is [true] (default to [false]) returns [true] iff
       [p] has {e more than one} extension. This can be understood as:
-      Examples:
-      {ul
-      {- [has_ext (v "a/f") = false]}
-      {- [has_ext (v "a/f.") = true]}
-      {- [has_ext (v "a/f.gz") = true]}
-      {- [has_ext (v "a/f.tar.gz") = true]}
-      {- [has_ext (v ".emacs.d") = true]}
-      {- [has_ext ~multi:true (v "a/f.gz") = false]}
-      {- [has_ext ~multi:true (v "a/f.tar.gz") = true]}
-      {- [has_ext ~multi:true (v ".emacs.d") = false]}} *)
+      {{!ex_has_ext}Examples}. *)
 
   val add_ext : ext -> path -> path
   (** [add_ext ext p] is [p] with the string [ext] concatenated to [p]'s
       last segment. If [ext] doesn't start with a ['.'] one is prefixed to it
-      before concatenation except if [ext] is [""]. Examples:
-      {ul
-      {- [equal (add_ext ".mli" (v "a/b")) (v "a/b.mli")]}
-      {- [equal (add_ext "mli" (v "a/b")) (v "a/b.mli")]}
-      {- [equal (add_ext "." (v "a/b")) (v "a/b.")]}
-      {- [equal (add_ext "" (v "a/b")) (v "a/b")]}
-      {- [equal (add_ext ".tar.gz" (v "a/f")) (v "a/f.tar.gz")]}
-      {- [equal (add_ext "tar.gz" (v "a/f")) (v "a/f.tar.gz")]}
-      {- [equal (add_ext ".gz" (v "a/f.tar") ) (v "a/f.tar.gz")]}
-      {- [equal (add_ext "gz" (v "a/f.tar") ) (v "a/f.tar.gz")]}}
+      before concatenation except if [ext] is [""]. {{!ex_add_ext}Examples}.
 
       @raise Invalid_argument if {!is_seg_valid}[ ext] is [false]. *)
 
   val rem_ext : ?multi:bool -> path -> path
   (** [rem_ext p] is [p] with the file extension of [p]'s last segment
       removed. If [multi] is [true] (default to [false]), the multiple
-      file extension is removed.
-      {ul
-      {- [equal (rem_ext @@ v "/a/b") (v "/a/b")]}
-      {- [equal (rem_ext @@ v "/a/b.mli") (v "/a/b")]}
-      {- [equal (rem_ext @@ v "a/.ocamlinit") (v "a/.ocamlinit")]}
-      {- [equal (rem_ext @@ v "f.tar.gz") (v "f.tar")]}
-      {- [equal (rem_ext ~multi:true @@ v "f.tar.gz") (v "f")]}} *)
+      file extension is removed. {{!ex_rem_ext}Examples}. *)
 
   val set_ext : ?multi:bool -> ext -> path -> path
-  (** [set_ext ~multi p ext] is [add_ext ext (rem_ext ~multi p)].
+  (** [set_ext ?multi p ext] is [add_ext ext (rem_ext ?multi p)].
 
       @raise Invalid_argument if {!is_seg_valid}[ ext] is [false]. *)
 
@@ -717,6 +533,250 @@ $(drive):
     (** [dump pp_v ppf m] prints an unspecified representation of [m] on
         [ppf] using [pp_v] to print the map codomain elements. *)
   end
+
+  (** {1:ex Examples}
+
+      {2:ex_add_seg {!add_seg}}
+
+      {ul
+      {- [equal (add_seg (v "/a") "b") (v "/a/b")]}
+      {- [equal (add_seg (v "/a/") "b") (v "/a/b")]}
+      {- [equal (add_seg (v "/a/b") "") (v "/a/b/")]}
+      {- [equal (add_seg (v "/a/b/") "") (v "/a/b/")]}
+      {- [equal (add_seg (v "/") "") (v "/")]}
+      {- [equal (add_seg (v "/") "a") (v "/a")]}}
+
+      {2:ex_append {!append}}
+
+      {ul
+      {- [equal (append (v "/a/b/") (v "e/f")) (v "/a/b/e/f")]}
+      {- [equal (append (v "/a/b") (v "e/f")) (v "/a/b/e/f")]}
+      {- [equal (append (v "/a/b/") (v "/e/f")) (v "/e/f")]}
+      {- [equal (append (v "a/b/") (v "e/f")) (v "a/b/e/f")]}
+      {- [equal (append (v "a/b") (v "C:e")) (v "C:e")] (Windows)}}
+
+      {2:ex_is_prefix {!is_prefix}}
+
+      {ul
+      {- [is_prefix (v "/a/b") (v "/a/b") = true]}
+      {- [is_prefix (v "/a/b") (v "/a/b/") = true]}
+      {- [is_prefix (v "/a/b") (v "/a/bc") = false]}
+      {- [is_prefix (v "/a/b") (v "/a/b/c") = true]}
+      {- [is_prefix (v "/a/b/") (v "/a/b") = false]}
+      {- [is_prefix (v "a/b") (v "/a/b") = false]}
+      {- [is_prefix (v "a/b") (v "a/b") = true]}
+      {- [is_prefix (v "//a/b") (v "/a/b") = false]}
+      {- [is_prefix (v "C:a") (v "a") = false] (Windows)}}
+
+      {2:ex_segs {!segs}}
+
+      {ul
+      {- [segs (v "/a/b/") = [""; "a"; "b"; ""]]}
+      {- [segs (v "/a/b") = [""; "a"; "b"]]}
+      {- [segs (v "a/b/") = ["a"; "b"; ""]]}
+      {- [segs (v "a/b") = ["a"; "b"]]}
+      {- [segs (v "a") = ["a"]]}
+      {- [segs (v "") = ["."]]}
+      {- [segs (v "/") = [""; ""]]}
+      {- [segs (v "\\\\.\\dev\\") = ["";""]] (Windows)}
+      {- [segs (v "\\\\server\\share\\a") = ["";"a"]] (Windows)}
+      {- [segs (v "C:a") = ["a"]] (Windows)}
+      {- [segs (v "C:\\a") = ["";"a"]] (Windows)}}
+
+      {2:ex_filename {!filename}}
+
+      {ul
+      {- [filename (v "/a/b/") = ""]}
+      {- [filename (v "/a/b") = "b"]}
+      {- [filename (v "a") = "a"]}
+      {- [filename (v "/") = ""]}
+      {- [filename (v "C:\\") = ""] (Windows)}
+      {- [filename (v "C:a") = "a"] (Windows)}}
+
+      {2:ex_base {!base}}
+
+      {ul
+      {- [equal (base @@ v "/a/b/") (v "b")]}
+      {- [equal (base @@ v "/a/b") (v "b")]}
+      {- [equal (base @@ v "a") (v "a")]}
+      {- [equal (base @@ v ".") (v ".")]}
+      {- [equal (base @@ v "..") (v "..")]}
+      {- [equal (base @@ v "/") (v "/")]}
+      {- [equal (base @@ v "\\\\server\\share\\") (v "\\\\server\\share\\")]
+         (Windows)}
+      {- [equal (base @@ v "C:\\") (v "C:\\")] (Windows)}}
+
+      {2:ex_parent {!parent}}
+
+      {ul
+      {- [equal (parent @@ v "/a/b") (v "/a")]}
+      {- [equal (parent @@ v "/a/b/") (v "/a")]}
+      {- [equal (parent @@ v "/a") (v "/")]}
+      {- [equal (parent @@ v "/a/") (v "/")]}
+      {- [equal (parent @@ v "a/b/") (v "a")]}
+      {- [equal (parent @@ v "a/b") (v "a")]}
+      {- [equal (parent @@ v "a") (v ".")]}
+      {- [equal (parent @@ v "a/") (v ".")]}
+      {- [equal (parent @@ v ".") (v ".")]}
+      {- [equal (parent @@ v "..") (v ".")]}
+      {- [equal (parent @@ v "/") (v "/")]}
+      {- [equal (parent @@ v "\\\\server\\share\\") (v "\\\\server\\share\\")]
+         (Windows)}
+      {- [equal (parent @@ v "C:a") (v "C:.")] (Windows)}
+      {- [equal (parent @@ v "C:\\") (v "C:\\")] (Windows)}}
+
+      {2:ex_file_to_dir {!file_to_dir}}
+
+      {ul
+      {- [equal (file_to_dir @@ v "/a/b") (v "/a/b/")]}
+      {- [equal (file_to_dir @@ v "/a/b/") (v "/a/b/")]}
+      {- [equal (file_to_dir @@ v "a") (v "a/")]}
+      {- [equal (file_to_dir @@ v "/") (v "/")]}
+      {- [equal (file_to_dir @@ v "\\\\server\\share\\")
+         (v "\\\\server\\share\\")]
+         (Windows)}
+      {- [equal (file_to_dir @@ v "C:a") (v "C:a/")] (Windows)}
+      {- [equal (file_to_dir @@ v "C:\\") (v "C:\\")] (Windows)}}
+
+      {2:ex_dir_to_file {!dir_to_file}}
+
+      {ul
+      {- [equal (dir_to_file @@ v "/a/b") (v "/a/b")]}
+      {- [equal (dir_to_file @@ v "/a/b/") (v "/a/b")]}
+      {- [equal (dir_to_file @@ v "a/") (v "a")]}
+      {- [equal (dir_to_file @@ v "/") (v "/")]}
+      {- [equal (dir_to_file @@ v "\\\\server\\share\\")
+         (v "\\\\server\\share\\")]
+         (Windows)}
+      {- [equal (dir_to_file @@ v "C:a/") (v "C:a")] (Windows)}
+      {- [equal (dir_to_file @@ v "C:\\") (v "C:\\")] (Windows)}}
+
+      {2:ex_find_prefix {!find_prefix}}
+
+      {ul
+      {- [find_prefix (v "a/b/c") (v "a/b/d")] is [Some (v "a/b/")]}
+      {- [find_prefix (v "a/b/c") (v "a/b/cd")] is [Some (v "a/b/")]}
+      {- [find_prefix (v "/a/b/c") (v "/a/b/d")] is [Some (v "/a/b/")]}
+      {- [find_prefix (v "a/b") (v "e/f")] is [Some (v ".")]}
+      {- [find_prefix (v "/a/b") (v "/e/f")] is [Some (v "/")]}
+      {- [find_prefix (v "/a/b") (v "e/f")] is [None]}
+      {- [find_prefix (v "C:\\a") (v "\\a")] is [None] (Windows)}}
+
+      {2:ex_rem_prefix {!rem_prefix}}
+
+      {ul
+      {- [rem_prefix (v "/a/b") (v "/a/bc")] is [None]}
+      {- [rem_prefix (v "/a/b") (v "/a/b")] is [Some (v ".")]}
+      {- [rem_prefix (v "/a/b/") (v "/a/b")] is [None]}
+      {- [rem_prefix (v "/a/b") (v "/a/b/")] is [Some (v ".")]}
+      {- [rem_prefix (v "/a/b/") (v "/a/b/")] is [Some (v ".")]}
+      {- [rem_prefix (v "/a/b") (v "/a/b/c")] is [Some (v "c")]}
+      {- [rem_prefix (v "/a/b/") (v "/a/b/c")] is [Some (v "c")]}
+      {- [rem_prefix (v "a") (v "a/b/c")] is [Some (v "b/c")]}}
+
+      {2:ex_normalize {!normalize}}
+
+      {ul
+      {- [equal (normalize @@ v "./a/..") (v ".")]}
+      {- [equal (normalize @@ v "/a/b/./..") (v "/a")]}
+      {- [equal (normalize @@ v "/../..") (v "/")]}
+      {- [equal (normalize @@ v "/a/../..") (v "/")]}
+      {- [equal (normalize @@ v "./../..") (v "../..")]}
+      {- [equal (normalize @@ v "../../a/") (v "../../a")]}
+      {- [equal (normalize @@ v "/a/b/c/./../../g") (v "/a/g")]}
+      {- [equal (normalize @@ v "\\\\?\\UNC\\server\\share\\..")
+         (v "\\\\?\\UNC\\server\\share\\")] (Windows)}}
+
+      {2:ex_rooted {!rooted}}
+
+      {ul
+      {- [rooted (v "/a/b") (v "c")] is [Some (v "/a/b/c")]}
+      {- [rooted (v "/a/b") (v "/a/b/c")] is [Some (v "/a/b/c")]}
+      {- [rooted (v "/a/b") (v "/a/b/c/")] is [Some (v "/a/b/c")]}
+      {- [rooted (v "/a/b") (v "/a/b/c/.")] is [Some (v "/a/b/c")]}
+      {- [rooted (v "/a/b") (v "../c")] is [None]}
+      {- [rooted (v "a/b") (v "c")] is [Some (v "a/b/c")]}
+      {- [rooted (v "a/b") (v "/c")] is [None]}
+      {- [rooted (v "a/b") (v "../c")] is [None]}
+      {- [rooted (v "a/b") (v "c/..")] is [Some (v "a/b")]}
+      {- [rooted (v "a/b") (v "c/../..")] is [None]}}
+
+      {2:ex_relativize {!relativize}}
+
+      {ul
+      {- [relativize (v "/a/b") (v "c")] is [None]}
+      {- [relativize (v "/a/b") (v "/c")] is [Some (v "../../c")]}
+      {- [relativize (v "/a/b") (v "/c/")] is [Some (v "../../c")]}
+      {- [relativize (v "/a/b") (v "/a/b/c")] is [Some (v "c")]}
+      {- [relativize (v "/a/b") (v "/a/b")] is [Some (v ".")]}
+      {- [relativize (v "/a/b") (v "/a/b/")] is [Some (v ".")]}
+      {- [relativize (v "a/b") (v "/c")] is [None].}
+      {- [relativize (v "a/b") (v "c")] is [Some (v "../../c")]}
+      {- [relativize (v "a/b") (v "c/")] is [Some (v "../../c")]}
+      {- [relativize (v "a/b") (v "a/b/c")] is [Some (v "c")]}
+      {- [relativize (v "a/b") (v "a/b")] is [Some (v ".")]}
+      {- [relativize (v "a/b") (v "a/b/")] is [Some (v ".")]}
+      {- [relativize (v "../a") (v "b")] is [None]}
+      {- [relativize (v "../../a") (v "../b")] is [None]}
+      {- [relativize (v "../a") (v "../../b")] is [(Some "../../b")]}}
+
+      {2:ex_ext {!ext}}
+
+      {ul
+      {- [ext (v "/a/b") = ""]}
+      {- [ext (v "a/.") = ""]}
+      {- [ext (v "a/..") = ""]}
+      {- [ext (v "a/.ocamlinit") = ""]}
+      {- [ext (v "/a/b.") = "."]}
+      {- [ext (v "/a/b.mli") = ".mli"]}
+      {- [ext (v "a.tar.gz") = ".gz"]}
+      {- [ext (v "a/.emacs.d") = ".d"]}
+      {- [ext ~multi:true (v "/a/b.mli") = ".mli"]}
+      {- [ext ~multi:true (v "a.tar.gz") = ".tar.gz"]}
+      {- [ext ~multi:true (v "a/.emacs.d") = ".d"]}}
+
+      {2:ex_ext_is {!ext_is}}
+
+      {ul
+      {- [ext_is ".mli" (v "a/b.mli")  = true]}
+      {- [ext_is "mli" (v "a/b.mli")  = true]}
+      {- [ext_is "mli" (v "a/bmli")  = false]}
+      {- [ext_is ".tar.gz" (v "a/f.tar.gz") = true]}
+      {- [ext_is "tar.gz" (v "a/f.tar.gz") = true]}
+      {- [ext_is ".tar" (v "a/f.tar.gz") = false]}}
+
+      {2:ex_has_ext {!has_ext}}
+
+      {ul
+      {- [has_ext (v "a/f") = false]}
+      {- [has_ext (v "a/f.") = true]}
+      {- [has_ext (v "a/f.gz") = true]}
+      {- [has_ext (v "a/f.tar.gz") = true]}
+      {- [has_ext (v ".emacs.d") = true]}
+      {- [has_ext ~multi:true (v "a/f.gz") = false]}
+      {- [has_ext ~multi:true (v "a/f.tar.gz") = true]}
+      {- [has_ext ~multi:true (v ".emacs.d") = false]}}
+
+      {2:ex_add_ext {!add_ext}}
+
+      {ul
+      {- [equal (add_ext ".mli" (v "a/b")) (v "a/b.mli")]}
+      {- [equal (add_ext "mli" (v "a/b")) (v "a/b.mli")]}
+      {- [equal (add_ext "." (v "a/b")) (v "a/b.")]}
+      {- [equal (add_ext "" (v "a/b")) (v "a/b")]}
+      {- [equal (add_ext ".tar.gz" (v "a/f")) (v "a/f.tar.gz")]}
+      {- [equal (add_ext "tar.gz" (v "a/f")) (v "a/f.tar.gz")]}
+      {- [equal (add_ext ".gz" (v "a/f.tar") ) (v "a/f.tar.gz")]}
+      {- [equal (add_ext "gz" (v "a/f.tar") ) (v "a/f.tar.gz")]}}
+
+      {2:ex_rem_ext {!rem_ext}}
+
+      {ul
+      {- [equal (rem_ext @@ v "/a/b") (v "/a/b")]}
+      {- [equal (rem_ext @@ v "/a/b.mli") (v "/a/b")]}
+      {- [equal (rem_ext @@ v "a/.ocamlinit") (v "a/.ocamlinit")]}
+      {- [equal (rem_ext @@ v "f.tar.gz") (v "f.tar")]}
+      {- [equal (rem_ext ~multi:true @@ v "f.tar.gz") (v "f")]}} *)
 end
 
 (** Command lines.
