@@ -13,7 +13,7 @@ open Bos
    will check files against that database. *)
 
 module Db = struct
-  let db_file = Path.v "watchdb"
+  let db_file = Fpath.v "watchdb"
   let exists () = OS.File.exists db_file
   let scan () =             (* returns list of (path, modification time) *)
     let add acc p =
@@ -27,26 +27,26 @@ module Db = struct
     >>= fun dir -> OS.Dir.contents_fold ~over:`Files add [] dir
 
   let dump oc db = Ok Marshal.(to_channel oc db [No_sharing; Compat_32])
-  let slurp ic () = Ok (Marshal.from_channel ic : float Path.Map.t)
+  let slurp ic () = Ok (Marshal.from_channel ic : float Fpath.Map.t)
 
   let create files =
     Logs.app "Writing modification time database %a"
-      (fun msg -> msg Path.pp db_file);
+      (fun msg -> msg Fpath.pp db_file);
     let count = ref 0 in
-    let add acc (f, time) = incr count; Path.Map.add f time acc in
-    let db = List.fold_left add Path.Map.empty files in
+    let add acc (f, time) = incr count; Fpath.Map.add f time acc in
+    let db = List.fold_left add Fpath.Map.empty files in
     OS.File.with_oc db_file dump db >>= fun () -> Ok !count
 
   let check files =
     let count = ref 0 in
-    let changes db (f, time) = match (incr count; Path.Map.find f db) with
+    let changes db (f, time) = match (incr count; Fpath.Map.find f db) with
     | None ->
-        Logs.app "New file: %a" (fun msg -> msg Path.pp f)
+        Logs.app "New file: %a" (fun msg -> msg Fpath.pp f)
     | Some stamp when stamp <> time ->
-        Logs.app "File changed: %a" (fun msg -> msg Path.pp f)
+        Logs.app "File changed: %a" (fun msg -> msg Fpath.pp f)
     | _ -> ()
     in
-    Logs.app "Checking against %a" (fun msg -> msg Path.pp db_file);
+    Logs.app "Checking against %a" (fun msg -> msg Fpath.pp db_file);
     OS.File.with_ic db_file slurp ()
     >>= fun db -> List.iter (changes db) files; Ok !count
 end

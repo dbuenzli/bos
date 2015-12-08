@@ -15,25 +15,27 @@ let rec call f v = try Ok (f v) with
 | Unix.Unix_error (Unix.EINTR, _, _) -> call f v
 | Unix.Unix_error (e, _, _) -> Error (`Unix e)
 
-let mkdir p m = try Ok (Unix.mkdir p m) with
+let mkdir p m = try Ok (Unix.mkdir (Fpath.to_string p) m) with
 | Unix.Unix_error (e, _, _) -> Error (`Unix e)
 
-let link p p' = try Ok (Unix.link p p') with
+let link p p' =
+  try Ok (Unix.link (Fpath.to_string p) (Fpath.to_string p')) with
+  | Unix.Unix_error (e, _, _) -> Error (`Unix e)
+
+let unlink p = try Ok (Unix.unlink (Fpath.to_string p)) with
 | Unix.Unix_error (e, _, _) -> Error (`Unix e)
 
-let unlink p = try Ok (Unix.unlink p) with
+let rename p p' =
+  try Ok (Unix.rename (Fpath.to_string p) (Fpath.to_string p')) with
+  | Unix.Unix_error (e, _, _) -> Error (`Unix e)
+
+let stat p = try Ok (Unix.stat (Fpath.to_string p)) with
 | Unix.Unix_error (e, _, _) -> Error (`Unix e)
 
-let rename p p' = try Ok (Unix.rename p p') with
+let lstat p = try Ok (Unix.lstat (Fpath.to_string p)) with
 | Unix.Unix_error (e, _, _) -> Error (`Unix e)
 
-let stat p = try Ok (Unix.stat p) with
-| Unix.Unix_error (e, _, _) -> Error (`Unix e)
-
-let lstat p = try Ok (Unix.lstat p) with
-| Unix.Unix_error (e, _, _) -> Error (`Unix e)
-
-let rec truncate p size = try Ok (Unix.truncate p size) with
+let rec truncate p size = try Ok (Unix.truncate (Fpath.to_string p) size) with
 | Unix.Unix_error (Unix.EINTR, _, _) -> truncate p size
 | Unix.Unix_error (e, _, _) -> Error (`Unix e)
 

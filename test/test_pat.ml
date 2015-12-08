@@ -9,7 +9,7 @@ open Astring
 open Bos
 
 let eqp = eq ~eq:Pat.equal ~pp:Pat.pp
-let v = Path.v
+let v = Fpath.v
 
 let string_conv = test "Pat.{v,of_string,to_string}" @@ fun () ->
   let trip p = eq_str p Pat.(to_string (v p)) in

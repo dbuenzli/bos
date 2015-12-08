@@ -57,7 +57,7 @@ let bool =
 
 let string = fun s -> Ok s
 
-let path = parser "path" Bos_path.of_string
+let path = parser "path" Fpath.of_string
 
 let some p =
   fun s -> match p s with

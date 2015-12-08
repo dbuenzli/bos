@@ -11,11 +11,6 @@ open Rresult
 module Pat = Bos_pat
 module Log = Bos_log
 
-(* Paths *)
-
-module Path = Bos_path
-type path = Path.t
-
 (* Command lines *)
 
 module Cmd = Bos_cmd

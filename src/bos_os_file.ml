@@ -15,47 +15,47 @@ let uerror = Unix.error_message
 
 (* Famous file paths *)
 
-let dev_null = Bos_path.v (if Sys.os_type = "Win32" then "NUL" else "/dev/null")
-let dash = Bos_path.v "-"
-let is_dash = Bos_path.equal dash
+let dev_null = Fpath.v (if Sys.os_type = "Win32" then "NUL" else "/dev/null")
+let dash = Fpath.v "-"
+let is_dash = Fpath.equal dash
 
 (* Existence and deletion *)
 
 let rec exists file =
-  try Ok (Unix.((stat file).st_kind = S_REG)) with
+  try Ok (Unix.((stat @@ Fpath.to_string file).st_kind = S_REG)) with
   | Unix.Unix_error (Unix.EINTR, _, _) -> exists file
   | Unix.Unix_error (Unix.ENOENT, _, _) -> Ok false
   | Unix.Unix_error (e, _, _) ->
-      R.error_msgf "file %a exists: %s" Bos_path.pp file (uerror e)
+      R.error_msgf "file %a exists: %s" Fpath.pp file (uerror e)
 
 let rec must_exist file =
   try
-    match Unix.((stat file).st_kind) with
+    match Unix.((stat @@ Fpath.to_string file).st_kind) with
     | Unix.S_REG -> Ok ()
-    | _ -> R.error_msgf "file %a must exist: Not a file" Bos_path.pp file
+    | _ -> R.error_msgf "file %a must exist: Not a file" Fpath.pp file
   with
   | Unix.Unix_error (Unix.EINTR, _, _) -> must_exist file
   | Unix.Unix_error (Unix.ENOENT, _, _) ->
-      R.error_msgf "file %a must exist: No such file" Bos_path.pp file
+      R.error_msgf "file %a must exist: No such file" Fpath.pp file
   | Unix.Unix_error (e, _, _) ->
-      R.error_msgf "file %a must exist: %s" Bos_path.pp file (uerror e)
+      R.error_msgf "file %a must exist: %s" Fpath.pp file (uerror e)
 
 let delete ?(must_exist = false) file =
-  let rec unlink file = try Ok (Unix.unlink file) with
+  let rec unlink file = try Ok (Unix.unlink @@ Fpath.to_string file) with
   | Unix.Unix_error (Unix.EINTR, _, _) -> unlink file
   | Unix.Unix_error (Unix.ENOENT, _, _) ->
       if not must_exist then Ok () else
-      R.error_msgf "delete file %a: No such file" Bos_path.pp file
+      R.error_msgf "delete file %a: No such file" Fpath.pp file
   | Unix.Unix_error (e, _, _) ->
-      R.error_msgf "delete file %a: %s" Bos_path.pp file (uerror e)
+      R.error_msgf "delete file %a: %s" Fpath.pp file (uerror e)
   in
   unlink file
 
 let rec truncate p size =
-  try Ok (Unix.truncate p size) with
+  try Ok (Unix.truncate (Fpath.to_string p) size) with
   | Unix.Unix_error (Unix.EINTR, _, _) -> truncate p size
   | Unix.Unix_error (e, _, _) ->
-      R.error_msgf "truncate file %a: %s" Bos_path.pp p (uerror e)
+      R.error_msgf "truncate file %a: %s" Fpath.pp p (uerror e)
 
 (* Input *)
 
@@ -63,7 +63,8 @@ type input = unit -> (bytes * int * int) option
 
 let with_input file f v =
   try
-    let ic = if is_dash file then stdin else open_in_bin file in
+    let ic = if is_dash file then stdin else open_in_bin (Fpath.to_string file)
+    in
     let ic_valid = ref true in
     let close ic =
       ic_valid := false; if is_dash file then () else close_in ic
@@ -81,11 +82,12 @@ let with_input file f v =
 
 let with_ic file f v =
   try
-    let ic = if is_dash file then stdin else open_in_bin file in
+    let ic = if is_dash file then stdin else open_in_bin (Fpath.to_string file)
+    in
     let close ic = if is_dash file then () else close_in ic in
     Bos_base.apply (f ic) v ~finally:close ic
   with
-  | End_of_file -> R.error_msgf "%a: unexpected end of file" Bos_path.pp file
+  | End_of_file -> R.error_msgf "%a: unexpected end of file" Fpath.pp file
   | Sys_error e -> R.error_msg e
 
 let read file =
@@ -97,7 +99,7 @@ let read file =
       Ok (Bytes.unsafe_to_string s)
     end else begin
       R.error_msgf "read %a: file too large (%a, max supported size: %a)"
-        Bos_path.pp file Fmt.byte_size len Fmt.byte_size Sys.max_string_length
+        Fpath.pp file Fmt.byte_size len Fmt.byte_size Sys.max_string_length
     end
   in
   with_ic file input ()
@@ -119,29 +121,31 @@ let read_lines file = fold_lines (fun acc l -> l :: acc) [] file >>| List.rev
 
 type tmp_name_pat = (string -> string, Format.formatter, unit, string) format4
 
-let rec unlink_tmp file = try Unix.unlink file with
+let rec unlink_tmp file = try Unix.unlink (Fpath.to_string file) with
 | Unix.Unix_error (Unix.EINTR, _, _) -> unlink_tmp file
 | Unix.Unix_error (e, _, _) -> ()
 
-let tmps = ref Bos_path.Set.empty
-let tmps_add file = tmps := Bos_path.Set.add file !tmps
-let tmps_rem file = unlink_tmp file; tmps := Bos_path.Set.remove file !tmps
-let unlink_tmps () = Bos_path.Set.iter unlink_tmp !tmps
+let tmps = ref Fpath.Set.empty
+let tmps_add file = tmps := Fpath.Set.add file !tmps
+let tmps_rem file = unlink_tmp file; tmps := Fpath.Set.remove file !tmps
+let unlink_tmps () = Fpath.Set.iter unlink_tmp !tmps
+
 let () = at_exit unlink_tmps
 
 let create_tmp_path mode dir pat =
   let err () =
     R.error_msgf "create temporary file %s in %a: too many failing attempts"
-      (strf pat "XXXXXX") Bos_path.pp dir
+      (strf pat "XXXXXX") Fpath.pp dir
   in
   let rec loop count =
     if count < 0 then err () else
     let file = Bos_os_tmp.rand_path dir pat in
-    try Ok (file, Unix.(openfile file [O_WRONLY; O_CREAT; O_EXCL] mode)) with
+    let sfile = Fpath.to_string file in
+    try Ok (file, Unix.(openfile sfile [O_WRONLY; O_CREAT; O_EXCL] mode)) with
     | Unix.Unix_error (Unix.EEXIST, _, _) -> loop (count - 1)
     | Unix.Unix_error (Unix.EINTR, _, _) -> loop count
     | Unix.Unix_error (e, _, _) ->
-        R.error_msgf "create temporary file %a: %s" Bos_path.pp file (uerror e)
+        R.error_msgf "create temporary file %a: %s" Fpath.pp file (uerror e)
   in
   loop 10000
 
@@ -187,11 +191,12 @@ type output = (bytes * int * int) option -> unit
 
 let default_mode = 0o622
 
-let rec rename src dst = try Unix.rename src dst; Ok () with
-| Unix.Unix_error (Unix.EINTR, _, _) -> rename src dst
-| Unix.Unix_error (e, _, _) ->
-    R.error_msgf "rename %a to %a: %s"
-      Bos_path.pp src Bos_path.pp dst (uerror e)
+let rec rename src dst =
+  try Unix.rename (Fpath.to_string src) (Fpath.to_string dst); Ok () with
+  | Unix.Unix_error (Unix.EINTR, _, _) -> rename src dst
+  | Unix.Unix_error (e, _, _) ->
+      R.error_msgf "rename %a to %a: %s"
+        Fpath.pp src Fpath.pp dst (uerror e)
 
 let stdout_with_output f v =
   try
@@ -215,7 +220,7 @@ let with_output ?(mode = default_mode) file f v =
       | Error _ as e -> e
       | Ok () -> r
   in
-  with_tmp_output ~mode ~dir:(Bos_path.parent file) "bos-%s.tmp" do_write v
+  with_tmp_output ~mode ~dir:(Fpath.parent file) "bos-%s.tmp" do_write v
 
 let with_oc ?(mode = default_mode) file f v =
   if is_dash file then Bos_base.apply (f stdout) v ~finally:(fun () -> ()) ()
@@ -227,7 +232,7 @@ let with_oc ?(mode = default_mode) file f v =
       | Error _ as e -> e
       | Ok () -> r
   in
-  with_tmp_oc ~mode ~dir:(Bos_path.parent file) "bos-%s.tmp" do_write v
+  with_tmp_oc ~mode ~dir:(Fpath.parent file) "bos-%s.tmp" do_write v
 
 let write ?mode file contents =
   let write oc contents = output_string oc contents; Ok () in

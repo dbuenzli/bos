@@ -14,7 +14,7 @@ let err_empty_line = "empty command line"
 let exists cmd =
   try
     let cmd = List.hd (Bos_cmd.to_list cmd) in
-    let null = Bos_os_file.dev_null in
+    let null = Fpath.to_string (Bos_os_file.dev_null) in
     let test = match Sys.os_type with "Win32" -> "where" | _ -> "type" in
     Ok (Sys.command (strf "%s %s 1>%s 2>%s" test cmd null null) = 0)
   with
@@ -45,7 +45,8 @@ let handle_ret line = match execute line with
 let exec line = handle_ret (mk_line line)
 let exec_read ?(trim = true) line =
   Bos_os_file.tmp "bos-%s.tmp"
-  >>= fun file -> handle_ret (strf "%s > %s" (mk_line line) file)
+  >>= fun file -> handle_ret (strf "%s > %s" (mk_line line)
+                                (Fpath.to_string file))
   >>= fun () -> Bos_os_file.read file
   >>= fun v -> R.ok (if trim then String.trim v else v)
 
@@ -54,7 +55,8 @@ let exec_read_lines line =
 
 let exec_write line file =
   Bos_os_file.tmp "bos-%s.tmp"
-  >>= fun tmpf -> handle_ret (strf "%s > %s" (mk_line line) tmpf)
+  >>= fun tmpf -> handle_ret (strf "%s > %s" (mk_line line)
+                                (Fpath.to_string tmpf))
   >>= fun () -> Bos_os_path.move ~force:true tmpf file
 
 (*---------------------------------------------------------------------------

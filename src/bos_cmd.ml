@@ -23,7 +23,7 @@ let add_args l a = l %% a
 
 let on bool l = if bool then l else []
 
-let p = Bos_path.to_string
+let p = Fpath.to_string
 
 (* Predicates and comparison *)
 

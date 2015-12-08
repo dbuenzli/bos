@@ -6,8 +6,7 @@
 
 (** Light, basic OS interaction.
 
-    Open the module to use it, this defines only {{!path}one type},
-    and modules in your scope.
+    Open the module to use it, this defines only modules in your scope.
 
     {e Release %%VERSION%% - %%MAINTAINER%% } *)
 
@@ -115,672 +114,6 @@ module Pat : sig
       mapping for the variable is unspecified. *)
 end
 
-type path
-(** The type for file paths. *)
-
-(** File paths, file {{!file_exts}extensions}, path {{!Set}sets}
-    and {{!Map}maps}.
-
-    A file path specifies a file or a directory in a file hierarchy. A
-    file path has three parts, an optional platform-dependent
-    {{!split_volume}volume}, an optional root directory separator
-    {!dir_sep}, followed by a list of {!dir_sep} separated
-    segments. Segments are non empty strings except for maybe the last
-    one, the latter distinguishes directories (["/a/b/"]) from file
-    specifications (["/a/b"]).
-
-    A file path is {e absolute} if the optional root {!dir_sep} is
-    present and {e relative} otherwise.
-
-    Windows accepts both ['\\'] and ['/'] as directory separators.  On
-    Windows ['/'] are converted to ['\\'] on the fly by the module and
-    should be preferred to write portable programs. Note that in the
-    following documentation backslashes are escaped as per OCaml
-    conventions in strings so ["\\"] is really a single backslash.
-
-    This module operates on paths without accessing the operating
-    system. The {!OS.Path} module has the functions that do so. *)
-module Path : sig
-
-  (** {1:filepaths File paths} *)
-
-  val dir_sep : string
-  (** [dir_sep] is the platform dependent path directory separator. *)
-
-  type t = path
-  (** The type for paths. *)
-
-  val v : string -> path
-  (** [v s] is the string [s] as path, see {!of_string} for details.
-
-      @raise Invalid_argument if {!of_string}[ p] is [None]. Use {!of_string}
-      to deal with errors. *)
-
-  val add_seg : path -> string -> path
-  (** [add_seg p seg] adds [seg] at the end of [p]. An empty [seg]
-      is only added if [p] hasn't one yet. {{!ex_add_seg}Examples}.
-
-      @raise Invalid_argument if {!is_seg_valid}[ seg] is [false]. *)
-
-  val append : path -> path -> path
-  (** [append p p'] appends [p'] to [p] as follows:
-      {ul
-      {- If [p'] is absolute or has a non-empty {{!split_volume}volume} then
-         [p'] is returned.}
-      {- Otherwise appends [p'] to [p] using a {!dir_sep} if needed.}}
-      {{!ex_append}Examples}. *)
-
-  val ( / ) : path -> string -> path
-  (** [p / seg] is {!add_seg}[ p seg]. Left associative. *)
-
-  val ( // ) : path -> path -> path
-  (** [p // p'] is {!append}[ p p']. Left associative. *)
-
-  (** {1:cst Constants} *)
-
-  val root : path
-  (** [root] is [v "/"], the root absolute path. *)
-
-  val cur_dir : path
-  (** [cur_dir] is [v "."], the current directory. *)
-
-  val par_dir : path
-  (** [par_dir] is [v ".."], the parent directory. *)
-
-  (** {1:predicates Predicates and comparison} *)
-
-  val is_seg_valid : string -> bool
-  (** [is_seg_valid s] is [true] iff [s] does not contain {!dir_sep} or a
-      [0x00] byte. *)
-
-  val is_rel : path -> bool
-  (** [is_rel p] is [true] iff [p] is a relative path. *)
-
-  val is_abs : path -> bool
-  (** [is_abs p] is [true] iff [p] is an absolute path. *)
-
-  val is_prefix : root:path -> path -> bool
-  (** [is_prefix ~root p] is [true] if [root] is a prefix of [p].  This
-      checks that [root] has the same optional volume as [p], the same
-      optional root directory separator and that the list of segments
-      of [root] is a prefix of the segments of [p]. {{!ex_is_prefix}Examples}.
-  *)
-
-  val equal : path -> path -> bool
-  (** [equal p p'] is [true] if [p] and [p'] have the same volume
-      are both relative or absolute and have the same segments. This
-      is a byte level comparison. *)
-
-  val compare : path  -> path -> int
-  (** [compare p p'] is a total order on paths compatible with {!equal}. *)
-
-  (** {1:vol Volume and segments} *)
-
-  val split_volume : path -> string * path
-  (** [split_volume p] is the pair [(vol, q)] where [vol] is
-      the platform dependent volume of [p] or the empty string
-      if there is none and [q] the path [p] without its volume, i.e. is
-      its optional root {!dir_sep} and segments.
-
-      On POSIX if [v] is non-empty then it
-      {{:http://pubs.opengroup.org/onlinepubs/9699919799/basedefs/V1_chap03.html#tag_03_267}can} only be ["/"] (e.g. in [v "//a/b"]). On Windows [v] may be
-      one of the following prefixes parsed before an
-      absolute root {!dir_sep}, except in the first case
-      where a relative path can follow:
-{[
-$(drive):
-\\$(server)\$(share)
-\\?\$(drive):
-\\?\$(server)\$(share)
-\\?\UNC\$(server)\$(share)
-\\.\$(device)
-]}
-     The following invariant holds:
-     {ul
-     {- [equal (v (vol ^ (to_string q))) p]}}
-     {b Warning.} [equal (append (v vol) q) p] does not hold. *)
-
-  val segs : path -> string list
-  (** [segs p] is [p]'s (non-empty) list of segments. Absolute paths have an
-      initial empty string added, this allows to recover the path with
-      {!String.concat}[ ~sep:dir_sep]. {{!ex_segs}Examples.}
-
-      The following invariant holds:
-      {ul
-      {- [to_string (snd (split_volume p)) = (String.concat ~sep:dir_sep
-      (segs p))]}} *)
-
-  val filename : path -> string
-  (** [filename p] is the filename of [p], that is the last segment of
-      [p]. {{!ex_filename}Examples}. *)
-
-  val base : path -> path
-  (** [base p] is the path made of the last {e non-empty} segment of
-      [p] or [p] itself on root paths. {{!ex_base}Examples}. *)
-
-  val parent : path -> path
-  (** [parent p] is the parent path of [p]. This is defined as [p] without
-      its last {e non-empty} segment or [p] if there is no such segment
-      or {!cur_dir} for a single segment relative path.
-      {{!ex_parent}Examples}. *)
-
-  val file_to_dir : path -> path
-  (** [file_to_dir p] is {!add_seg}[ p ""]. It ensures the result has a
-      trailing {!dir_sep}. {{!ex_file_to_dir}Examples}. *)
-
-  val dir_to_file : path -> path
-  (** [dir_to_file p] removes the last segment of [p] if it is empty.
-      It ensures the result has no trailing {!dir_sep}.
-      {{!ex_dir_to_file}Examples}. *)
-
-  val find_prefix : path -> path -> path option
-  (** [find_prefix p p'] is [Some root] if there exists [root] such that
-      [root] is the longest path with
-      [is_prefix root p && is_prefix root p' = true] and [None] otherwise.
-      Note that if both [p] and [p'] are relative or absolute
-      and have the same volume then a prefix exists.
-      {{!ex_find_prefix}Examples}. *)
-
-  val rem_prefix : root:path -> path -> path option
-  (** [rem_prefix root p] is [Some q] if [root] is a
-      {{!is_prefix}prefix} of [p]; [q] is [p] without the [root]
-      prefix but interpreted as a {{!file_to_dir}directory} (hence [q]
-      is always relative). {{!ex_rem_prefix}Examples}.
-
-      {b Note.} If you {{!find_prefix}find} a prefix and this
-      prefix is ["."], [rem_prefix] may return [None] on that
-      prefix and the path where you found it. *)
-
-  val normalize : path -> path
-  (** [normalize p] normalizes [p] to a path referring to the same
-      {{!dir_to_file}file} without consulting the filesystem. If [p]
-      is absolute the resulting path has no {!cur_dir} and {!par_dir}
-      segments. If [p] is relative it has no {!cur_dir} and may only
-      have potential {!par_dir} as initial segments. Note that except
-      if the path is a root, the path never has a trailing directory
-      separator. {{!ex_normalize}Examples}. *)
-
-  val rooted : root:path -> path -> path option
-  (** [rooted ~root p] is:
-      {ul
-      {- [None] if
-         [is_prefix (normalize root) (normalize @@ append root p) = false].}
-      {- [Some (normalize @@ append root p)] otherwise.}}
-      In other words it ensures that an absolute path [p] or a relative
-      path [p] expressed w.r.t. [root] expresses a path that is
-      within the [root] file hierarchy. {{!ex_rooted}Examples}. *)
-
-  val relativize : root:path -> path -> path option
-  (** [relativize ~root p] expresses [p] relative to [root] without
-      consulting the file system. This is:
-      {ul
-      {- [None] if [find_prefix (normalize root) (normalize p)] is [None] or
-         if the number of initial relative [..] segments is larger in
-         [(normalize root)] than in [normalize p] (intuitively you can't
-         come back from [root] to [p] without knowing the absolute path to
-         the current working directory).}
-      {- [Some q] otherwise with [q] such that
-         [equal (normalize (append root q)) (normalize p) = true].}}
-      {{!ex_relativize}Examples.} *)
-
-  (** {1:conversions Conversions and pretty printing} *)
-
-  val to_string : path -> string
-  (** [to_string p] is the path [p] as a string. This path can
-      be safely read back by {!v}. *)
-
-  val of_string : string -> path option
-  (** [of_string s] is the string [s] as a path. [None] is returned if
-      there is a ['\x00'] byte in [s] or, on Windows, if this is an
-      invalid UNC path (e.g. ["\\\\"] or ["\\\\a"]). The following
-      transformations are performed:
-      {ul
-      {- On Windows any ['/'] occurence is converted to ['\\'] before
-         any processing occurs.}
-      {- Non-initial empty segments are suppressed;
-         ["a//b"] becomes ["a/b"], ["//a////b//"] becomes ["//a/b/"], etc.}
-      {- Empty relative paths are converted to {!cur_dir}. For example
-         [""] becomes ["."], ["C:"] becomes ["C:."], etc.}
-      {- On Windows empty absolute UNC paths are completed to
-         their root. For example ["\\\\server\\share"] becomes
-         ["\\\\server\\share\\"],
-         but incomplete UNC volumes like ["\\\\a"] return [None].}} *)
-
-  val pp : Format.formatter -> path -> unit
-  (** [pp ppf p] prints path [p] on [ppf] using {!to_string}. *)
-
-  val dump : Format.formatter -> path -> unit
-  (** [dump ppf p] prints path [p] on [ppf] using {!String.dump}. *)
-
-  (** {1:file_exts File extensions}
-
-      The {e file extension} (resp. {e multiple file extension}) of a
-      path segment is the suffix that starts at the last (resp. first)
-      occurence of a ['.'] that is preceeded by at least one non ['.']
-      character.  If there is no such occurence in the segment, the
-      extension is empty.  With these definitions, ["."], [".."],
-      ["..."] and dot files like [".ocamlinit"] or ["..ocamlinit"]
-      have no extension, but [".emacs.d"] and ["..emacs.d"] do have
-      one. *)
-
-  type ext = string
-  (** The type for file extensions. *)
-
-  val ext : ?multi:bool -> path -> ext
-  (** [ext p] is [p]'s last segment file extension or the empty
-      string if there is no extension. If [multi] is [true] (defaults to
-      [false]), returns the multiple file
-      extension. {{!ex_ext}Examples}. *)
-
-  val has_ext : ext -> path -> bool
-  (** [has_ext e p] is [true] iff [ext p = e || ext ~multi:true p = e].
-      If [e] doesn't start with a ['.'] one is prefixed before making
-      the test. {{!ex_has_ext}Examples}. *)
-
-  val ext_exists : ?multi:bool -> path -> bool
-  (** [ext_exists ~multi p] is [true] iff [p]'s last segment has an extension.
-      If [multi] is [true] (default to [false]) returns [true] iff
-      [p] has {e more than one} extension. {{!ex_ext_exists}Examples}. *)
-
-  val add_ext : ext -> path -> path
-  (** [add_ext ext p] is [p] with the string [ext] concatenated to [p]'s
-      last segment. If [ext] doesn't start with a ['.'] one is prefixed to it
-      before concatenation except if [ext] is [""]. {{!ex_add_ext}Examples}.
-
-      @raise Invalid_argument if {!is_seg_valid}[ ext] is [false]. *)
-
-  val rem_ext : ?multi:bool -> path -> path
-  (** [rem_ext p] is [p] with the file extension of [p]'s last segment
-      removed. If [multi] is [true] (default to [false]), the multiple
-      file extension is removed. {{!ex_rem_ext}Examples}. *)
-
-  val set_ext : ?multi:bool -> ext -> path -> path
-  (** [set_ext ?multi p ext] is [add_ext ext (rem_ext ?multi p)].
-
-      @raise Invalid_argument if {!is_seg_valid}[ ext] is [false]. *)
-
-  val split_ext : ?multi:bool -> path -> path * ext
-  (** [split_ext ?multi p] is [(rem_ext ?multi p, ext ?multi p)].
-
-      Using [(p', ext)] for the resulting pair, the following invariant
-      holds:
-      {ul
-      {- [equal (v (to_string p' ^ ext)) p]}} *)
-
-  val ( + ) : path -> ext -> path
-  (** [p + ext] is [add_ext ext p]. Left associative. *)
-
-  val ( -+ ) : path -> ext -> path
-  (** [p -+ ext] is [set_ext ext p]. Left associative. *)
-
-  (** {1:sets_maps Path sets and maps} *)
-
-  type set
-  (** The type for path sets *)
-
-  (** Path sets. *)
-  module Set : sig
-
-    (** {1 Path sets} *)
-
-    include Set.S with type elt := path
-                   and type t := set
-
-    type t = set
-
-    val min_elt : set -> path option
-    (** Exception safe {!Set.S.min_elt}. *)
-
-    val get_min_elt : set -> path
-    (** [get_min_let] is like {!min_elt} but @raise Invalid_argument
-        on the empty set. *)
-
-    val max_elt : set -> path option
-    (** Exception safe {!Set.S.max_elt}. *)
-
-    val get_max_elt : set -> path
-    (** [get_max_elt] is like {!max_elt} but @raise Invalid_argument
-        on the empty set. *)
-
-    val choose : set -> path option
-    (** Exception safe {!Set.S.choose}. *)
-
-    val get_any_elt : set -> path
-    (** [get_any_elt] is like {!choose} but @raise Invalid_argument on the
-        empty set. *)
-
-    val find : path -> set -> path option
-    (** Exception safe {!Set.S.find}. *)
-
-    val get : path -> set -> path
-    (** [get] is like {!Set.S.find} but @raise Invalid_argument if
-        [elt] is not in [s]. *)
-
-    val of_list : path list -> set
-    (** [of_list ps] is a set from the list [ps]. *)
-
-    val pp : ?sep:(Format.formatter -> unit -> unit) ->
-      (Format.formatter -> string -> unit) ->
-      Format.formatter -> set -> unit
-    (** [pp ~sep pp_elt ppf ps] formats the elements of [ps] on
-        [ppf]. Each element is formatted with [pp_elt] and elements
-        are separated by [~sep] (defaults to
-        {!Format.pp_print_cut}). If the set is empty leaves [ppf]
-        untouched. *)
-
-    val dump : Format.formatter -> set -> unit
-    (** [dump ppf ps] prints an unspecified representation of [ps] on
-        [ppf]. *)
-  end
-
-  type +'a map
-  (** The type for maps from paths to values of type ['a]. *)
-
-  (** Path maps. *)
-  module Map : sig
-
-    (** {1 String maps} *)
-
-    include Map.S with type key := path
-                   and type 'a t := 'a map
-
-    type 'a t = 'a map
-
-    val min_binding : 'a map -> (path * 'a) option
-    (** Exception safe {!Map.S.min_binding}. *)
-
-    val get_min_binding : 'a map -> (path * 'a)
-    (** [get_min_binding] is like {!min_binding} but @raise Invalid_argument
-        on the empty map. *)
-
-    val max_binding : 'a map -> (path * 'a) option
-    (** Exception safe {!Map.S.max_binding}. *)
-
-    val get_max_binding : 'a map -> string * 'a
-    (** [get_min_binding] is like {!max_binding} but @raise Invalid_argument
-        on the empty map. *)
-
-    val choose : 'a map -> (path * 'a) option
-    (** Exception safe {!Map.S.choose}. *)
-
-    val get_any_binding : 'a map -> (path * 'a)
-    (** [get_any_binding] is like {!choose} but @raise Invalid_argument
-        on the empty map. *)
-
-    val find : path -> 'a map -> 'a option
-    (** Exception safe {!Map.S.find}. *)
-
-    val get : path -> 'a map -> 'a
-    (** [get k m] is like {!Map.S.find} but raises [Invalid_argument] if
-        [k] is not bound in [m]. *)
-
-    val dom : 'a map -> set
-    (** [dom m] is the domain of [m]. *)
-
-    val of_list : (path * 'a) list -> 'a map
-    (** [of_list bs] is [List.fold_left (fun m (k, v) -> add k v m) empty
-        bs]. *)
-
-    val pp : ?sep:(Format.formatter -> unit -> unit) ->
-      (Format.formatter -> path * 'a -> unit) -> Format.formatter ->
-      'a map -> unit
-    (** [pp ~sep pp_binding ppf m] formats the bindings of [m] on
-        [ppf]. Each binding is formatted with [pp_binding] and
-        bindings are separated by [sep] (defaults to
-        {!Format.pp_print_cut}). If the map is empty leaves [ppf]
-        untouched. *)
-
-    val dump : (Format.formatter -> 'a -> unit) -> Format.formatter ->
-      'a map -> unit
-    (** [dump pp_v ppf m] prints an unspecified representation of [m] on
-        [ppf] using [pp_v] to print the map codomain elements. *)
-  end
-
-  (** {1:ex Examples}
-
-      {2:ex_add_seg {!add_seg}}
-
-      {ul
-      {- [equal (add_seg (v "/a") "b") (v "/a/b")]}
-      {- [equal (add_seg (v "/a/") "b") (v "/a/b")]}
-      {- [equal (add_seg (v "/a/b") "") (v "/a/b/")]}
-      {- [equal (add_seg (v "/a/b/") "") (v "/a/b/")]}
-      {- [equal (add_seg (v "/") "") (v "/")]}
-      {- [equal (add_seg (v "/") "a") (v "/a")]}}
-
-      {2:ex_append {!append}}
-
-      {ul
-      {- [equal (append (v "/a/b/") (v "e/f")) (v "/a/b/e/f")]}
-      {- [equal (append (v "/a/b") (v "e/f")) (v "/a/b/e/f")]}
-      {- [equal (append (v "/a/b/") (v "/e/f")) (v "/e/f")]}
-      {- [equal (append (v "a/b/") (v "e/f")) (v "a/b/e/f")]}
-      {- [equal (append (v "a/b") (v "C:e")) (v "C:e")] (Windows)}}
-
-      {2:ex_is_prefix {!is_prefix}}
-
-      {ul
-      {- [is_prefix (v "/a/b") (v "/a/b") = true]}
-      {- [is_prefix (v "/a/b") (v "/a/b/") = true]}
-      {- [is_prefix (v "/a/b") (v "/a/bc") = false]}
-      {- [is_prefix (v "/a/b") (v "/a/b/c") = true]}
-      {- [is_prefix (v "/a/b/") (v "/a/b") = false]}
-      {- [is_prefix (v "a/b") (v "/a/b") = false]}
-      {- [is_prefix (v "a/b") (v "a/b") = true]}
-      {- [is_prefix (v "//a/b") (v "/a/b") = false]}
-      {- [is_prefix (v "C:a") (v "a") = false] (Windows)}}
-
-      {2:ex_segs {!segs}}
-
-      {ul
-      {- [segs (v "/a/b/") = [""; "a"; "b"; ""]]}
-      {- [segs (v "/a/b") = [""; "a"; "b"]]}
-      {- [segs (v "a/b/") = ["a"; "b"; ""]]}
-      {- [segs (v "a/b") = ["a"; "b"]]}
-      {- [segs (v "a") = ["a"]]}
-      {- [segs (v "") = ["."]]}
-      {- [segs (v "/") = [""; ""]]}
-      {- [segs (v "\\\\.\\dev\\") = ["";""]] (Windows)}
-      {- [segs (v "\\\\server\\share\\a") = ["";"a"]] (Windows)}
-      {- [segs (v "C:a") = ["a"]] (Windows)}
-      {- [segs (v "C:\\a") = ["";"a"]] (Windows)}}
-
-      {2:ex_filename {!filename}}
-
-      {ul
-      {- [filename (v "/a/b/") = ""]}
-      {- [filename (v "/a/b") = "b"]}
-      {- [filename (v "a") = "a"]}
-      {- [filename (v "/") = ""]}
-      {- [filename (v "C:\\") = ""] (Windows)}
-      {- [filename (v "C:a") = "a"] (Windows)}}
-
-      {2:ex_base {!base}}
-
-      {ul
-      {- [equal (base @@ v "/a/b/") (v "b")]}
-      {- [equal (base @@ v "/a/b") (v "b")]}
-      {- [equal (base @@ v "a") (v "a")]}
-      {- [equal (base @@ v ".") (v ".")]}
-      {- [equal (base @@ v "..") (v "..")]}
-      {- [equal (base @@ v "/") (v "/")]}
-      {- [equal (base @@ v "\\\\server\\share\\") (v "\\\\server\\share\\")]
-         (Windows)}
-      {- [equal (base @@ v "C:\\") (v "C:\\")] (Windows)}}
-
-      {2:ex_parent {!parent}}
-
-      {ul
-      {- [equal (parent @@ v "/a/b") (v "/a")]}
-      {- [equal (parent @@ v "/a/b/") (v "/a")]}
-      {- [equal (parent @@ v "/a") (v "/")]}
-      {- [equal (parent @@ v "/a/") (v "/")]}
-      {- [equal (parent @@ v "a/b/") (v "a")]}
-      {- [equal (parent @@ v "a/b") (v "a")]}
-      {- [equal (parent @@ v "a") (v ".")]}
-      {- [equal (parent @@ v "a/") (v ".")]}
-      {- [equal (parent @@ v ".") (v ".")]}
-      {- [equal (parent @@ v "..") (v ".")]}
-      {- [equal (parent @@ v "/") (v "/")]}
-      {- [equal (parent @@ v "\\\\server\\share\\") (v "\\\\server\\share\\")]
-         (Windows)}
-      {- [equal (parent @@ v "C:a") (v "C:.")] (Windows)}
-      {- [equal (parent @@ v "C:\\") (v "C:\\")] (Windows)}}
-
-      {2:ex_file_to_dir {!file_to_dir}}
-
-      {ul
-      {- [equal (file_to_dir @@ v "/a/b") (v "/a/b/")]}
-      {- [equal (file_to_dir @@ v "/a/b/") (v "/a/b/")]}
-      {- [equal (file_to_dir @@ v "a") (v "a/")]}
-      {- [equal (file_to_dir @@ v "/") (v "/")]}
-      {- [equal (file_to_dir @@ v "\\\\server\\share\\")
-         (v "\\\\server\\share\\")]
-         (Windows)}
-      {- [equal (file_to_dir @@ v "C:a") (v "C:a/")] (Windows)}
-      {- [equal (file_to_dir @@ v "C:\\") (v "C:\\")] (Windows)}}
-
-      {2:ex_dir_to_file {!dir_to_file}}
-
-      {ul
-      {- [equal (dir_to_file @@ v "/a/b") (v "/a/b")]}
-      {- [equal (dir_to_file @@ v "/a/b/") (v "/a/b")]}
-      {- [equal (dir_to_file @@ v "a/") (v "a")]}
-      {- [equal (dir_to_file @@ v "/") (v "/")]}
-      {- [equal (dir_to_file @@ v "\\\\server\\share\\")
-         (v "\\\\server\\share\\")]
-         (Windows)}
-      {- [equal (dir_to_file @@ v "C:a/") (v "C:a")] (Windows)}
-      {- [equal (dir_to_file @@ v "C:\\") (v "C:\\")] (Windows)}}
-
-      {2:ex_find_prefix {!find_prefix}}
-
-      {ul
-      {- [find_prefix (v "a/b/c") (v "a/b/d")] is [Some (v "a/b/")]}
-      {- [find_prefix (v "a/b/c") (v "a/b/cd")] is [Some (v "a/b/")]}
-      {- [find_prefix (v "/a/b/c") (v "/a/b/d")] is [Some (v "/a/b/")]}
-      {- [find_prefix (v "a/b") (v "e/f")] is [Some (v ".")]}
-      {- [find_prefix (v "/a/b") (v "/e/f")] is [Some (v "/")]}
-      {- [find_prefix (v "/a/b") (v "e/f")] is [None]}
-      {- [find_prefix (v "C:\\a") (v "\\a")] is [None] (Windows)}}
-
-      {2:ex_rem_prefix {!rem_prefix}}
-
-      {ul
-      {- [rem_prefix (v "/a/b") (v "/a/bc")] is [None]}
-      {- [rem_prefix (v "/a/b") (v "/a/b")] is [Some (v ".")]}
-      {- [rem_prefix (v "/a/b/") (v "/a/b")] is [None]}
-      {- [rem_prefix (v "/a/b") (v "/a/b/")] is [Some (v ".")]}
-      {- [rem_prefix (v "/a/b/") (v "/a/b/")] is [Some (v ".")]}
-      {- [rem_prefix (v "/a/b") (v "/a/b/c")] is [Some (v "c")]}
-      {- [rem_prefix (v "/a/b/") (v "/a/b/c")] is [Some (v "c")]}
-      {- [rem_prefix (v "a") (v "a/b/c")] is [Some (v "b/c")]}}
-
-      {2:ex_normalize {!normalize}}
-
-      {ul
-      {- [equal (normalize @@ v "./a/..") (v ".")]}
-      {- [equal (normalize @@ v "/a/b/./..") (v "/a")]}
-      {- [equal (normalize @@ v "/../..") (v "/")]}
-      {- [equal (normalize @@ v "/a/../..") (v "/")]}
-      {- [equal (normalize @@ v "./../..") (v "../..")]}
-      {- [equal (normalize @@ v "../../a/") (v "../../a")]}
-      {- [equal (normalize @@ v "/a/b/c/./../../g") (v "/a/g")]}
-      {- [equal (normalize @@ v "\\\\?\\UNC\\server\\share\\..")
-         (v "\\\\?\\UNC\\server\\share\\")] (Windows)}}
-
-      {2:ex_rooted {!rooted}}
-
-      {ul
-      {- [rooted (v "/a/b") (v "c")] is [Some (v "/a/b/c")]}
-      {- [rooted (v "/a/b") (v "/a/b/c")] is [Some (v "/a/b/c")]}
-      {- [rooted (v "/a/b") (v "/a/b/c/")] is [Some (v "/a/b/c")]}
-      {- [rooted (v "/a/b") (v "/a/b/c/.")] is [Some (v "/a/b/c")]}
-      {- [rooted (v "/a/b") (v "../c")] is [None]}
-      {- [rooted (v "a/b") (v "c")] is [Some (v "a/b/c")]}
-      {- [rooted (v "a/b") (v "/c")] is [None]}
-      {- [rooted (v "a/b") (v "../c")] is [None]}
-      {- [rooted (v "a/b") (v "c/..")] is [Some (v "a/b")]}
-      {- [rooted (v "a/b") (v "c/../..")] is [None]}}
-
-      {2:ex_relativize {!relativize}}
-
-      {ul
-      {- [relativize (v "/a/b") (v "c")] is [None]}
-      {- [relativize (v "/a/b") (v "/c")] is [Some (v "../../c")]}
-      {- [relativize (v "/a/b") (v "/c/")] is [Some (v "../../c")]}
-      {- [relativize (v "/a/b") (v "/a/b/c")] is [Some (v "c")]}
-      {- [relativize (v "/a/b") (v "/a/b")] is [Some (v ".")]}
-      {- [relativize (v "/a/b") (v "/a/b/")] is [Some (v ".")]}
-      {- [relativize (v "a/b") (v "/c")] is [None].}
-      {- [relativize (v "a/b") (v "c")] is [Some (v "../../c")]}
-      {- [relativize (v "a/b") (v "c/")] is [Some (v "../../c")]}
-      {- [relativize (v "a/b") (v "a/b/c")] is [Some (v "c")]}
-      {- [relativize (v "a/b") (v "a/b")] is [Some (v ".")]}
-      {- [relativize (v "a/b") (v "a/b/")] is [Some (v ".")]}
-      {- [relativize (v "../a") (v "b")] is [None]}
-      {- [relativize (v "../../a") (v "../b")] is [None]}
-      {- [relativize (v "../a") (v "../../b")] is [(Some "../../b")]}}
-
-      {2:ex_ext {!ext}}
-
-      {ul
-      {- [ext (v "/a/b") = ""]}
-      {- [ext (v "a/.") = ""]}
-      {- [ext (v "a/..") = ""]}
-      {- [ext (v "a/.ocamlinit") = ""]}
-      {- [ext (v "/a/b.") = "."]}
-      {- [ext (v "/a/b.mli") = ".mli"]}
-      {- [ext (v "a.tar.gz") = ".gz"]}
-      {- [ext (v "a/.emacs.d") = ".d"]}
-      {- [ext ~multi:true (v "/a/b.mli") = ".mli"]}
-      {- [ext ~multi:true (v "a.tar.gz") = ".tar.gz"]}
-      {- [ext ~multi:true (v "a/.emacs.d") = ".d"]}}
-
-      {2:ex_has_ext {!has_ext}}
-
-      {ul
-      {- [has_ext ".mli" (v "a/b.mli")  = true]}
-      {- [has_ext "mli" (v "a/b.mli")  = true]}
-      {- [has_ext "mli" (v "a/bmli")  = false]}
-      {- [has_ext ".tar.gz" (v "a/f.tar.gz") = true]}
-      {- [has_ext "tar.gz" (v "a/f.tar.gz") = true]}
-      {- [has_ext ".tar" (v "a/f.tar.gz") = false]}}
-
-      {2:ex_ext_exists {!ext_exists}}
-
-      {ul
-      {- [ext_exists (v "a/f") = false]}
-      {- [ext_exists (v "a/f.") = true]}
-      {- [ext_exists (v "a/f.gz") = true]}
-      {- [ext_exists (v "a/f.tar.gz") = true]}
-      {- [ext_exists (v ".emacs.d") = true]}
-      {- [ext_exists ~multi:true (v "a/f.gz") = false]}
-      {- [ext_exists ~multi:true (v "a/f.tar.gz") = true]}
-      {- [ext_exists ~multi:true (v ".emacs.d") = false]}}
-
-      {2:ex_add_ext {!add_ext}}
-
-      {ul
-      {- [equal (add_ext ".mli" (v "a/b")) (v "a/b.mli")]}
-      {- [equal (add_ext "mli" (v "a/b")) (v "a/b.mli")]}
-      {- [equal (add_ext "." (v "a/b")) (v "a/b.")]}
-      {- [equal (add_ext "" (v "a/b")) (v "a/b")]}
-      {- [equal (add_ext ".tar.gz" (v "a/f")) (v "a/f.tar.gz")]}
-      {- [equal (add_ext "tar.gz" (v "a/f")) (v "a/f.tar.gz")]}
-      {- [equal (add_ext ".gz" (v "a/f.tar") ) (v "a/f.tar.gz")]}
-      {- [equal (add_ext "gz" (v "a/f.tar") ) (v "a/f.tar.gz")]}}
-
-      {2:ex_rem_ext {!rem_ext}}
-
-      {ul
-      {- [equal (rem_ext @@ v "/a/b") (v "/a/b")]}
-      {- [equal (rem_ext @@ v "/a/b.mli") (v "/a/b")]}
-      {- [equal (rem_ext @@ v "a/.ocamlinit") (v "a/.ocamlinit")]}
-      {- [equal (rem_ext @@ v "f.tar.gz") (v "f.tar")]}
-      {- [equal (rem_ext ~multi:true @@ v "f.tar.gz") (v "f")]}} *)
-end
-
 (** Command lines.
 
     For API usability reasons we represent both command lines and
@@ -825,8 +158,8 @@ module Cmd : sig
   (** [on bool line] is [line] if [bool] is [true] and {!empty}
       otherwise. *)
 
-  val p : path -> string
-  (** [p] is {!Path.to_string}. This combinator is here to make
+  val p : Fpath.t -> string
+  (** [p] is {!Fpath.to_string}. This combinator is here to make
       path argument specification brief. *)
 
   (** {1:predicates Predicates and comparison} *)
@@ -947,8 +280,8 @@ module OS : sig
     val string : string parser
     (** [string s] is a string parser, it always succeeds. *)
 
-    val path : path parser
-    (** [path s] is a path parser using {!Path.of_string}. *)
+    val path : Fpath.t parser
+    (** [path s] is a path parser using {!Fpath.of_string}. *)
 
     val some : 'a parser -> 'a option parser
     (** [some p] is wraps [p]'s parse result in [Some]. *)
@@ -1125,8 +458,8 @@ let timeout : int option =
     val string : string converter
     (** [string] converts a string argument. This never errors. *)
 
-    val path : path converter
-    (** [path] converts a path argument using {!Path.of_string}. *)
+    val path : Fpath.t converter
+    (** [path] converts a path argument using {!Fpath.of_string}. *)
 
     val bin : Cmd.t converter
     (** [bin] is {!string} mapped by {!Cmd.v}. *)
@@ -1218,39 +551,39 @@ let main () = main ()
 
     (** {1:ops Existence and move} *)
 
-    val exists : path -> bool result
+    val exists : Fpath.t -> bool result
     (** [exists p] is [true] if [p] exists for the file system
         and [false] otherwise. *)
 
-    val must_exist : path -> unit result
+    val must_exist : Fpath.t -> unit result
     (** [must_exist p] is [()] if [p] exists for the file system
         and an error otherwise. *)
 
-    val move : ?force:bool -> path -> path -> unit result
+    val move : ?force:bool -> Fpath.t -> Fpath.t -> unit result
     (** [move ~force src dst] moves path [src] to [dst]. If [force] is
         [true] (defaults to [false]) the operation doesn't error if
         [dst] exists and can be replaced by [src]. *)
 
-    val stat : path -> Unix.stats result
+    val stat : Fpath.t -> Unix.stats result
     (** [stat p] is [p]'s file information. *)
 
     (** {1:link Path links} *)
 
-    val link : ?force:bool -> target:path -> path -> unit result
+    val link : ?force:bool -> target:Fpath.t -> Fpath.t -> unit result
     (** [link ~force target p] hard links [target] to [p].  If
         [force] is [true] (defaults to [false]) and [p] exists, it is
         is [rmdir]ed or [unlink]ed before making the link. *)
 
-    val symlink : ?force:bool -> target:path -> path -> unit result
+    val symlink : ?force:bool -> target:Fpath.t -> Fpath.t -> unit result
     (** [symlink ~force target p] symbolically links [target] to
         [dst]. If [force] is [true] (defaults to [false]) and [p]
         exists, it is [rmdir]ed or [unlink]ed before making the
         link.*)
 
-    val symlink_target : path -> path result
+    val symlink_target : Fpath.t -> Fpath.t result
     (** [slink_target p] is [p]'s target if [p] is a symbolic link. *)
 
-    val symlink_stat : path -> Unix.stats result
+    val symlink_stat : Fpath.t -> Unix.stats result
     (** [symlink_stat p] is the same as {!stat} but if [p] is a link
         returns information about the link itself. *)
 
@@ -1261,7 +594,7 @@ let main () = main ()
         greedily matches a segment or sub-segment. For example the path
         pattern:
 {[
-        Path.(v "data" / "$(dir)" / "$(file).txt")
+        Fpath.(v "data" / "$(dir)" / "$(file).txt")
 ]}
         matches any existing path of the file system that matches the
         regexp  [data/.*/.*\.txt].
@@ -1271,14 +604,14 @@ let main () = main ()
         [".."]. For example the pattern ["$(file).$(ext)"] does not
         match ["."]. *)
 
-    val matches : ?dotfiles:bool -> Path.t -> path list result
+    val matches : ?dotfiles:bool -> Fpath.t -> Fpath.t list result
     (** [matches ~dotfiles pat] is the list of paths in the file
         system that match the path pattern [pat]. If [dotfiles] is
         [false] (default) paths which have at least one segment that
         starts with a ['.'] character are not part of the list. *)
 
-    val query : ?dotfiles:bool -> ?init:Pat.env -> Path.t ->
-      (path * Pat.env) list result
+    val query : ?dotfiles:bool -> ?init:Pat.env -> Fpath.t ->
+      (Fpath.t * Pat.env) list result
     (** [query ~init pat] is like {!matches} except each matching path
         is returned with an environment mapping pattern variables to
         their matched part in the path. For each path the mappings are
@@ -1286,15 +619,15 @@ let main () = main ()
 
     (** {1:fold Folding over file system hierarchies} *)
 
-    type traverse = [`All | `None | `If of path -> bool result ]
+    type traverse = [`All | `None | `If of Fpath.t -> bool result ]
     (** The type for controlling directory traversals. The predicate of
         [`If] will only be called with directory paths (but there may
         be OS races). *)
 
-    type elements = [ `Any | `Files | `Dirs | `Is of path -> bool result ]
+    type elements = [ `Any | `Files | `Dirs | `Is of Fpath.t -> bool result ]
     (** The type for specifying elements being folded over. *)
 
-    type 'a fold_error = path -> 'a result -> unit result
+    type 'a fold_error = Fpath.t -> 'a result -> unit result
     (** The type for managing fold errors.
 
         During the fold errors may be generated at different points.
@@ -1313,7 +646,7 @@ let main () = main ()
 
     val fold : ?err:'b fold_error -> ?over:elements ->
       ?traverse:traverse ->
-        ('a -> path -> 'a) -> 'a -> path list -> 'a result
+        ('a -> Fpath.t -> 'a) -> 'a -> Fpath.t list -> 'a result
     (** [fold err over traverse f acc paths] folds over the list of
         paths [paths] traversing directories according to [traverse]
         (defaults to [`All]) and selecting elements to fold over
@@ -1328,13 +661,13 @@ let main () = main ()
 
     (** {1:paths Famous file paths} *)
 
-    val dev_null : path
-    (** [dev_null] is [Path.v "/dev/null"] on POSIX and [Path.v "NUL"] on
+    val dev_null : Fpath.t
+    (** [dev_null] is [Fpath.v "/dev/null"] on POSIX and [Fpath.v "NUL"] on
         Windows. It represents a file on the OS that discards all
         writes. *)
 
-    val dash : path
-    (** [dash] is [Path.v "-"]. This value is used by {{!input}input}
+    val dash : Fpath.t
+    (** [dash] is [Fpath.v "-"]. This value is used by {{!input}input}
         and {{!output}output} functions to respectively denote [stdin]
         and [stdout].
 
@@ -1343,27 +676,27 @@ let main () = main ()
         perfectly possible to have files that bear this name in the
         file system. If you need to operate on such path from the
         current directory you can simply specify them as
-        [Path.(cur_dir / "-")] and so can your users on the command
+        [Fpath.(cur_dir / "-")] and so can your users on the command
         line by using ["./-"]. *)
 
     (** {1:ops Existence and deletion} *)
 
-    val exists : path -> bool result
+    val exists : Fpath.t -> bool result
     (** [exists file] is [true] if [file] is a regular file in the
         file system and [false] otherwise.  Symbolic links are
         followed. *)
 
-    val must_exist : path -> unit result
+    val must_exist : Fpath.t -> unit result
     (** [must_exist file] is [()] if [file] is a regular file in the
         file system and an error otherwise. Symbolic links are
         followed. *)
 
-    val delete : ?must_exist:bool -> path -> unit result
+    val delete : ?must_exist:bool -> Fpath.t -> unit result
     (** [delete ~must_exist file] deletes file [file]. If [must_exist]
         is [true] (defaults to [false]) an error is returned if [file]
         doesn't exist. *)
 
-    val truncate : path -> int -> unit result
+    val truncate : Fpath.t -> int -> unit result
     (** [truncate p size] truncates [p] to [s]. *)
 
     (** {1:input Input}
@@ -1378,13 +711,13 @@ let main () = main ()
         byte range is immutable until the next function call.  [None]
         is returned at the end of input. *)
 
-    val with_input : path -> (input -> 'a -> 'b result) -> 'a -> 'b result
+    val with_input : Fpath.t -> (input -> 'a -> 'b result) -> 'a -> 'b result
     (** [with_input file f v] provides contents of [file] with an input
         [i] and returns [f i v]. After the function returns
         (exceptions included) a call to [i] by the client
         raises [Invalid_argument]. *)
 
-    val with_ic : path -> (in_channel -> 'a -> 'b result) -> 'a ->
+    val with_ic : Fpath.t -> (in_channel -> 'a -> 'b result) -> 'a ->
       'b result
     (** [with_ic file f v] opens [file] as a channel [ic] and returns
         [f ic v]. After the function returns (exceptions included),
@@ -1393,14 +726,14 @@ let main () = main ()
         returns. If [End_of_file] is raised in [f] turns it into
         an error message. *)
 
-    val read : path -> string result
+    val read : Fpath.t -> string result
     (** [read file] is [file]'s content as a string. *)
 
-    val read_lines : path -> string list result
+    val read_lines : Fpath.t -> string list result
     (** [read_lines file] is [file]'s content, split at each
         "\n" character. *)
 
-    val fold_lines : ('a -> string -> 'a) -> 'a -> path -> 'a result
+    val fold_lines : ('a -> string -> 'a) -> 'a -> Fpath.t -> 'a result
     (** [fold_lines f acc file] is like
         [List.fold_left f acc (read_lines p)]. *)
 
@@ -1427,35 +760,35 @@ let main () = main ()
         the range \[[pos];[pos+len]\]. [None] is called to denote
         end of output. *)
 
-    val with_output : ?mode:int -> path -> (output -> 'a -> 'b result) ->
+    val with_output : ?mode:int -> Fpath.t -> (output -> 'a -> 'b result) ->
       'a -> 'b result
     (** [with_output file f v] writes the contents of [file] using an
         output [o] given to [f] and returns [f o v]. After the
         function returns a call to [o] by the client raises
         [Invalid_argument]. *)
 
-    val with_oc : ?mode:int -> path -> (out_channel -> 'a -> 'b result) ->
+    val with_oc : ?mode:int -> Fpath.t -> (out_channel -> 'a -> 'b result) ->
       'a -> 'b result
     (** [with_oc file f v] opens [file] as a channel [oc] and returns
         [f oc v]. After the function returns [oc] is closed. If [file]
         is {!dash}, [oc] is {!Pervasives.stdout} and not closed when
         the function returns. *)
 
-    val write : ?mode:int -> path -> string -> unit result
+    val write : ?mode:int -> Fpath.t -> string -> unit result
     (** [write file content] outputs [content] to [file]. If [file]
         is {!dash}, writes to {!Pervasives.stdout}. If an error is
         returned [file] is left untouched except if {!Pervasives.stdout}
         is written. *)
 
-    val writef : ?mode:int -> path ->
+    val writef : ?mode:int -> Fpath.t ->
       ('a, Format.formatter, unit, unit result) format4 -> 'a
     (** [write file fmt ...] is like [write file (Format.asprintf fmt ...)]. *)
 
-    val write_lines : ?mode:int -> path -> string list -> unit result
+    val write_lines : ?mode:int -> Fpath.t -> string list -> unit result
     (** [write_lines file lines] is like [write file (String.concat
         ~sep:"\n" lines)]. *)
 
-    val write_subst : ?mode:int -> (string * string) list -> path -> string ->
+    val write_subst : ?mode:int -> (string * string) list -> Fpath.t -> string ->
       unit result
     (** [write_subst vars file content] outputs [content] to [file]. In
         [content] patterns of the form ["%%ID%%"] are replaced by the value
@@ -1472,7 +805,7 @@ let main () = main ()
     (** The type for temporary file name patterns. The string format is
         replaced by random characters. *)
 
-    val tmp : ?mode:int -> ?dir:path -> tmp_name_pat -> path result
+    val tmp : ?mode:int -> ?dir:Fpath.t -> tmp_name_pat -> Fpath.t result
     (** [tmp mode dir pat] is a new empty temporary file in [dir]
         (defaults to {!Dir.default_tmp}) named according to [pat] and
         created with permissions [mode] (defaults to [0o600] only
@@ -1485,8 +818,8 @@ let main () = main ()
         ensures that none replaces the file, e.g. by a symbolic link,
         between the time you create the file and open it. *)
 
-    val with_tmp_output : ?mode:int -> ?dir:path -> tmp_name_pat ->
-      (path -> output -> 'a -> 'b result) -> 'a -> 'b result
+    val with_tmp_output : ?mode:int -> ?dir:Fpath.t -> tmp_name_pat ->
+      (Fpath.t -> output -> 'a -> 'b result) -> 'a -> 'b result
     (** [with_tmp_output dir pat f v] is a new temporary file in [dir]
         (defaults to {!Dir.default_tmp}) named according to [pat] and
         atomically created and opened with permissions [mode]
@@ -1496,8 +829,8 @@ let main () = main ()
         returns, calls to [o] raise [Invalid_argument] and [file] is
         deleted. *)
 
-    val with_tmp_oc : ?mode:int -> ?dir:path -> tmp_name_pat ->
-      (path -> out_channel -> 'a -> 'b result) -> 'a -> 'b result
+    val with_tmp_oc : ?mode:int -> ?dir:Fpath.t -> tmp_name_pat ->
+      (Fpath.t -> out_channel -> 'a -> 'b result) -> 'a -> 'b result
     (** [with_tmp_oc mode dir pat f v] is a new temporary file in [dir]
         (defaults to {!Dir.default_tmp}) named according to [pat] and
         atomically created and opened with permission [mode]
@@ -1511,15 +844,15 @@ let main () = main ()
 
     (** {1:dirops Existence, creation, deletion and contents} *)
 
-    val exists : path -> bool result
+    val exists : Fpath.t -> bool result
     (** [exists dir] is [true] if [dir] is a directory in the file system
         and [false] otherwise. Symbolic links are followed. *)
 
-    val must_exist : path -> unit result
+    val must_exist : Fpath.t -> unit result
     (** [must_exist dir] is [()] if [dir] is a directory in the file system
         and an error otherwise. Symbolic links are followed. *)
 
-    val create : ?path:bool -> ?mode:int -> path -> unit result
+    val create : ?path:bool -> ?mode:int -> Fpath.t -> unit result
     (** [create ~path ~mode dir] creates the directory [dir] with file
         permission [mode] (defaults [0o755] readable and traversable
         by everyone, writeable by the user). If [path] is [true]
@@ -1528,14 +861,14 @@ let main () = main ()
         error. If [dir] exists, no error is returned but its
         permissions are changed to the given [mode]. *)
 
-    val delete : ?must_exist:bool -> ?recurse:bool -> path -> unit result
+    val delete : ?must_exist:bool -> ?recurse:bool -> Fpath.t -> unit result
     (** [delete ~must_exist ~recurse dir] deletes the directory [dir]. If
         [must_exist] is [true] (defaults to [false]) an error is returned
         if [dir] doesn't exist. If [recurse] is [true] (default to [false])
         no error occurs if the directory is non-empty: its contents is
         recursively deleted first. *)
 
-    val contents : ?rel:bool -> path -> path list result
+    val contents : ?rel:bool -> Fpath.t -> Fpath.t list result
     (** [contents ~rel dir] is the contents of [dir].  If [rel] is
         [true] (defaults to [false]) the resulting paths are relative
         to [dir], otherwise they have [dir] prepended. See also
@@ -1543,13 +876,13 @@ let main () = main ()
 
     (** {1:current Current working directory} *)
 
-    val current : unit -> path result
+    val current : unit -> Fpath.t result
     (** [current ()] is the current working directory. *)
 
-    val set_current : path -> unit result
+    val set_current : Fpath.t -> unit result
     (** [set_current dir] sets the current working directory to [dir]. *)
 
-    val with_current : path -> ('a -> 'b result) -> 'a -> 'b result
+    val with_current : Fpath.t -> ('a -> 'b result) -> 'a -> 'b result
     (** [with_current dir f v] is [f v] with the current working directory
         bound to [dir]. After the function returns the current working
         directory is back to its initial value. *)
@@ -1559,12 +892,12 @@ let main () = main ()
         For more details see {!Path.fold}. *)
 
     val contents_fold : ?err:'b Path.fold_error -> ?over:Path.elements ->
-      ?traverse:Path.traverse -> ('a -> path -> 'a) -> 'a -> path -> 'a result
+      ?traverse:Path.traverse -> ('a -> Fpath.t -> 'a) -> 'a -> Fpath.t -> 'a result
     (** [contents_fold err over traverse f acc d] is
         [(contents d >>= ]{!Path.fold}[ err over traverse f acc)]. *)
 
     val descendants : ?err:'b Path.fold_error -> ?over:Path.elements ->
-      ?traverse:Path.traverse -> path -> path list result
+      ?traverse:Path.traverse -> Fpath.t -> Fpath.t list result
     (** [descendants err over traverse p] is
         [(contents_fold err over traverse (fun l p -> p :: l) [])] *)
 
@@ -1575,7 +908,7 @@ let main () = main ()
     (** The type for temporary directory name patterns. The string format is
         replaced by random characters. *)
 
-    val tmp : ?mode:int -> ?dir:path -> tmp_name_pat -> path result
+    val tmp : ?mode:int -> ?dir:Fpath.t -> tmp_name_pat -> Fpath.t result
     (** [tmp mode dir pat] is a new empty directory in [dir] (defaults
         to {!Dir.default_tmp}) named according to [pat] and created
         with permissions [mode] (defaults to [0o700] only readable and
@@ -1583,8 +916,8 @@ let main () = main ()
         deleted at the end of program execution using a
         {!Pervasives.at_exit} handler. *)
 
-    val with_tmp : ?mode:int -> ?dir:path -> tmp_name_pat ->
-      (path -> 'a -> 'b result) -> 'a -> 'b result
+    val with_tmp : ?mode:int -> ?dir:Fpath.t -> tmp_name_pat ->
+      (Fpath.t -> 'a -> 'b result) -> 'a -> 'b result
     (** [with_tmp mode dir pat f v] is a new empty directory in [dir]
         (defaults to {!Dir.default_tmp}) named according to [pat] and
         created with permissions [mode] (defaults to [0o700] only
@@ -1595,18 +928,18 @@ let main () = main ()
 
     (** {1:defaulttmpdir Default temporary directory} *)
 
-    val default_tmp : unit -> path
+    val default_tmp : unit -> Fpath.t
     (** [default_tmp ()] is the directory used as a default value for
         creating {{!File.tmpfiles}temporary files} and
         {{!tmpdirs}directories}. If {!set_default_tmp} hasn't been
         called this is:
         {ul
         {- On POSIX, the value of the [TMPDIR] environment variable or
-           [Path.v "/tmp"] if the variable is not set or empty.}
+           [Fpath.v "/tmp"] if the variable is not set or empty.}
         {- On Windows, the value [TEMP] environment variable or
-           {!Path.cur_dir} if it is not set or empty}} *)
+           {!Fpath.cur_dir} if it is not set or empty}} *)
 
-    val set_default_tmp : path -> unit
+    val set_default_tmp : Fpath.t -> unit
     (** [set_default_tmp p] sets the value returned by {!default_tmp} to
         [p]. *)
   end
@@ -1648,7 +981,7 @@ let main () = main ()
     (** [exec_read_lines l] is like [exec_read ~trim:false cmd args] but
         the input is splitted at ['\n']. *)
 
-    val exec_write : Cmd.t -> path -> unit result
+    val exec_write : Cmd.t -> Fpath.t -> unit result
     (** [exec_write cmd args file] execute [cmd] with arguments [args] and
         writes the invocation's [stdout] to [file]. In [cmd]'s return code
         is non zero returns an error message and [file] is left intact. *)
@@ -1689,37 +1022,37 @@ let main () = main ()
 
     (** {1 File system operations} *)
 
-    val mkdir : path -> Unix.file_perm -> unit result
+    val mkdir : Fpath.t -> Unix.file_perm -> unit result
     (** [mkdir] is {!Unix.mkdir}, see
         {{:http://pubs.opengroup.org/onlinepubs/9699919799/functions/mkdir.html}
         POSIX [mkdir]}. *)
 
-    val link : path -> path -> unit result
+    val link : Fpath.t -> Fpath.t -> unit result
     (** [link] is {!Unix.link}, see
         {{:http://pubs.opengroup.org/onlinepubs/9699919799/functions/link.html}
         POSIX [link]}. *)
 
-    val unlink : path -> unit result
+    val unlink : Fpath.t -> unit result
     (** [stat] is {!Unix.unlink},
         {{:http://pubs.opengroup.org/onlinepubs/9699919799/functions/unlink.html}
         POSIX [unlink]}. *)
 
-    val rename : path -> path -> unit result
+    val rename : Fpath.t -> Fpath.t -> unit result
     (** [rename] is {!Unix.rename}, see
         {{:http://pubs.opengroup.org/onlinepubs/9699919799/functions/rename.html}
         POSIX [rename]}. *)
 
-    val stat : path -> Unix.stats result
+    val stat : Fpath.t -> Unix.stats result
     (** [stat] is {!Unix.stat}, see
         {{:http://pubs.opengroup.org/onlinepubs/9699919799/functions/stat.html}
         POSIX [stat]}. *)
 
-    val lstat : path -> Unix.stats result
+    val lstat : Fpath.t -> Unix.stats result
     (** [lstat] is {!Unix.lstat}, see
         {{:http://pubs.opengroup.org/onlinepubs/9699919799/functions/lstat.html}
         POSIX [lstat]}. *)
 
-    val truncate : path -> int -> unit result
+    val truncate : Fpath.t -> int -> unit result
     (** [truncate] is {!Unix.truncate}, see
         {{:http://pubs.opengroup.org/onlinepubs/9699919799/functions/truncate.html}
         POSIX [truncate]}. *)

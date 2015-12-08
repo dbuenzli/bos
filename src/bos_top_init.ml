@@ -7,7 +7,6 @@
 open Bos;;
 
 #install_printer Pat.dump;;
-#install_printer Path.pp;;
 
 (*---------------------------------------------------------------------------
    Copyright (c) 2015 Daniel C. Bünzli.

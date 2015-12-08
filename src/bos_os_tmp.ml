@@ -13,12 +13,12 @@ let default_dir_init =
     match try Some (Sys.getenv var) with Not_found -> None with
     | None -> absent
     | Some v ->
-        match Bos_path.of_string v with
+        match Fpath.of_string v with
         | None -> absent (* FIXME log something ? *)
         | Some v -> v
   in
-  if Sys.os_type = "Win32" then from_env "TEMP" ~absent:Bos_path.cur_dir else
-  from_env "TMPDIR" ~absent:(Bos_path.v "/tmp")
+  if Sys.os_type = "Win32" then from_env "TEMP" ~absent:Fpath.cur_dir else
+  from_env "TMPDIR" ~absent:(Fpath.v "/tmp")
 
 let default_dir = ref default_dir_init
 let set_default_dir p = default_dir := p
@@ -28,7 +28,7 @@ let rand_gen = lazy (Random.State.make_self_init ())
 
 let rand_path dir pat =
   let rand = Random.State.bits (Lazy.force rand_gen) land 0xFFFFFF in
-  Bos_path.(dir / strf pat (strf "%06x" rand))
+  Fpath.(dir / strf pat (strf "%06x" rand))
 
 (*---------------------------------------------------------------------------
    Copyright (c) 2015 Daniel C. Bünzli.

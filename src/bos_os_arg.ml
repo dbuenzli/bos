@@ -361,7 +361,7 @@ let maybe_help ~doc ~usage =
   begin
     add_opt_doc { names = help_opts; env = None; repeat = false;
                   kind = Flag "Show this help." };
-    Fmt.(pf stdout "%s - @[%a@]@." Bos_path.(base @@ v exec) text doc);
+    Fmt.(pf stdout "%a - @[%a@]@." Fpath.pp Fpath.(base @@ v exec) text doc);
     Fmt.(pf stdout "%a" pp_usage usage);
     Fmt.(pf stdout "%a@." pp_opt_docs (get_opt_docs ()));
     exit 0
@@ -408,7 +408,7 @@ let parse ?(doc = undocumented) ?usage ~pos:(parse, print) () =
 (* Predefined argument converters *)
 
 let string = (fun s -> Ok s), Fmt.string
-let path = converter "a path" Bos_path.of_string Bos_path.pp
+let path = converter "a path" Fpath.of_string Fpath.pp
 let bin = (fun s -> Ok (Bos_cmd.v s)), Bos_cmd.pp
 let char = converter "a character" String.to_char Fmt.char
 let bool = converter "`true' or `false'" String.to_bool Fmt.bool

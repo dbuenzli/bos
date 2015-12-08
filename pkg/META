@@ -1,7 +1,7 @@
 description = "Light, basic OS interaction for OCaml"
 version = "%%VERSION%%"
 
-requires = "rresult astring fmt unix logs"
+requires = "rresult astring fpath fmt unix logs"
 archive(byte) = "bos.cma"
 archive(byte, plugin) = "bos.cma"
 archive(native) = "bos.cmxa"
@@ -11,7 +11,7 @@ exists_if = "bos.cma"
 package "top" (
   description = "Bos toplevel support"
   version = "%%VERSION%%"
-  requires = "rresult.top astring.top fmt.top logs.top bos"
+  requires = "rresult.top astring.top fpath.top fmt.top logs.top bos"
   archive(byte) = "bos_top.cma"
   archive(byte, plugin) = "bos_top.cma"
   archive(native) = "bos_top.cmxa"
