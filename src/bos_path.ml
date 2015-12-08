@@ -568,6 +568,7 @@ let split_ext ?multi p =
    String.Sub.to_string ext)
 
 let ( + ) p e = add_ext e p
+let ( -+ ) p e = set_ext e p
 
 (* Path sets and maps *)
 

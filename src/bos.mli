@@ -410,6 +410,9 @@ $(drive):
   val ( + ) : path -> ext -> path
   (** [p + ext] is [add_ext ext p]. Left associative. *)
 
+  val ( -+ ) : path -> ext -> path
+  (** [p -+ ext] is [set_ext ext p]. Left associative. *)
+
   (** {1:sets_maps Path sets and maps} *)
 
   type set
