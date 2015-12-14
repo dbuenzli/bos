@@ -90,8 +90,8 @@ let is_opt n = is_short_opt n || is_long_opt n
 
 let short_opt_arg n =
   if String.length n <= 2 then None else
-  Some (String.with_pos_range ~stop:2 n,
-        String.with_pos_range ~start:2 n)
+  Some (String.with_index_range ~last:1 n,
+        String.with_index_range ~first:2 n)
 
 let long_opt_arg n = String.cut ~sep:"=" n
 

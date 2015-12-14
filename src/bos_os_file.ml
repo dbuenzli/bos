@@ -270,7 +270,7 @@ let write_subst ?mode vars file contents =
           end else begin
             let id_start = start_subst + 2 in
             let len = !last_id - id_start in
-            let id = String.with_pos_len ~start:id_start ~len s in
+            let id = String.with_range ~first:id_start ~len s in
             try
               let subst = List.assoc id vars in
               Pervasives.output_substring oc s !start (start_subst - !start);

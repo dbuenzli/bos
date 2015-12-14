@@ -205,7 +205,7 @@ let match_pat ~env pos s pat =
         | Some m as r ->
             if no_env then r else
             Some (String.Map.add n
-                    (String.with_pos_range s ~start:pos ~stop:next_pos) m)
+                  (String.with_index_range s ~first:pos ~last:(next_pos - 1)) m)
       in
       try_match (String.length s) (* Longest match first. *)
   in
