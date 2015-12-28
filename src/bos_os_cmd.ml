@@ -28,8 +28,7 @@ let must_exist cmd =
 
 (* FIXME in these functions [cmd] and [args] should be quoted. *)
 let trace line =
-  Bos_log.info "@[<2>%a@]" @@ fun msg ->
-  msg ~header:"EXEC" Fmt.text line
+  Bos_log.info (fun m -> m ~header:"EXEC" "@[<2>%a@]" Fmt.text line)
 
 let mk_line l = match Bos_cmd.to_list l with
 | [] -> invalid_arg err_empty_line

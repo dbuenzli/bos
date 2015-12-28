@@ -69,9 +69,8 @@ let value ?(log = Logs.Error) name parse ~absent = match var name with
 | Some s ->
     match parse s with
     | Ok v -> v
-    | Error (`Msg m) ->
-        (Bos_log.msg log "environment variable %s: %s" @@ fun fmt ->
-         fmt name m);
+    | Error (`Msg e) ->
+        Bos_log.msg log (fun m -> m "environment variable %s: %s" name e);
         absent
 
 (*---------------------------------------------------------------------------

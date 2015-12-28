@@ -234,7 +234,7 @@ type 'a fold_error = Fpath.t -> 'a res -> unit res
 
 let log_fold_error ~level =
   fun p -> function
-  | Error (`Msg m) -> (Bos_log.msg level "%s" @@ fun fmt -> fmt m); Ok ()
+  | Error (`Msg e) -> Bos_log.msg level (fun m -> m "%s" e); Ok ()
   | Ok _ -> assert false
 
 exception Fold_stop of R.msg
