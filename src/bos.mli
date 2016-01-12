@@ -286,14 +286,18 @@ module OS : sig
     val some : 'a parser -> 'a option parser
     (** [some p] is wraps [p]'s parse result in [Some]. *)
 
-    val value : ?log:Logs.level -> string -> 'a parser -> absent:'a -> 'a
-    (** [value ~log name parse ~absent] is:
+    val parse : string -> 'a parser -> absent:'a -> ('a, R.msg) Rresult.result
+    (** [parse name p ~absent] is:
         {ul
-        {- [absent] if [Env.var name = None]}
-        {- [v] if [Env.var name = Some s] and [parse s = Ok v].}
-        {- [absent] if [Env.var name = Some s] and [parse s = Error msg].
-           In this case the error message is logged with level [log]
-           (defaults to {!Log.Error})}} *)
+        {- [Ok absent] if [Env.var name = None]}
+        {- [Ok v] if [Env.var name = Some s] and [p s = Ok v]}
+        {- [Error (`Msg m)] otherwise with [m] an error message
+           that mentions [name] and the parse error of [p].}} *)
+
+    val value : ?log:Logs.level -> string -> 'a parser -> absent:'a -> 'a
+    (** [value ~log name p ~absent] is like {!parse} but in case
+        of error the message is logged with level [log] (defaults to
+        {!Logs.Error}) and [~absent] is returned. *)
 
      (** {1:examples Examples}
 {[
