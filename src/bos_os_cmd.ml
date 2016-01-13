@@ -44,10 +44,10 @@ let handle_ret line = match execute line with
 let exec line = handle_ret (mk_line line)
 let exec_read ?(trim = true) line =
   Bos_os_file.tmp "bos-%s.tmp"
-  >>= fun file -> handle_ret (strf "%s > %s" (mk_line line)
-                                (Fpath.to_string file))
+  >>= fun file ->
+  handle_ret (strf "%s > %s" (mk_line line) (Fpath.to_string file))
   >>= fun () -> Bos_os_file.read file
-  >>= fun v -> R.ok (if trim then String.trim v else v)
+  >>= fun v -> Ok (if trim then String.trim v else v)
 
 let exec_read_lines line =
   exec_read line >>| String.cuts ~sep:"\n"

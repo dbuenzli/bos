@@ -76,7 +76,7 @@ let with_input file f v =
       let rc = input ic b 0 bsize in
       if rc = 0 then None else Some (b, 0, rc)
     in
-    Bos_base.apply (f input) v ~finally:close ic
+    Ok (Bos_base.apply (f input) v ~finally:close ic)
   with
   | Sys_error e -> R.error_msg e
 
@@ -85,7 +85,7 @@ let with_ic file f v =
     let ic = if is_dash file then stdin else open_in_bin (Fpath.to_string file)
     in
     let close ic = if is_dash file then () else close_in ic in
-    Bos_base.apply (f ic) v ~finally:close ic
+    Ok (Bos_base.apply (f ic) v ~finally:close ic)
   with
   | End_of_file -> R.error_msgf "%a: unexpected end of file" Fpath.pp file
   | Sys_error e -> R.error_msg e
@@ -102,13 +102,17 @@ let read file =
         Fpath.pp file Fmt.byte_size len Fmt.byte_size Sys.max_string_length
     end
   in
-  with_ic file input ()
+  match with_ic file input () with
+  | Ok (Ok _ as v) -> v
+  | Ok (Error _ as e) -> e
+  | Error _ as e -> e
+
 
 let fold_lines f acc file =
   let input ic acc =
     let rec loop acc =
       match try Some (input_line ic) with End_of_file -> None with
-      | None -> Ok acc
+      | None -> acc
       | Some line -> loop (f acc line)
     in
     loop acc
@@ -166,7 +170,8 @@ let with_tmp_oc ?(mode = default_tmp_mode) ?dir pat f v =
     create_tmp_path mode dir pat >>= fun (file, fd) ->
     let oc = Unix.out_channel_of_descr fd in
     let delete_close oc = tmps_rem file; close_out oc in
-    tmps_add file; Bos_base.apply (f file oc) v ~finally:delete_close oc
+    tmps_add file;
+    Ok (Bos_base.apply (f file oc) v ~finally:delete_close oc)
   with Sys_error e -> R.error_msg e
 
 let with_tmp_output ?(mode = default_tmp_mode) ?dir pat f v =
@@ -182,7 +187,8 @@ let with_tmp_output ?(mode = default_tmp_mode) ?dir pat f v =
       | Some (b, pos, len) -> output oc b pos len
       | None -> flush oc
     in
-    tmps_add file; Bos_base.apply (f file output) v ~finally:delete_close oc
+    tmps_add file;
+    Ok (Bos_base.apply (f file output) v ~finally:delete_close oc)
   with Sys_error e -> R.error_msg e
 
 (* Output *)
@@ -208,34 +214,41 @@ let stdout_with_output f v =
       | Some (b, pos, len) -> output stdout b pos len
       | None -> flush stdout
     in
-    Bos_base.apply (f output) v ~finally:close ()
+    Ok (Bos_base.apply (f output) v ~finally:close ())
   with Sys_error e -> R.error_msg e
 
 let with_output ?(mode = default_mode) file f v =
   if is_dash file then stdout_with_output f v else
-  let do_write tmp tmp_out v = match f tmp_out v with
-  | Error _ as e -> e
-  | Ok _ as r ->
-      match rename tmp file with
-      | Error _ as e -> e
-      | Ok () -> r
+  let do_write tmp tmp_out v =
+    let r = f tmp_out v in
+    match rename tmp file with
+    | Error _ as e -> e
+    | Ok () -> Ok r
   in
-  with_tmp_output ~mode ~dir:(Fpath.parent file) "bos-%s.tmp" do_write v
+  match with_tmp_output ~mode ~dir:(Fpath.parent file) "bos-%s.tmp" do_write v
+  with
+  | Ok (Ok _ as r) -> r
+  | Ok (Error _ as e) -> e
+  | Error _ as e -> e
 
 let with_oc ?(mode = default_mode) file f v =
-  if is_dash file then Bos_base.apply (f stdout) v ~finally:(fun () -> ()) ()
+  if is_dash file
+  then Ok (Bos_base.apply (f stdout) v ~finally:(fun () -> ()) ())
   else
-  let do_write tmp tmp_oc v = match f tmp_oc v with
-  | Error _ as e -> e
-  | Ok _ as r ->
-      match rename tmp file with
-      | Error _ as e -> e
-      | Ok () -> r
+  let do_write tmp tmp_oc v =
+    let r = f tmp_oc v in
+    match rename tmp file with
+    | Error _ as e -> e
+    | Ok () -> Ok r
   in
-  with_tmp_oc ~mode ~dir:(Fpath.parent file) "bos-%s.tmp" do_write v
+  match with_tmp_oc ~mode ~dir:(Fpath.parent file) "bos-%s.tmp" do_write v
+  with
+  | Ok (Ok _ as r) -> r
+  | Ok (Error _ as e) -> e
+  | Error _ as e -> e
 
 let write ?mode file contents =
-  let write oc contents = output_string oc contents; Ok () in
+  let write oc contents = output_string oc contents; () in
   with_oc ?mode file write contents
 
 let writef ?mode file fmt = (* FIXME avoid the kstrf  *)
@@ -243,10 +256,10 @@ let writef ?mode file fmt = (* FIXME avoid the kstrf  *)
 
 let write_lines ?mode file lines =
   let rec write oc = function
-  | [] -> Ok ()
+  | [] -> ()
   | l :: ls ->
       output_string oc l;
-      if ls <> [] then (output_char oc '\n'; write oc ls) else Ok ()
+      if ls <> [] then (output_char oc '\n'; write oc ls) else ()
   in
   with_oc ?mode file write lines
 

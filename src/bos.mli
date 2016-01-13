@@ -716,27 +716,26 @@ let main () = main ()
         byte range is immutable until the next function call.  [None]
         is returned at the end of input. *)
 
-    val with_input : Fpath.t -> (input -> 'a -> 'b result) -> 'a -> 'b result
-    (** [with_input file f v] provides contents of [file] with an input
-        [i] and returns [f i v]. After the function returns
-        (exceptions included) a call to [i] by the client
-        raises [Invalid_argument]. *)
+    val with_input : Fpath.t -> (input -> 'a -> 'b) -> 'a -> 'b result
+    (** [with_input file f v] provides contents of [file] with an
+        input [i] and returns [f i v]. After the function returns
+        (normally or via an exception) a call to [i] by the client raises
+        [Invalid_argument]. *)
 
-    val with_ic : Fpath.t -> (in_channel -> 'a -> 'b result) -> 'a ->
-      'b result
+    val with_ic : Fpath.t -> (in_channel -> 'a -> 'b) -> 'a -> 'b result
     (** [with_ic file f v] opens [file] as a channel [ic] and returns
-        [f ic v]. After the function returns (exceptions included),
-        [ic] is ensured to be closed.  If [file] is {!dash}, [ic] is
-        {!Pervasives.stdin} and not closed when the function
-        returns. If [End_of_file] is raised in [f] turns it into
-        an error message. *)
+        [Ok (f ic v)]. After the function returns (normally or via an
+        exception), [ic] is ensured to be closed.  If [file] is
+        {!dash}, [ic] is {!Pervasives.stdin} and not closed when the
+        function returns. [End_of_file] exceptions raised by [f] are
+        turned it into an error message. *)
 
     val read : Fpath.t -> string result
     (** [read file] is [file]'s content as a string. *)
 
     val read_lines : Fpath.t -> string list result
     (** [read_lines file] is [file]'s content, split at each
-        "\n" character. *)
+        ['\n'] character. *)
 
     val fold_lines : ('a -> string -> 'a) -> 'a -> Fpath.t -> 'a result
     (** [fold_lines f acc file] is like
@@ -756,7 +755,7 @@ let main () = main ()
         {b Atomic writes.} Files are written atomically by the
         functions. They create a temporary file [t] in the directory
         of the file [f] to write, write the contents to [t] and
-        renames it to [f] on success. In case of error the [t] is
+        renames it to [f] on success. In case of error [t] is
         deleted and [f] left intact. *)
 
     type output = (bytes * int * int) option -> unit
@@ -765,19 +764,20 @@ let main () = main ()
         the range \[[pos];[pos+len]\]. [None] is called to denote
         end of output. *)
 
-    val with_output : ?mode:int -> Fpath.t -> (output -> 'a -> 'b result) ->
+    val with_output : ?mode:int -> Fpath.t -> (output -> 'a -> 'b) ->
       'a -> 'b result
     (** [with_output file f v] writes the contents of [file] using an
-        output [o] given to [f] and returns [f o v]. After the
-        function returns a call to [o] by the client raises
-        [Invalid_argument]. *)
+        output [o] given to [f] and returns [Ok (f o v)]. After the
+        function returns (normally or via an exception) a call to [o]
+        by the client raises [Invalid_argument]. *)
 
-    val with_oc : ?mode:int -> Fpath.t -> (out_channel -> 'a -> 'b result) ->
+    val with_oc : ?mode:int -> Fpath.t -> (out_channel -> 'a -> 'b) ->
       'a -> 'b result
     (** [with_oc file f v] opens [file] as a channel [oc] and returns
-        [f oc v]. After the function returns [oc] is closed. If [file]
-        is {!dash}, [oc] is {!Pervasives.stdout} and not closed when
-        the function returns. *)
+        [Ok (f oc v)]. After the function returns (normally or via an
+        exception) [oc] is closed. If [file] is {!dash}, [oc] is
+        {!Pervasives.stdout} and not closed when the function
+        returns. *)
 
     val write : ?mode:int -> Fpath.t -> string -> unit result
     (** [write file content] outputs [content] to [file]. If [file]
@@ -810,29 +810,31 @@ let main () = main ()
 
         {b Warning.} If you want to write to the file, using
         {!with_tmp_output} or {!with_tmp_oc} is more secure as it
-        ensures that none replaces the file, e.g. by a symbolic link,
+        ensures that noone replaces the file, e.g. by a symbolic link,
         between the time you create the file and open it. *)
 
     val with_tmp_output : ?mode:int -> ?dir:Fpath.t -> tmp_name_pat ->
-      (Fpath.t -> output -> 'a -> 'b result) -> 'a -> 'b result
+      (Fpath.t -> output -> 'a -> 'b) -> 'a -> 'b result
     (** [with_tmp_output dir pat f v] is a new temporary file in [dir]
         (defaults to {!Dir.default_tmp}) named according to [pat] and
         atomically created and opened with permissions [mode]
         (defaults to [0o600] only readable and writable by the
-        user). Returns the value of [f file o v] with [file] the file
+        user). Returns [Ok (f file o v)] with [file] the file
         path and [o] an output to write the file. After the function
-        returns, calls to [o] raise [Invalid_argument] and [file] is
-        deleted. *)
+        returns (normally or via an exception), calls to [o] raise
+        [Invalid_argument] and [file] is deleted. *)
 
     val with_tmp_oc : ?mode:int -> ?dir:Fpath.t -> tmp_name_pat ->
-      (Fpath.t -> out_channel -> 'a -> 'b result) -> 'a -> 'b result
-    (** [with_tmp_oc mode dir pat f v] is a new temporary file in [dir]
-        (defaults to {!Dir.default_tmp}) named according to [pat] and
-        atomically created and opened with permission [mode]
+      (Fpath.t -> out_channel -> 'a -> 'b) -> 'a -> 'b result
+    (** [with_tmp_oc mode dir pat f v] is a new temporary file in
+        [dir] (defaults to {!Dir.default_tmp}) named according to
+        [pat] and atomically created and opened with permission [mode]
         (defaults to [0x600] only readable and writable by the
-        user). Returns the value of [f file oc v] with [file] the file
-        path and [oc] an output channel to write the file. After the
-        function returns, [oc] is closed and [file] is deleted. *) end
+        user). Returns [Ok (f file oc v)] with [file] the file path
+        and [oc] an output channel to write the file. After the
+        function returns (normally or via an exception), [oc] is
+        closed and [file] is deleted. *)
+end
 
   (** Directory operations. *)
   module Dir : sig
