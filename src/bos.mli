@@ -793,16 +793,6 @@ let main () = main ()
     (** [write_lines file lines] is like [write file (String.concat
         ~sep:"\n" lines)]. *)
 
-    val write_subst : ?mode:int -> (string * string) list -> Fpath.t -> string ->
-      unit result
-    (** [write_subst vars file content] outputs [content] to [file]. In
-        [content] patterns of the form ["%%ID%%"] are replaced by the value
-        of [List.assoc "ID" vars] (if any). If [file] is {!Path.dash}, writes
-        to {!Pervasives.stdout}. If an error is returned [file] is left
-        untouched except if {!Pervasives.stdout} is written.
-
-        FIXME review that with {!Path} and {!String.Map} in mind. *)
-
     (** {1:tmpfiles Temporary files} *)
 
     type tmp_name_pat = (string -> string, Format.formatter, unit, string)
