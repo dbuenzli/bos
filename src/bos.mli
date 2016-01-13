@@ -261,7 +261,7 @@ module OS : sig
 
         See the {{!examples}examples}. *)
 
-    type 'a parser = string -> ('a, R.msg) Rresult.result
+    type 'a parser = string -> ('a, R.msg) Result.result
     (** The type for environment variable value parsers. *)
 
     val parser : string -> (string -> 'a option) -> 'a parser
@@ -286,7 +286,8 @@ module OS : sig
     val some : 'a parser -> 'a option parser
     (** [some p] is wraps [p]'s parse result in [Some]. *)
 
-    val parse : string -> 'a parser -> absent:'a -> ('a, R.msg) Rresult.result
+    val parse :
+      string -> 'a parser -> absent:'a -> ('a, [> R.msg]) Result.result
     (** [parse name p ~absent] is:
         {ul
         {- [Ok absent] if [Env.var name = None]}
@@ -345,7 +346,7 @@ let timeout : int option =
         line to OCaml values. Consult the predefined
         {{!predefconvs}converters}. *)
 
-    type 'a parser = string -> ('a, R.msg) Rresult.result
+    type 'a parser = string -> ('a, R.msg) Result.result
     (** The type for option argument parsers. *)
 
     type 'a printer = Format.formatter -> 'a -> unit
@@ -1004,17 +1005,17 @@ let main () = main ()
 
     (** {1 Error handling} *)
 
-    type 'a result = ('a, [`Unix of Unix.error]) Rresult.result
+    type 'a result = ('a, [`Unix of Unix.error]) Result.result
     (** The type for Unix results. *)
 
     val pp_error : Format.formatter -> [`Unix of Unix.error] -> unit
     (** [pp_error ppf e] prints [e] on [ppf]. *)
 
-    val open_error : 'a result -> ('a, [> `Unix of Unix.error]) Rresult.result
+    val open_error : 'a result -> ('a, [> `Unix of Unix.error]) Result.result
     (** [open_error r] allows to combine a closed unix error
         variant with other variants. *)
 
-    val error_to_msg : 'a result -> ('a, Rresult.R.msg) Rresult.result
+    val error_to_msg : 'a result -> ('a, R.msg) Result.result
     (** [error_to_msg r] converts unix errors in [r] to an error message. *)
 
     (** {1 Wrapping {!Unix} calls} *)
