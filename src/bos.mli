@@ -871,7 +871,7 @@ end
         to [dir], otherwise they have [dir] prepended. See also
         {!contents_fold}. *)
 
-    (** {1:current Current working directory} *)
+    (** {1:current Current working and user directory} *)
 
     val current : unit -> Fpath.t result
     (** [current ()] is the current working directory. *)
@@ -884,12 +884,19 @@ end
         bound to [dir]. After the function returns the current working
         directory is back to its initial value. *)
 
+    val user : unit -> Fpath.t result
+    (** [user ()] is the home directory of the user executing
+        the process. Determined by consulting the [passwd] database
+        with the user id of the process. If this fails or on Windows
+        falls back to parse a path from the [HOME] environment variable. *)
+
     (** {1:fold Folding over directory contents}
 
         For more details see {!Path.fold}. *)
 
     val contents_fold : ?err:'b Path.fold_error -> ?over:Path.elements ->
-      ?traverse:Path.traverse -> ('a -> Fpath.t -> 'a) -> 'a -> Fpath.t -> 'a result
+      ?traverse:Path.traverse -> ('a -> Fpath.t -> 'a) -> 'a -> Fpath.t ->
+      'a result
     (** [contents_fold err over traverse f acc d] is
         [(contents d >>= ]{!Path.fold}[ err over traverse f acc)]. *)
 

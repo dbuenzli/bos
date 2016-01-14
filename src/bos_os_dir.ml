@@ -194,6 +194,30 @@ let with_current dir f v =
   with
   | exn -> ignore (set_current old) (* TODO bos log *); raise exn
 
+let user () =
+  let debug err = Bos_log.debug (fun m -> m "OS.Dir.user: %s" err) in
+  let env_var_fallback () =
+    Bos_os_env.(parse "HOME" (some path) ~absent:None) >>= function
+    | Some p -> Ok p
+    | None -> R.error_msgf "cannot determine user home directory: \
+                            HOME environment variable is undefined"
+  in
+  if Sys.os_type = "Win32" then env_var_fallback () else
+  try
+    let uid = Unix.getuid () in
+    let home = (Unix.getpwuid uid).Unix.pw_dir in
+    match Fpath.of_string home with
+    | Some p -> Ok p
+    | None ->
+        debug (strf "could not parse path (%a) from passwd entry"
+                 String.dump home);
+        env_var_fallback ()
+  with
+  | Unix.Unix_error (e, _, _) -> (* should not happen *)
+      debug (uerror e); env_var_fallback ()
+  | Not_found ->
+      env_var_fallback ()
+
 (* Directory folding *)
 
 let contents_fold ?err ?over ?traverse f acc d =
