@@ -11,13 +11,13 @@ let debug = OS.Arg.(flag ["g"; "debug"] ~env:"DEBUG" ~doc:"Debug mode.")
 let () = Fmt.(set_style_renderer stdout `Ansi_tty)
 
 let print_parse depth ints =
-  Logs.app "debug: %b" (fun msg -> msg debug);
-  Logs.app "depth: %d" (fun msg -> msg depth);
-  Logs.app "pos: @[%a@]" (fun msg -> msg Fmt.(list ~sep:sp int) ints);
+  Logs.app (fun m -> m "debug: %b" debug);
+  Logs.app (fun m -> m "depth: %d" depth);
+  Logs.app (fun m -> m "pos: @[%a@]" Fmt.(list ~sep:sp int) ints);
   ()
 
 let main () =
-  Logs.set_reporter (Logs_stdo.reporter ());
+  Logs.set_reporter (Logs_fmt.reporter ());
   let depth =
     OS.Arg.(opt ["d"; "depth"] int ~absent:2
               ~doc:"Specifies depth of $(docv) iterations." ~docv:"INT")

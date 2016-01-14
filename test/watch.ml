@@ -22,16 +22,16 @@ module Db = struct
        Ok ((p, stats.Unix.st_mtime) :: acc))
       |> Logs.on_error_msg ~use:(fun _ -> acc)
     in
-    Logs.app "Scanning files" Logs.unit;
+    Logs.app (fun m -> m "Scanning files");
     OS.Dir.current ()
     >>= fun dir -> OS.Dir.contents_fold ~over:`Files add [] dir
 
-  let dump oc db = Ok Marshal.(to_channel oc db [No_sharing; Compat_32])
-  let slurp ic () = Ok (Marshal.from_channel ic : float Fpath.Map.t)
+  let dump oc db = Marshal.(to_channel oc db [No_sharing; Compat_32])
+  let slurp ic () = (Marshal.from_channel ic : float Fpath.Map.t)
 
   let create files =
-    Logs.app "Writing modification time database %a"
-      (fun msg -> msg Fpath.pp db_file);
+    Logs.app (fun m -> m "Writing modification time database %a"
+                 Fpath.pp db_file);
     let count = ref 0 in
     let add acc (f, time) = incr count; Fpath.Map.add f time acc in
     let db = List.fold_left add Fpath.Map.empty files in
@@ -41,12 +41,12 @@ module Db = struct
     let count = ref 0 in
     let changes db (f, time) = match (incr count; Fpath.Map.find f db) with
     | None ->
-        Logs.app "New file: %a" (fun msg -> msg Fpath.pp f)
+        Logs.app (fun m -> m "New file: %a" Fpath.pp f)
     | Some stamp when stamp <> time ->
-        Logs.app "File changed: %a" (fun msg -> msg Fpath.pp f)
+        Logs.app (fun m -> m "File changed: %a" Fpath.pp f)
     | _ -> ()
     in
-    Logs.app "Checking against %a" (fun msg -> msg Fpath.pp db_file);
+    Logs.app (fun m -> m "Checking against %a" Fpath.pp db_file);
     OS.File.with_ic db_file slurp ()
     >>= fun db -> List.iter (changes db) files; Ok !count
 end
@@ -59,9 +59,8 @@ let watch () =
 let main () =
   let c = Mtime.counter () in
   let count = watch () |> Logs.on_error_msg ~use:(fun _ -> 0) in
-  Logs.app "Watch completed for %d files in %a on %a"
-    (fun msg -> msg count Mtime.pp_span (Mtime.count c)
-        OS.Time.(pp_stamp_now ~human:true) ())
+  Logs.app (fun m -> m "Watch completed for %d files in %a"
+               count Mtime.pp_span (Mtime.count c))
 
 let () = main ()
 
