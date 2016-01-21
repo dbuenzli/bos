@@ -83,6 +83,9 @@ let rec contents ?(rel = false) dir =
   | Unix.Unix_error (e, _, _) ->
       R.error_msgf "directory %a contents: %s" Fpath.pp dir (uerror e)
 
+let fold_contents ?err ?dotfiles ?elements ?traverse f acc d =
+  contents d >>= Bos_os_path.fold ?err ?dotfiles ?elements ?traverse f acc
+
 let rec delete_files to_rmdir dirs = match dirs with
 | [] -> Ok to_rmdir
 | dir :: todo ->
@@ -217,14 +220,6 @@ let user () =
       debug (uerror e); env_var_fallback ()
   | Not_found ->
       env_var_fallback ()
-
-(* Directory folding *)
-
-let contents_fold ?err ?over ?traverse f acc d =
-  contents d >>= Bos_os_path.fold ?err ?over ?traverse f acc
-
-let descendants ?err ?over ?traverse d =
-  contents_fold ?err ?over ?traverse (fun acc p -> p :: acc) [] d
 
 (* Temporary directories *)
 

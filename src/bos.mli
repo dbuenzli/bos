@@ -631,22 +631,22 @@ let main () = main ()
 
     (** {1:fold Folding over file system hierarchies} *)
 
-    type traverse = [`All | `None | `If of Fpath.t -> (bool, R.msg) result ]
-    (** The type for controlling directory traversals. The predicate of
-        [`If] will only be called with directory paths (but there may
-        be OS races). *)
+    type traverse = [ `Any | `None | `Sat of Fpath.t -> (bool, R.msg) result ]
+    (** The type for controlling directory traversals. The predicate
+        of [`Sat] should only be called with directory paths, however this
+        may not be the case due to OS races. *)
 
     type elements = [ `Any | `Files | `Dirs
-                    | `Is of Fpath.t -> (bool, R.msg) result ]
+                    | `Sat of Fpath.t -> (bool, R.msg) result ]
     (** The type for specifying elements being folded over. *)
 
     type 'a fold_error = Fpath.t -> ('a, R.msg) result -> (unit, R.msg) result
     (** The type for managing fold errors.
 
-        During the fold errors may be generated at different points.
-        Examples are determining traversal with {!traverse},
-        determining folded {!elements} or trying to [readdir(3)] a
-        directory without having permissions.
+        During the fold, errors may be generated at different points
+        of the process. For example, determining traversal with
+        {!traverse}, determining folded {!elements} or trying to
+        [readdir(3)] a directory without having permissions.
 
         These errors are given to a function of this type. If the
         function returns [Error _] the fold stops and returns that
@@ -658,13 +658,18 @@ let main () = main ()
         error with level [level] and always returns [`Ok ()]. *)
 
     val fold :
-      ?err:'b fold_error -> ?over:elements -> ?traverse:traverse ->
-      ('a -> Fpath.t -> 'a) -> 'a -> Fpath.t list ->
+      ?err:'b fold_error -> ?dotfiles:bool -> ?elements:elements ->
+      ?traverse:traverse -> ('a -> Fpath.t -> 'a) -> 'a -> Fpath.t list ->
       ('a, 'e) result
-    (** [fold err over traverse f acc paths] folds over the list of
+    (** [fold err dotfiles elements traverse f acc paths] folds over the list of
         paths [paths] traversing directories according to [traverse]
-        (defaults to [`All]) and selecting elements to fold over
-        according to [over] (defaults to [`Any]).
+        (defaults to [`Any]) and selecting elements to fold over
+        according to [elements] (defaults to [`Any]).
+
+        If [dotfiles] if [false] (default) both elements and
+        directories to traverse that start with a [.] except [.] and
+        [..] are skipped without being considered by [elements] or
+        [traverse]'s values.
 
         [err] manages fold errors (see {!fold_error}), defaults to
         {!log_fold_error}[ ~level:Log.Error]. *)
@@ -896,7 +901,18 @@ end
     (** [contents ~rel dir] is the contents of [dir].  If [rel] is
         [true] (defaults to [false]) the resulting paths are relative
         to [dir], otherwise they have [dir] prepended. See also
-        {!contents_fold}. *)
+        {!fold_contents}. *)
+
+    val fold_contents :
+      ?err:'b Path.fold_error -> ?dotfiles:bool -> ?elements:Path.elements ->
+      ?traverse:Path.traverse -> ('a -> Fpath.t -> 'a) -> 'a -> Fpath.t ->
+      ('a, 'e) result
+    (** [contents_fold err dotfiles elements traverse f acc d] is:
+{[
+contents d >>= Path.fold err dotfiles elements traverse f acc
+]}
+        For more details see {!Path.fold}. *)
+
 
     (** {1:current Current working and user directory} *)
 
@@ -918,24 +934,6 @@ end
         the process. Determined by consulting the [passwd] database
         with the user id of the process. If this fails or on Windows
         falls back to parse a path from the [HOME] environment variable. *)
-
-    (** {1:fold Folding over directory contents}
-
-        For more details see {!Path.fold}. *)
-
-    val contents_fold :
-      ?err:'b Path.fold_error -> ?over:Path.elements ->
-      ?traverse:Path.traverse -> ('a -> Fpath.t -> 'a) -> 'a -> Fpath.t ->
-      ('a, 'e) result
-    (** [contents_fold err over traverse f acc d] is
-        [(contents d >>= ]{!Path.fold}[ err over traverse f acc)]. *)
-
-    val descendants :
-      ?err:'b Path.fold_error -> ?over:Path.elements ->
-      ?traverse:Path.traverse -> Fpath.t ->
-      (Fpath.t list, 'e) result
-    (** [descendants err over traverse p] is
-        [(contents_fold err over traverse (fun l p -> p :: l) [])] *)
 
     (** {1:tmpdirs Temporary directories} *)
 

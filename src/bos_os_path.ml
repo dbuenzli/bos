@@ -228,8 +228,8 @@ let dir_exists ?err dir =
   with Sys_error e -> R.error_msg e
 
 type 'a res = ('a, R.msg) result
-type traverse = [`All | `None | `If of Fpath.t -> bool res ]
-type elements = [ `Any | `Files | `Dirs | `Is of Fpath.t -> bool res ]
+type traverse = [ `Any | `None | `Sat of Fpath.t -> bool res ]
+type elements = [ `Any | `Files | `Dirs | `Sat of Fpath.t -> bool res ]
 type 'a fold_error = Fpath.t -> 'a res -> unit res
 
 let log_fold_error ~level =
@@ -250,15 +250,15 @@ let err_fun err f ~backup_value = (* handles path function errors in folds *)
 let err_predicate_fun err p = err_fun err p ~backup_value:false
 
 let do_traverse_fun err = function
-| `All -> fun _ -> true
+| `Any -> fun _ -> true
 | `None -> fun _ -> false
-| `If pred -> err_predicate_fun err pred
+| `Sat sat -> err_predicate_fun err sat
 
 let is_element_fun err = function
-| `Any -> fun _ -> true
+| `Any -> err_predicate_fun err exists
 | `Files -> err_predicate_fun err Bos_os_file.exists
 | `Dirs -> err_predicate_fun err dir_exists
-| `Is pred -> err_predicate_fun err pred
+| `Sat sat -> err_predicate_fun err sat
 
 let is_dir_fun err =
   let is_dir p = try Ok (Sys.is_directory (Fpath.to_string p)) with
@@ -273,15 +273,18 @@ let readdir_fun err =
   err_fun err readdir ~backup_value:[||]
 
 let fold
-    ?(err = log_fold_error ~level:Logs.Error) ?(over = `Any)
-    ?(traverse = `All) f acc paths
+    ?(err = log_fold_error ~level:Logs.Error)
+    ?(dotfiles = false)
+    ?(elements = `Any) ?(traverse = `Any)
+    f acc paths
   =
   try
     let do_traverse = do_traverse_fun err traverse in
-    let is_element = is_element_fun err over in
+    let is_element = is_element_fun err elements in
     let is_dir = is_dir_fun err in
     let readdir =  readdir_fun err in
-    let process d (acc, to_traverse) bname =
+    let process d (acc, to_traverse as acc') bname =
+      if not dotfiles && String.is_prefix "." bname then acc' else
       let p = Fpath.(d / bname) in
       (if is_element p then (f acc p) else acc),
       (if is_dir p && do_traverse p then p :: to_traverse else to_traverse)
@@ -295,7 +298,11 @@ let fold
     | [] :: up -> loop acc up
     | _ -> assert false
     in
-    let init acc p = process (Fpath.parent p) acc Fpath.(to_string (base p)) in
+    let init acc p =
+      if Fpath.(equal p cur_dir || equal p par_dir)
+      then process p acc ""
+      else process (Fpath.parent p) acc Fpath.(to_string (base p))
+    in
     let acc, to_traverse = List.fold_left init (acc, []) paths in
     (Ok (loop acc (to_traverse :: [])))
   with Fold_stop (`Msg _ as e) -> Error e

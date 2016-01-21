@@ -23,8 +23,8 @@ module Db = struct
       |> Logs.on_error_msg ~use:(fun _ -> acc)
     in
     Logs.app (fun m -> m "Scanning files");
-    OS.Dir.current ()
-    >>= fun dir -> OS.Dir.contents_fold ~over:`Files add [] dir
+    OS.Dir.current () >>= fun dir ->
+    OS.Dir.fold_contents ~dotfiles:true ~elements:`Files add [] dir
 
   let dump oc db = Marshal.(to_channel oc db [No_sharing; Compat_32])
   let slurp ic () = (Marshal.from_channel ic : float Fpath.Map.t)
