@@ -16,7 +16,7 @@ module Db = struct
   let db_file = Fpath.v "watchdb"
   let exists () = OS.File.exists db_file
   let scan () =             (* returns list of (path, modification time) *)
-    let add acc p =
+    let add p acc =
       (OS.Path.stat p >>= fun stats ->
        if stats.Unix.st_kind <> Unix.S_REG then Ok acc else
        Ok ((p, stats.Unix.st_mtime) :: acc))

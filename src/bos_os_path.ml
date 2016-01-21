@@ -286,7 +286,7 @@ let fold
     let process d (acc, to_traverse as acc') bname =
       if not dotfiles && String.is_prefix "." bname then acc' else
       let p = Fpath.(d / bname) in
-      (if is_element p then (f acc p) else acc),
+      (if is_element p then (f p acc) else acc),
       (if is_dir p && do_traverse p then p :: to_traverse else to_traverse)
     in
     let rec loop acc = function

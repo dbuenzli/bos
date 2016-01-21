@@ -659,7 +659,7 @@ let main () = main ()
 
     val fold :
       ?err:'b fold_error -> ?dotfiles:bool -> ?elements:elements ->
-      ?traverse:traverse -> ('a -> Fpath.t -> 'a) -> 'a -> Fpath.t list ->
+      ?traverse:traverse -> (Fpath.t -> 'a -> 'a) -> 'a -> Fpath.t list ->
       ('a, 'e) result
     (** [fold err dotfiles elements traverse f acc paths] folds over the list of
         paths [paths] traversing directories according to [traverse]
@@ -905,7 +905,7 @@ end
 
     val fold_contents :
       ?err:'b Path.fold_error -> ?dotfiles:bool -> ?elements:Path.elements ->
-      ?traverse:Path.traverse -> ('a -> Fpath.t -> 'a) -> 'a -> Fpath.t ->
+      ?traverse:Path.traverse -> (Fpath.t -> 'a -> 'a) -> 'a -> Fpath.t ->
       ('a, 'e) result
     (** [contents_fold err dotfiles elements traverse f acc d] is:
 {[
