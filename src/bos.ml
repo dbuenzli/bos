@@ -18,7 +18,7 @@ module Cmd = Bos_cmd
 (* OS interaction *)
 
 module OS = struct
-  type 'a result = ('a, R.msg) R.t
+  type ('a, 'b) result = ('a, [> R.msg] as 'b) R.t
 
   module Env = Bos_os_env
   module Arg = Bos_os_arg

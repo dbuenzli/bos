@@ -297,8 +297,8 @@ let fold
     in
     let init acc p = process (Fpath.parent p) acc Fpath.(to_string (base p)) in
     let acc, to_traverse = List.fold_left init (acc, []) paths in
-    Ok (loop acc (to_traverse :: []))
-  with Fold_stop e -> Error e
+    (Ok (loop acc (to_traverse :: [])))
+  with Fold_stop (`Msg _ as e) -> Error e
 
 (*---------------------------------------------------------------------------
    Copyright (c) 2015 Daniel C. Bünzli.

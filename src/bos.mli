@@ -50,7 +50,7 @@ module Pat : sig
   val compare : t -> t -> int
   (** [compare p p'] is {!Pervasives.compare}[ p p']. *)
 
-  val of_string : ?buf:Buffer.t -> string -> (t, [> R.msg]) result
+  val of_string : ?buf:Buffer.t -> string -> (t, [> R.msg]) Result.result
   (** [of_string ?buf s] parses [s] according to the pattern syntax
       (i.e.  a '$' will be represented by ["$$"]). [buf] can specify a
       temporary buffer to use. *)
@@ -221,7 +221,7 @@ module OS : sig
       control over unix errors use the lower level functions in
       {!Bos.OS.U}. *)
 
-  type 'a result = ('a, R.msg) R.t
+  type ('a, 'e) result = ('a, [> R.msg] as 'e) Result.result
   (** The type for OS results. *)
 
   (** {1:env Environment variables and program arguments} *)
@@ -231,7 +231,7 @@ module OS : sig
 
     (** {1:env Process environment} *)
 
-    val vars : unit -> string String.Map.t result
+    val vars : unit -> (string String.Map.t, 'e) result
     (** [vars ()] is a string map corresponding to the process environment. *)
 
     (** {1:vars Variables} *)
@@ -240,7 +240,7 @@ module OS : sig
     (** [var name] is the value of the environment variable [name], if
         defined. *)
 
-    val set_var : string -> string option -> unit result
+    val set_var : string -> string option -> (unit, 'e) result
     (** [set_var name v] sets the environment variable [name] to [v].
 
         {b BUG.} The {!Unix} module doesn't bind to [unsetenv(3)],
@@ -253,7 +253,7 @@ module OS : sig
         environment variable [name] if defined and [absent] if
         undefined. *)
 
-    val req_var : string -> string result
+    val req_var : string -> (string, 'e) result
     (** [req_var name]  is the value of the environment variable [name] or
         an error if [name] is undefined in the environment. *)
 
@@ -287,7 +287,7 @@ module OS : sig
     (** [some p] is wraps [p]'s parse result in [Some]. *)
 
     val parse :
-      string -> 'a parser -> absent:'a -> ('a, [> R.msg]) Result.result
+      string -> 'a parser -> absent:'a -> ('a, 'e) result
     (** [parse name p ~absent] is:
         {ul
         {- [Ok absent] if [Env.var name = None]}
@@ -556,39 +556,44 @@ let main () = main ()
 
     (** {1:ops Existence and move} *)
 
-    val exists : Fpath.t -> bool result
+    val exists : Fpath.t -> (bool, 'e) result
     (** [exists p] is [true] if [p] exists for the file system
         and [false] otherwise. *)
 
-    val must_exist : Fpath.t -> unit result
+    val must_exist : Fpath.t -> (unit, 'e) result
     (** [must_exist p] is [()] if [p] exists for the file system
         and an error otherwise. *)
 
-    val move : ?force:bool -> Fpath.t -> Fpath.t -> unit result
+    val move :
+      ?force:bool -> Fpath.t -> Fpath.t -> (unit, 'e) result
     (** [move ~force src dst] moves path [src] to [dst]. If [force] is
         [true] (defaults to [false]) the operation doesn't error if
         [dst] exists and can be replaced by [src]. *)
 
-    val stat : Fpath.t -> Unix.stats result
+    val stat : Fpath.t -> (Unix.stats, 'e) result
     (** [stat p] is [p]'s file information. *)
 
     (** {1:link Path links} *)
 
-    val link : ?force:bool -> target:Fpath.t -> Fpath.t -> unit result
+    val link :
+      ?force:bool -> target:Fpath.t -> Fpath.t ->
+      (unit, 'e) result
     (** [link ~force target p] hard links [target] to [p].  If
         [force] is [true] (defaults to [false]) and [p] exists, it is
         is [rmdir]ed or [unlink]ed before making the link. *)
 
-    val symlink : ?force:bool -> target:Fpath.t -> Fpath.t -> unit result
+    val symlink :
+      ?force:bool -> target:Fpath.t -> Fpath.t ->
+      (unit, 'e) result
     (** [symlink ~force target p] symbolically links [target] to
         [dst]. If [force] is [true] (defaults to [false]) and [p]
         exists, it is [rmdir]ed or [unlink]ed before making the
         link.*)
 
-    val symlink_target : Fpath.t -> Fpath.t result
+    val symlink_target : Fpath.t -> (Fpath.t, 'e) result
     (** [slink_target p] is [p]'s target if [p] is a symbolic link. *)
 
-    val symlink_stat : Fpath.t -> Unix.stats result
+    val symlink_stat : Fpath.t -> (Unix.stats, 'e) result
     (** [symlink_stat p] is the same as {!stat} but if [p] is a link
         returns information about the link itself. *)
 
@@ -609,14 +614,16 @@ let main () = main ()
         [".."]. For example the pattern ["$(file).$(ext)"] does not
         match ["."]. *)
 
-    val matches : ?dotfiles:bool -> Fpath.t -> Fpath.t list result
+    val matches :
+      ?dotfiles:bool -> Fpath.t -> (Fpath.t list, 'e) result
     (** [matches ~dotfiles pat] is the list of paths in the file
         system that match the path pattern [pat]. If [dotfiles] is
         [false] (default) paths which have at least one segment that
         starts with a ['.'] character are not part of the list. *)
 
-    val query : ?dotfiles:bool -> ?init:Pat.env -> Fpath.t ->
-      (Fpath.t * Pat.env) list result
+    val query :
+      ?dotfiles:bool -> ?init:Pat.env -> Fpath.t ->
+      ((Fpath.t * Pat.env) list, 'e) result
     (** [query ~init pat] is like {!matches} except each matching path
         is returned with an environment mapping pattern variables to
         their matched part in the path. For each path the mappings are
@@ -624,15 +631,16 @@ let main () = main ()
 
     (** {1:fold Folding over file system hierarchies} *)
 
-    type traverse = [`All | `None | `If of Fpath.t -> bool result ]
+    type traverse = [`All | `None | `If of Fpath.t -> (bool, R.msg) result ]
     (** The type for controlling directory traversals. The predicate of
         [`If] will only be called with directory paths (but there may
         be OS races). *)
 
-    type elements = [ `Any | `Files | `Dirs | `Is of Fpath.t -> bool result ]
+    type elements = [ `Any | `Files | `Dirs
+                    | `Is of Fpath.t -> (bool, R.msg) result ]
     (** The type for specifying elements being folded over. *)
 
-    type 'a fold_error = Fpath.t -> 'a result -> unit result
+    type 'a fold_error = Fpath.t -> ('a, R.msg) result -> (unit, R.msg) result
     (** The type for managing fold errors.
 
         During the fold errors may be generated at different points.
@@ -649,9 +657,10 @@ let main () = main ()
     (** [log_fold_error level] is a {!fold_error} function that logs
         error with level [level] and always returns [`Ok ()]. *)
 
-    val fold : ?err:'b fold_error -> ?over:elements ->
-      ?traverse:traverse ->
-        ('a -> Fpath.t -> 'a) -> 'a -> Fpath.t list -> 'a result
+    val fold :
+      ?err:'b fold_error -> ?over:elements -> ?traverse:traverse ->
+      ('a -> Fpath.t -> 'a) -> 'a -> Fpath.t list ->
+      ('a, 'e) result
     (** [fold err over traverse f acc paths] folds over the list of
         paths [paths] traversing directories according to [traverse]
         (defaults to [`All]) and selecting elements to fold over
@@ -686,22 +695,22 @@ let main () = main ()
 
     (** {1:ops Existence and deletion} *)
 
-    val exists : Fpath.t -> bool result
+    val exists : Fpath.t -> (bool, 'e) result
     (** [exists file] is [true] if [file] is a regular file in the
         file system and [false] otherwise.  Symbolic links are
         followed. *)
 
-    val must_exist : Fpath.t -> unit result
+    val must_exist : Fpath.t -> (unit, 'e) result
     (** [must_exist file] is [()] if [file] is a regular file in the
         file system and an error otherwise. Symbolic links are
         followed. *)
 
-    val delete : ?must_exist:bool -> Fpath.t -> unit result
+    val delete : ?must_exist:bool -> Fpath.t -> (unit, 'e) result
     (** [delete ~must_exist file] deletes file [file]. If [must_exist]
         is [true] (defaults to [false]) an error is returned if [file]
         doesn't exist. *)
 
-    val truncate : Fpath.t -> int -> unit result
+    val truncate : Fpath.t -> int -> (unit, 'e) result
     (** [truncate p size] truncates [p] to [s]. *)
 
     (** {1:input Input}
@@ -716,13 +725,15 @@ let main () = main ()
         byte range is immutable until the next function call.  [None]
         is returned at the end of input. *)
 
-    val with_input : Fpath.t -> (input -> 'a -> 'b) -> 'a -> 'b result
+    val with_input :
+      Fpath.t -> (input -> 'a -> 'b) -> 'a -> ('b, 'e) result
     (** [with_input file f v] provides contents of [file] with an
         input [i] and returns [f i v]. After the function returns
         (normally or via an exception) a call to [i] by the client raises
         [Invalid_argument]. *)
 
-    val with_ic : Fpath.t -> (in_channel -> 'a -> 'b) -> 'a -> 'b result
+    val with_ic :
+      Fpath.t -> (in_channel -> 'a -> 'b) -> 'a -> ('b, 'e) result
     (** [with_ic file f v] opens [file] as a channel [ic] and returns
         [Ok (f ic v)]. After the function returns (normally or via an
         exception), [ic] is ensured to be closed.  If [file] is
@@ -730,14 +741,15 @@ let main () = main ()
         function returns. [End_of_file] exceptions raised by [f] are
         turned it into an error message. *)
 
-    val read : Fpath.t -> string result
+    val read : Fpath.t -> (string, 'e) result
     (** [read file] is [file]'s content as a string. *)
 
-    val read_lines : Fpath.t -> string list result
+    val read_lines : Fpath.t -> (string list, 'e) result
     (** [read_lines file] is [file]'s content, split at each
         ['\n'] character. *)
 
-    val fold_lines : ('a -> string -> 'a) -> 'a -> Fpath.t -> 'a result
+    val fold_lines :
+      ('a -> string -> 'a) -> 'a -> Fpath.t -> ('a, 'e) result
     (** [fold_lines f acc file] is like
         [List.fold_left f acc (read_lines p)]. *)
 
@@ -764,32 +776,38 @@ let main () = main ()
         the range \[[pos];[pos+len]\]. [None] is called to denote
         end of output. *)
 
-    val with_output : ?mode:int -> Fpath.t -> (output -> 'a -> 'b) ->
-      'a -> 'b result
+    val with_output :
+      ?mode:int -> Fpath.t -> (output -> 'a -> 'b) -> 'a ->
+      ('b, 'e) result
     (** [with_output file f v] writes the contents of [file] using an
         output [o] given to [f] and returns [Ok (f o v)]. After the
         function returns (normally or via an exception) a call to [o]
         by the client raises [Invalid_argument]. *)
 
-    val with_oc : ?mode:int -> Fpath.t -> (out_channel -> 'a -> 'b) ->
-      'a -> 'b result
+    val with_oc :
+      ?mode:int -> Fpath.t -> (out_channel -> 'a -> 'b) -> 'a ->
+      ('b, 'e) result
     (** [with_oc file f v] opens [file] as a channel [oc] and returns
         [Ok (f oc v)]. After the function returns (normally or via an
         exception) [oc] is closed. If [file] is {!dash}, [oc] is
         {!Pervasives.stdout} and not closed when the function
         returns. *)
 
-    val write : ?mode:int -> Fpath.t -> string -> unit result
+    val write :
+      ?mode:int -> Fpath.t -> string -> (unit, 'e) result
     (** [write file content] outputs [content] to [file]. If [file]
         is {!dash}, writes to {!Pervasives.stdout}. If an error is
         returned [file] is left untouched except if {!Pervasives.stdout}
         is written. *)
 
-    val writef : ?mode:int -> Fpath.t ->
-      ('a, Format.formatter, unit, unit result) format4 -> 'a
+    val writef :
+      ?mode:int -> Fpath.t ->
+      ('a, Format.formatter, unit, (unit, 'e) result ) format4 ->
+      'a
     (** [write file fmt ...] is like [write file (Format.asprintf fmt ...)]. *)
 
-    val write_lines : ?mode:int -> Fpath.t -> string list -> unit result
+    val write_lines :
+      ?mode:int -> Fpath.t -> string list -> (unit, 'e) result
     (** [write_lines file lines] is like [write file (String.concat
         ~sep:"\n" lines)]. *)
 
@@ -800,7 +818,9 @@ let main () = main ()
     (** The type for temporary file name patterns. The string format is
         replaced by random characters. *)
 
-    val tmp : ?mode:int -> ?dir:Fpath.t -> tmp_name_pat -> Fpath.t result
+    val tmp :
+      ?mode:int -> ?dir:Fpath.t -> tmp_name_pat ->
+      (Fpath.t, 'e) result
     (** [tmp mode dir pat] is a new empty temporary file in [dir]
         (defaults to {!Dir.default_tmp}) named according to [pat] and
         created with permissions [mode] (defaults to [0o600] only
@@ -813,8 +833,9 @@ let main () = main ()
         ensures that noone replaces the file, e.g. by a symbolic link,
         between the time you create the file and open it. *)
 
-    val with_tmp_output : ?mode:int -> ?dir:Fpath.t -> tmp_name_pat ->
-      (Fpath.t -> output -> 'a -> 'b) -> 'a -> 'b result
+    val with_tmp_output :
+      ?mode:int -> ?dir:Fpath.t -> tmp_name_pat ->
+      (Fpath.t -> output -> 'a -> 'b) -> 'a -> ('b, 'e) result
     (** [with_tmp_output dir pat f v] is a new temporary file in [dir]
         (defaults to {!Dir.default_tmp}) named according to [pat] and
         atomically created and opened with permissions [mode]
@@ -824,8 +845,10 @@ let main () = main ()
         returns (normally or via an exception), calls to [o] raise
         [Invalid_argument] and [file] is deleted. *)
 
-    val with_tmp_oc : ?mode:int -> ?dir:Fpath.t -> tmp_name_pat ->
-      (Fpath.t -> out_channel -> 'a -> 'b) -> 'a -> 'b result
+    val with_tmp_oc :
+      ?mode:int -> ?dir:Fpath.t -> tmp_name_pat ->
+      (Fpath.t -> out_channel -> 'a -> 'b) -> 'a ->
+      ('b, 'e) result
     (** [with_tmp_oc mode dir pat f v] is a new temporary file in
         [dir] (defaults to {!Dir.default_tmp}) named according to
         [pat] and atomically created and opened with permission [mode]
@@ -841,15 +864,16 @@ end
 
     (** {1:dirops Existence, creation, deletion and contents} *)
 
-    val exists : Fpath.t -> bool result
+    val exists : Fpath.t -> (bool, 'e) result
     (** [exists dir] is [true] if [dir] is a directory in the file system
         and [false] otherwise. Symbolic links are followed. *)
 
-    val must_exist : Fpath.t -> unit result
+    val must_exist : Fpath.t -> (unit, 'e) result
     (** [must_exist dir] is [()] if [dir] is a directory in the file system
         and an error otherwise. Symbolic links are followed. *)
 
-    val create : ?path:bool -> ?mode:int -> Fpath.t -> unit result
+    val create :
+      ?path:bool -> ?mode:int -> Fpath.t -> (unit, 'e) result
     (** [create ~path ~mode dir] creates the directory [dir] with file
         permission [mode] (defaults [0o755] readable and traversable
         by everyone, writeable by the user). If [path] is [true]
@@ -858,14 +882,17 @@ end
         error. If [dir] exists, no error is returned but its
         permissions are changed to the given [mode]. *)
 
-    val delete : ?must_exist:bool -> ?recurse:bool -> Fpath.t -> unit result
+    val delete :
+      ?must_exist:bool -> ?recurse:bool -> Fpath.t ->
+      (unit, 'e) result
     (** [delete ~must_exist ~recurse dir] deletes the directory [dir]. If
         [must_exist] is [true] (defaults to [false]) an error is returned
         if [dir] doesn't exist. If [recurse] is [true] (default to [false])
         no error occurs if the directory is non-empty: its contents is
         recursively deleted first. *)
 
-    val contents : ?rel:bool -> Fpath.t -> Fpath.t list result
+    val contents :
+      ?rel:bool -> Fpath.t -> (Fpath.t list, 'e) result
     (** [contents ~rel dir] is the contents of [dir].  If [rel] is
         [true] (defaults to [false]) the resulting paths are relative
         to [dir], otherwise they have [dir] prepended. See also
@@ -873,18 +900,20 @@ end
 
     (** {1:current Current working and user directory} *)
 
-    val current : unit -> Fpath.t result
+    val current : unit -> (Fpath.t, 'e) result
     (** [current ()] is the current working directory. *)
 
-    val set_current : Fpath.t -> unit result
+    val set_current : Fpath.t -> (unit, 'e) result
     (** [set_current dir] sets the current working directory to [dir]. *)
 
-    val with_current : Fpath.t -> ('a -> 'b result) -> 'a -> 'b result
+    val with_current :
+      Fpath.t -> ('a -> ('b, 'e) result ) -> 'a ->
+      ('b, 'e) result
     (** [with_current dir f v] is [f v] with the current working directory
         bound to [dir]. After the function returns the current working
         directory is back to its initial value. *)
 
-    val user : unit -> Fpath.t result
+    val user : unit -> (Fpath.t, 'e) result
     (** [user ()] is the home directory of the user executing
         the process. Determined by consulting the [passwd] database
         with the user id of the process. If this fails or on Windows
@@ -894,14 +923,17 @@ end
 
         For more details see {!Path.fold}. *)
 
-    val contents_fold : ?err:'b Path.fold_error -> ?over:Path.elements ->
+    val contents_fold :
+      ?err:'b Path.fold_error -> ?over:Path.elements ->
       ?traverse:Path.traverse -> ('a -> Fpath.t -> 'a) -> 'a -> Fpath.t ->
-      'a result
+      ('a, 'e) result
     (** [contents_fold err over traverse f acc d] is
         [(contents d >>= ]{!Path.fold}[ err over traverse f acc)]. *)
 
-    val descendants : ?err:'b Path.fold_error -> ?over:Path.elements ->
-      ?traverse:Path.traverse -> Fpath.t -> Fpath.t list result
+    val descendants :
+      ?err:'b Path.fold_error -> ?over:Path.elements ->
+      ?traverse:Path.traverse -> Fpath.t ->
+      (Fpath.t list, 'e) result
     (** [descendants err over traverse p] is
         [(contents_fold err over traverse (fun l p -> p :: l) [])] *)
 
@@ -912,7 +944,9 @@ end
     (** The type for temporary directory name patterns. The string format is
         replaced by random characters. *)
 
-    val tmp : ?mode:int -> ?dir:Fpath.t -> tmp_name_pat -> Fpath.t result
+    val tmp :
+      ?mode:int -> ?dir:Fpath.t -> tmp_name_pat ->
+      (Fpath.t, 'e) result
     (** [tmp mode dir pat] is a new empty directory in [dir] (defaults
         to {!Dir.default_tmp}) named according to [pat] and created
         with permissions [mode] (defaults to [0o700] only readable and
@@ -920,8 +954,10 @@ end
         deleted at the end of program execution using a
         {!Pervasives.at_exit} handler. *)
 
-    val with_tmp : ?mode:int -> ?dir:Fpath.t -> tmp_name_pat ->
-      (Fpath.t -> 'a -> 'b result) -> 'a -> 'b result
+    val with_tmp :
+      ?mode:int -> ?dir:Fpath.t -> tmp_name_pat ->
+      (Fpath.t -> 'a -> ('b, 'e) result ) -> 'a ->
+      ('b, 'e) result
     (** [with_tmp mode dir pat f v] is a new empty directory in [dir]
         (defaults to {!Dir.default_tmp}) named according to [pat] and
         created with permissions [mode] (defaults to [0o700] only
@@ -956,11 +992,11 @@ end
 
     (** {1:exist Command existence} *)
 
-    val exists : Cmd.t -> bool result
+    val exists : Cmd.t -> (bool, 'e) result
     (** [exists cmd] is [true] if the executable of [cmd] can be found in
         the path and [false] otherwise. *)
 
-    val must_exist : Cmd.t -> unit result
+    val must_exist : Cmd.t -> (unit, 'e) result
     (** [must_exist cmd] is [()] if the executable of [cmd] can be found
         in the path and an error otherwise. *)
 
@@ -970,22 +1006,22 @@ end
     (** [exec_ret l] executes command line [l] and returns the exit
         code of the invocation. *)
 
-    val exec : Cmd.t -> unit result
+    val exec : Cmd.t -> (unit, 'e) result
     (** [exec l] executes the command line [l]. On exit code [0] returns
         [`Ok ()]. Otherwise an error message with the failed
         invocation and its exit code is returned in [`Error]. *)
 
-    val exec_read : ?trim:bool -> Cmd.t -> string result
+    val exec_read : ?trim:bool -> Cmd.t -> (string, 'e) result
     (** [exec_read ~trim l] executes the command line [l] and returns
         its standard output. If the excution return code is non zero
         returns an error message. If [trim] is [true] (default) the
         contents is passed to {!String.trim} before being returned. *)
 
-    val exec_read_lines : Cmd.t -> string list result
+    val exec_read_lines : Cmd.t -> (string list, 'e) result
     (** [exec_read_lines l] is like [exec_read ~trim:false cmd args] but
         the input is splitted at ['\n']. *)
 
-    val exec_write : Cmd.t -> Fpath.t -> unit result
+    val exec_write : Cmd.t -> Fpath.t -> (unit, 'e) result
     (** [exec_write cmd args file] execute [cmd] with arguments [args] and
         writes the invocation's [stdout] to [file]. In [cmd]'s return code
         is non zero returns an error message and [file] is left intact. *)
@@ -1010,11 +1046,12 @@ end
     val pp_error : Format.formatter -> [`Unix of Unix.error] -> unit
     (** [pp_error ppf e] prints [e] on [ppf]. *)
 
-    val open_error : 'a result -> ('a, [> `Unix of Unix.error]) Result.result
+    val open_error :
+      'a result -> ('a, [> `Unix of Unix.error]) Result.result
     (** [open_error r] allows to combine a closed unix error
         variant with other variants. *)
 
-    val error_to_msg : 'a result -> ('a, R.msg) Result.result
+    val error_to_msg : 'a result -> ('a, [> R.msg]) Result.result
     (** [error_to_msg r] converts unix errors in [r] to an error message. *)
 
     (** {1 Wrapping {!Unix} calls} *)
