@@ -91,7 +91,19 @@ let with_ic file f v =
   | Sys_error e -> R.error_msg e
 
 let read file =
+  let input_stdin () =
+    let bsize = 65536 (* IO_BUFFER_SIZE *) in
+    let buf = Buffer.create bsize in
+    let b = Bytes.create bsize in
+    let rec loop () =
+      let rc = input stdin b 0 bsize in
+      if rc = 0 then Ok (Buffer.contents buf) else
+      (Buffer.add_subbytes buf b 0 rc; loop ())
+    in
+    loop ()
+  in
   let input ic () =
+    if ic == stdin then input_stdin () else
     let len = in_channel_length ic in
     if len <= Sys.max_string_length then begin
       let s = Bytes.create len in
@@ -106,7 +118,6 @@ let read file =
   | Ok (Ok _ as v) -> v
   | Ok (Error _ as e) -> e
   | Error _ as e -> e
-
 
 let fold_lines f acc file =
   let input ic acc =
