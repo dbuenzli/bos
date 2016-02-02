@@ -16,20 +16,20 @@ let rec exists dir =
   | Unix.Unix_error (Unix.EINTR, _, _) -> exists dir
   | Unix.Unix_error (Unix.ENOENT, _, _) -> Ok false
   | Unix.Unix_error (e, _, _) ->
-      R.error_msgf "directory %a exists: %s" Fpath.pp dir (uerror e)
+      R.error_msgf "%a exists: %s" Fpath.pp dir (uerror e)
 
 let rec must_exist dir =
   try
     match Unix.((stat @@ Fpath.to_string dir).st_kind) with
     | Unix.S_DIR -> Ok ()
     | _ ->
-        R.error_msgf "directory %a must exist: Not a directory" Fpath.pp dir
+        R.error_msgf "%a must exist: Not a directory" Fpath.pp dir
   with
   | Unix.Unix_error (Unix.EINTR, _, _) -> must_exist dir
   | Unix.Unix_error (Unix.ENOENT, _, _) ->
-      R.error_msgf "directory %a must exist: No such directory" Fpath.pp dir
+      R.error_msgf "%a must exist: No such directory" Fpath.pp dir
   | Unix.Unix_error (e, _, _) ->
-      R.error_msgf "directory %a must exist: %s" Fpath.pp dir (uerror e)
+      R.error_msgf "%a must exist: %s" Fpath.pp dir (uerror e)
 
 let create ?(path = true) ?(mode = 0o755) dir =
   let rec chmod dir mode = try Ok (Unix.chmod (Fpath.to_string dir) mode) with
@@ -72,7 +72,7 @@ let rec contents ?(rel = false) dir =
             readdir dh ((if rel then f else Fpath.(dir // f)) :: acc)
         | None ->
             R.error_msgf
-              "directory %a contents: cannot parse element to a path (%a)"
+              "%a directory contents: cannot parse element to a path (%a)"
               Fpath.pp dir String.dump f
   in
   try
@@ -81,7 +81,7 @@ let rec contents ?(rel = false) dir =
   with
   | Unix.Unix_error (Unix.EINTR, _, _) -> contents ~rel dir
   | Unix.Unix_error (e, _, _) ->
-      R.error_msgf "directory %a contents: %s" Fpath.pp dir (uerror e)
+      R.error_msgf "%a directory contents: %s" Fpath.pp dir (uerror e)
 
 let fold_contents ?err ?dotfiles ?elements ?traverse f acc d =
   contents d >>= Bos_os_path.fold ?err ?dotfiles ?elements ?traverse f acc
