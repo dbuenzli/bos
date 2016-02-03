@@ -32,34 +32,31 @@ let rec must_exist dir =
       R.error_msgf "%a must exist: %s" Fpath.pp dir (uerror e)
 
 let create ?(path = true) ?(mode = 0o755) dir =
-  let rec chmod dir mode = try Ok (Unix.chmod (Fpath.to_string dir) mode) with
-  | Unix.Unix_error (Unix.EINTR, _, _) -> chmod dir mode
-  | Unix.Unix_error (e, _, _) ->
-      R.error_msgf "create directory %a: %s" Fpath.pp dir (uerror e)
-  in
   let rec mkdir d mode = try Ok (Unix.mkdir (Fpath.to_string d) mode) with
   | Unix.Unix_error (Unix.EEXIST, _, _) -> Ok ()
   | Unix.Unix_error (e, _, _) ->
-      if d = dir then
-        R.error_msgf "create directory %a: %s" Fpath.pp d (uerror e)
-      else
-        R.error_msgf "create directory %a: %a: %s"
-          Fpath.pp dir Fpath.pp d (uerror e)
+      if d = dir
+      then R.error_msgf "create directory %a: %s" Fpath.pp d (uerror e)
+      else R.error_msgf "create directory %a: %a: %s"
+             Fpath.pp dir Fpath.pp d (uerror e)
   in
   exists dir >>= function
-  | true -> chmod dir mode
+  | true -> Ok true
   | false ->
-      if not path then mkdir dir mode else
-      let rec dirs_to_create p acc =
-        exists p >>= function
-        | true -> Ok acc
-        | false -> dirs_to_create (Fpath.parent p) (p :: acc)
-      in
-      let rec create_them dirs () = match dirs with
-      | dir :: dirs -> mkdir dir mode >>= create_them dirs
-      | [] -> Ok ()
-      in
-      dirs_to_create dir [] >>= fun dirs -> create_them dirs ()
+      match path with
+      | false -> mkdir dir mode >>= fun () -> Ok false
+      | true ->
+          let rec dirs_to_create p acc = exists p >>= function
+          | true -> Ok acc
+          | false -> dirs_to_create (Fpath.parent p) (p :: acc)
+          in
+          let rec create_them dirs () = match dirs with
+          | dir :: dirs -> mkdir dir mode >>= create_them dirs
+          | [] -> Ok ()
+          in
+          dirs_to_create dir []
+          >>= fun dirs -> create_them dirs ()
+          >>= fun () -> Ok false
 
 let rec contents ?(rel = false) dir =
   let rec readdir dh acc =

@@ -893,14 +893,16 @@ end
         and an error otherwise. Symbolic links are followed. *)
 
     val create :
-      ?path:bool -> ?mode:int -> Fpath.t -> (unit, 'e) result
-    (** [create ~path ~mode dir] creates the directory [dir] with file
-        permission [mode] (defaults [0o755] readable and traversable
+      ?path:bool -> ?mode:int -> Fpath.t -> (bool, 'e) result
+    (** [create ~path ~mode dir] creates, if needed, the directory [dir] with
+        file permission [mode] (defaults [0o755] readable and traversable
         by everyone, writeable by the user). If [path] is [true]
         (default) intermediate directories are created with the same
         [mode], otherwise missing intermediate directories lead to an
-        error. If [dir] exists, no error is returned but its
-        permissions are changed to the given [mode]. *)
+        error. The result is [false] if [dir] already exists.
+
+        {b Note.} The mode of existing directories, including
+        [dir] if this is the case is kept unchanged. *)
 
     val delete :
       ?must_exist:bool -> ?recurse:bool -> Fpath.t ->
