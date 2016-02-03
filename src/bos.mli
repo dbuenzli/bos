@@ -554,7 +554,7 @@ let main () = main ()
   (** Path operations. *)
   module Path : sig
 
-    (** {1:ops Existence and move} *)
+    (** {1:ops Existence, move, information and mode } *)
 
     val exists : Fpath.t -> (bool, 'e) result
     (** [exists p] is [true] if [p] exists for the file system
@@ -572,6 +572,21 @@ let main () = main ()
 
     val stat : Fpath.t -> (Unix.stats, 'e) result
     (** [stat p] is [p]'s file information. *)
+
+    (** Path permission modes. *)
+    module Mode : sig
+
+      (** {1:modes Modes} *)
+
+      type t = int
+      (** The type for file path permission modes. *)
+
+      val get : Fpath.t -> (t, 'e) result
+      (** [get p] is [p] is permission mode. *)
+
+      val set : Fpath.t -> t -> (unit, 'e) result
+      (** [set p m] sets [p]'s permission mode to [m]. *)
+    end
 
     (** {1:link Path links} *)
 

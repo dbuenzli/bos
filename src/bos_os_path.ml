@@ -43,6 +43,20 @@ let rec stat p = try Ok (Unix.stat (Fpath.to_string p)) with
 | Unix.Unix_error (e, _, _) ->
     R.error_msgf "stat %a: %s" Fpath.pp p (uerror e)
 
+module Mode = struct
+  type t = int
+
+  let rec get p = try Ok (Unix.((stat (Fpath.to_string p)).st_perm)) with
+  | Unix.Unix_error (Unix.EINTR, _, _) -> get p
+  | Unix.Unix_error (e, _, _) ->
+      R.error_msgf "get mode %a: %s" Fpath.pp p (uerror e)
+
+  let rec set p m = try Ok (Unix.chmod (Fpath.to_string p) m) with
+  | Unix.Unix_error (Unix.EINTR, _, _) -> set p m
+  | Unix.Unix_error (e, _, _) ->
+      R.error_msgf "set mode %a: %s" Fpath.pp p (uerror e)
+end
+
 (* Path links *)
 
 let rec force_remove op target p =
