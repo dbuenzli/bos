@@ -165,7 +165,9 @@ let rec current () =
   try
     let p = Unix.getcwd () in
     match Fpath.of_string p with
-    | Some dir -> Ok dir
+    | Some dir ->
+        if Fpath.is_abs dir then Ok dir else
+        R.error_msgf "getcwd(3) returned a relative path: (%a)" Fpath.pp dir
     | None ->
         R.error_msgf
           "get current working directory: cannot parse it to a path (%a)"

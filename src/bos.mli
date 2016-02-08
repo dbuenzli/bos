@@ -934,7 +934,8 @@ contents d >>= Path.fold err dotfiles elements traverse f acc
     (** {1:current Current working and user directory} *)
 
     val current : unit -> (Fpath.t, 'e) result
-    (** [current ()] is the current working directory. *)
+    (** [current ()] is the current working directory. The resulting
+        path is guaranteed to be absolute. *)
 
     val set_current : Fpath.t -> (unit, 'e) result
     (** [set_current dir] sets the current working directory to [dir]. *)
