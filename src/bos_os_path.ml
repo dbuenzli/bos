@@ -116,7 +116,7 @@ let rec match_segment dotfiles ~env acc path seg =
     | Some e when String.length e > 1 && e.[0] = '.' && not dotfiles ->
         readdir dh acc
     | Some e ->
-        match Fpath.is_seg_valid e with
+        match Fpath.is_seg e with
         | true ->
             begin match Bos_pat.match_pat ~env 0 e seg with
             | None -> readdir dh acc
@@ -313,7 +313,7 @@ let fold
     | _ -> assert false
     in
     let init acc p =
-      if Fpath.(equal p cur_dir || equal p par_dir)
+      if Fpath.(is_current_dir p || is_parent_dir p)
       then process p acc ""
       else process (Fpath.parent p) acc Fpath.(to_string (base p))
     in

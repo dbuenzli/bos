@@ -17,7 +17,7 @@ let default_dir_init =
         | None -> absent (* FIXME log something ? *)
         | Some v -> v
   in
-  if Sys.os_type = "Win32" then from_env "TEMP" ~absent:Fpath.cur_dir else
+  if Sys.os_type = "Win32" then from_env "TEMP" ~absent:Fpath.(v "./") else
   from_env "TMPDIR" ~absent:(Fpath.v "/tmp")
 
 let default_dir = ref default_dir_init
