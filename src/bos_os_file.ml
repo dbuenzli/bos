@@ -76,7 +76,8 @@ let with_input file f v =
       let rc = input ic b 0 bsize in
       if rc = 0 then None else Some (b, 0, rc)
     in
-    Ok (Bos_base.apply (f input) v ~finally:close ic)
+    try Ok (Bos_base.apply (f input) v ~finally:close ic) with
+    | Sys_error e -> R.error_msgf "%a: %s" Fpath.pp file e
   with
   | Sys_error e -> R.error_msg e
 
@@ -85,7 +86,8 @@ let with_ic file f v =
     let ic = if is_dash file then stdin else open_in_bin (Fpath.to_string file)
     in
     let close ic = if is_dash file then () else close_in ic in
-    Ok (Bos_base.apply (f ic) v ~finally:close ic)
+    try Ok (Bos_base.apply (f ic) v ~finally:close ic) with
+    | Sys_error e -> R.error_msgf "%a: %s" Fpath.pp file e
   with
   | End_of_file -> R.error_msgf "%a: unexpected end of file" Fpath.pp file
   | Sys_error e -> R.error_msg e
@@ -182,7 +184,8 @@ let with_tmp_oc ?(mode = default_tmp_mode) ?dir pat f v =
     let oc = Unix.out_channel_of_descr fd in
     let delete_close oc = tmps_rem file; close_out oc in
     tmps_add file;
-    Ok (Bos_base.apply (f file oc) v ~finally:delete_close oc)
+    try Ok (Bos_base.apply (f file oc) v ~finally:delete_close oc) with
+    | Sys_error e -> R.error_msgf "%a: %s" Fpath.pp file e
   with Sys_error e -> R.error_msg e
 
 let with_tmp_output ?(mode = default_tmp_mode) ?dir pat f v =
@@ -199,7 +202,8 @@ let with_tmp_output ?(mode = default_tmp_mode) ?dir pat f v =
       | None -> flush oc
     in
     tmps_add file;
-    Ok (Bos_base.apply (f file output) v ~finally:delete_close oc)
+    try Ok (Bos_base.apply (f file output) v ~finally:delete_close oc) with
+    | Sys_error e -> R.error_msgf "%a: %s" Fpath.pp file e
   with Sys_error e -> R.error_msg e
 
 (* Output *)
