@@ -698,7 +698,7 @@ let main () = main ()
     val dev_null : Fpath.t
     (** [dev_null] is [Fpath.v "/dev/null"] on POSIX and [Fpath.v "NUL"] on
         Windows. It represents a file on the OS that discards all
-        writes. *)
+        writes and returns end of file on reads. *)
 
     val dash : Fpath.t
     (** [dash] is [Fpath.v "-"]. This value is used by {{!input}input}
@@ -1002,6 +1002,8 @@ contents d >>= Path.fold err dotfiles elements traverse f acc
 
   (** Executing command lines.
 
+      Programs are searched in PATH unless they contain a / character.
+
       {b Warning.} All the functions of this module raise [Invalid_argument]
       if the given command line {!is_empty}. *)
   module Cmd : sig
@@ -1018,9 +1020,12 @@ contents d >>= Path.fold err dotfiles elements traverse f acc
 
     (** {1:exec Command line execution} *)
 
-    val exec_ret : Cmd.t -> int
+    type status = [ `Exited of int | `Signaled of int ]
+    (** The type for execution exit status. *)
+
+    val exec_ret : Cmd.t -> (status, 'e) result
     (** [exec_ret l] executes command line [l] and returns the exit
-        code of the invocation. *)
+        status of the invocation. *)
 
     val exec : Cmd.t -> (unit, 'e) result
     (** [exec l] executes the command line [l]. On exit code [0] returns
@@ -1037,7 +1042,7 @@ contents d >>= Path.fold err dotfiles elements traverse f acc
     (** [exec_read_lines l] is like [exec_read ~trim:true cmd args] but
         the result is splitted at ['\n']. *)
 
-    val exec_write : Cmd.t -> Fpath.t -> (unit, 'e) result
+    val exec_write : ?mode:int -> Cmd.t -> Fpath.t -> (unit, 'e) result
     (** [exec_write cmd args file] execute [cmd] with arguments [args] and
         writes the invocation's [stdout] to [file]. In [cmd]'s return code
         is non zero returns an error message and [file] is left intact. *)

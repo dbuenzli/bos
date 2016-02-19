@@ -7,55 +7,187 @@
 open Astring
 open Rresult
 
-(* Command existence *)
+let unix_buffer_size = 65536                      (* UNIX_BUFFER_SIZE 4.0.0 *)
+
+(* Error messages *)
 
 let err_empty_line = "empty command line"
+let uerror = Unix.error_message
+let pp_uerror ppf e = Fmt.string ppf (uerror e)
 
-let exists cmd =
+(* Execution status *)
+
+type status = [ `Exited of int | `Signaled of int ]
+
+let pp_status ppf = function
+| `Exited c -> Format.fprintf ppf "exited with %d" c
+| `Signaled s ->
+    Format.fprintf ppf "was signaled with %s"
+      begin match s with
+      | s when s = Sys.sigabrt -> "SIGABRT"
+      | s when s = Sys.sigalrm -> "SIGALRM"
+      | s when s = Sys.sigfpe -> "SIGFPE"
+      | s when s = Sys.sighup -> "SIGHUP"
+      | s when s = Sys.sigill -> "SIGILL"
+      | s when s = Sys.sigint -> "SIGINT"
+      | s when s = Sys.sigkill -> "SIGKILL"
+      | s when s = Sys.sigpipe -> "SIGPIPE"
+      | s when s = Sys.sigquit -> "SIGQUIT"
+      | s when s = Sys.sigsegv -> "SIGSEGV"
+      | s when s = Sys.sigterm -> "SIGTERM"
+      | s when s = Sys.sigusr1 -> "SIGUSR1"
+      | s when s = Sys.sigusr2 -> "SIGUSR2"
+      | s when s = Sys.sigchld -> "SIGCHLD"
+      | s when s = Sys.sigcont -> "SIGCONT"
+      | s when s = Sys.sigstop -> "SIGSTOP"
+      | s when s = Sys.sigtstp -> "SIGTSTP"
+      | s when s = Sys.sigttin -> "SIGTTIN"
+      | s when s = Sys.sigttou -> "SIGTTOU"
+      | s when s = Sys.sigvtalrm -> "SIGVTALRM"
+      | s when s = Sys.sigprof -> "SIGPROF"
+      | unknown -> strf "signal %d" unknown
+      end
+
+(* Primitive from Unix *)
+
+let rec waitpid flags pid = try Unix.waitpid flags pid with
+| Unix.Unix_error (Unix.EINTR, _, _) -> waitpid flags pid
+
+let rec create_process prog args stdin stdout stderr =
+  try Unix.create_process prog args stdin stdout stderr with
+  | Unix.Unix_error (Unix.EINTR, _, _) ->
+      create_process prog args stdin stdout stderr
+
+let rec pipe () = try Unix.pipe () with
+| Unix.Unix_error (Unix.EINTR, _, _) -> pipe ()
+
+let rec set_close_on_exec fd = try Unix.set_close_on_exec fd with
+| Unix.Unix_error (Unix.EINTR, _, _) -> set_close_on_exec fd
+
+let rec openfile fn mode perm = try Unix.openfile fn mode perm with
+| Unix.Unix_error (Unix.EINTR, _, _) -> openfile fn mode perm
+
+let rec close fd = try Unix.close fd with
+| Unix.Unix_error (Unix.EINTR, _, _) -> close fd
+
+
+
+(* Base primitive *)
+
+let dev_null = lazy
+  (Unix.openfile (Fpath.to_string Bos_os_file.dev_null) [Unix.O_RDWR] 0x644)
+
+let create_process ?stdin ?stdout ?stderr cmd =
+  let fd fd = match fd with Some fd -> fd | None -> Lazy.force dev_null in
+  let line = Bos_cmd.to_list cmd in
+  let prog = try List.hd line with Failure _ -> invalid_arg err_empty_line in
+  let line = Array.of_list line in
+  let pid = create_process prog line (fd stdin) (fd stdout) (fd stderr) in
+   Bos_log.info
+     (fun m ->
+        let header = "EXEC:" ^ string_of_int pid in
+        m ~header "@[<1>%a@]" Bos_cmd.dump cmd);
+  pid
+
+let wait_process pid = match snd (waitpid [] pid) with
+| Unix.WEXITED e -> `Exited e
+| Unix.WSIGNALED s -> `Signaled s
+| Unix.WSTOPPED _ -> assert false
+
+let exec_cmdline ?stdin ?stdout ?stderr line =
+  wait_process (create_process ?stdin ?stdout ?stderr line)
+
+let exec_cmdline_stdio line =
+  let stdin, stdout, stderr = Unix.(stdin, stdout, stderr) in
+  exec_cmdline ~stdin ~stdout ~stderr line
+
+(* Command existence *)
+
+let exists line =
+  let line = Bos_cmd.to_list line in
+  let cmd = try List.hd line with Failure _ -> invalid_arg err_empty_line in
   try
-    let cmd = List.hd (Bos_cmd.to_list cmd) in
-    let null = Fpath.to_string (Bos_os_file.dev_null) in
     let test = match Sys.os_type with "Win32" -> "where" | _ -> "type" in
-    Ok (Sys.command (strf "%s %s 1>%s 2>%s" test cmd null null) = 0)
+    let test = Bos_cmd.(v test % cmd) in
+    match exec_cmdline test with
+    | `Exited 0 -> Ok true
+    | `Exited _ -> Ok false
+    | `Signaled _ as s ->
+        R.error_msgf "cmd %s exists: %a %a" cmd Bos_cmd.dump test pp_status s
   with
-  | Sys_error e -> R.error_msg e
-  | Failure _ -> invalid_arg err_empty_line
+  | Unix.Unix_error (e, _, _) ->
+      R.error_msgf "cmd %s exists: %s" cmd (uerror e)
 
 let must_exist cmd =
   exists cmd >>= function
   | false -> R.error_msgf "%s: no such command" (List.hd (Bos_cmd.to_list cmd))
   | true -> Ok cmd
 
-(* FIXME in these functions [cmd] and [args] should be quoted. *)
-let trace line =
-  Bos_log.info (fun m -> m ~header:"EXEC" "@[<2>%a@]" Fmt.text line)
+(* Execution *)
 
-let mk_line l = match Bos_cmd.to_list l with
-| [] -> invalid_arg err_empty_line
-| line -> String.concat ~sep:" " line
+let err line pp e = R.error_msgf "exec %a: %a" Bos_cmd.dump line pp e
 
-let execute line = trace line; Sys.command line
+let exec_ret line = try Ok (exec_cmdline_stdio line) with
+| Unix.Unix_error (e, _, _) -> err line pp_uerror e
 
-let exec_ret line = execute (mk_line line)
-let handle_ret line = match execute line with
-| 0 -> R.ok ()
-| c -> R.error_msgf "Exited with code: %d `%s'" c line
+let exec line = try
+  match exec_cmdline_stdio line with
+  | `Exited 0 -> Ok ()
+  | status -> err line pp_status status
+with
+| Unix.Unix_error (e, _, _) -> err line pp_uerror e
 
-let exec line = handle_ret (mk_line line)
+let string_of_fd fd =
+  let len = unix_buffer_size in
+  let store = Buffer.create len in
+  let b = Bytes.create len in
+  let rec loop fd store b =
+    match Unix.(try read fd b 0 len with Unix_error (EINTR,_,_) -> -1) with
+    | -1 -> loop fd store b
+    | 0 -> Buffer.contents store
+    | n -> Buffer.add_subbytes store b 0 n; loop fd store b
+  in
+  loop fd store b
+
 let exec_read ?(trim = true) line =
-  Bos_os_file.tmp "bos-%s.tmp"
-  >>= fun file ->
-  handle_ret (strf "%s > %s" (mk_line line) (Fpath.to_string file))
-  >>= fun () -> Bos_os_file.read file
-  >>= fun v -> Ok (if trim then String.trim v else v)
+  try
+    let read_stdout, stdout = pipe () in
+    try
+      Unix.set_close_on_exec read_stdout;
+      let stdin, stderr = Unix.stdin, Unix.stderr in
+      let pid = create_process ~stdin ~stdout ~stderr line in
+      let res = (close stdout; string_of_fd read_stdout) in
+      let res = if trim then String.trim res else res in
+      match wait_process pid with
+      | `Exited 0 -> close read_stdout; Ok res
+      | status -> close read_stdout; err line pp_status status
+    with
+    | Unix.Unix_error (e, _, _) -> close read_stdout; err line pp_uerror e
+  with
+  | Unix.Unix_error (e, _, _) -> err line pp_uerror e
 
 let exec_read_lines line =
   exec_read line >>| String.cuts ~sep:"\n"
 
-let exec_write line file =
-  Bos_os_file.tmp "bos-%s.tmp"
-  >>= fun tmpf -> handle_ret (strf "%s > %s" (mk_line line)
-                                (Fpath.to_string tmpf))
+let exec_write ?(mode = 0o644) line file =
+  let exec_write file =
+    try
+      let flags = Unix.([O_WRONLY; O_CREAT]) in
+      let stdout = openfile (Fpath.to_string file) flags mode in
+      try
+        let stdin, stderr = Unix.stdin, Unix.stderr in
+        let pid = create_process ~stdin ~stdout ~stderr line in
+        match (close stdout; wait_process pid) with
+        | `Exited 0 -> Ok ()
+      | status -> err line pp_status status
+      with
+      | Unix.Unix_error (e, _, _) -> err line pp_uerror e
+    with Unix.Unix_error (e, _, _) ->
+      (* FIXME bad error *)
+      err line pp_uerror e
+  in
+  Bos_os_file.tmp "bos-%s.tmp" ~mode ~dir:(Fpath.parent file)
+  >>= fun tmpf -> exec_write tmpf
   >>= fun () -> Bos_os_path.move ~force:true tmpf file
 
 (*---------------------------------------------------------------------------
