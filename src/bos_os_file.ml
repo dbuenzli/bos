@@ -31,7 +31,7 @@ let rec exists file =
 let rec must_exist file =
   try
     match Unix.((stat @@ Fpath.to_string file).st_kind) with
-    | Unix.S_REG -> Ok ()
+    | Unix.S_REG -> Ok file
     | _ -> R.error_msgf "file %a must exist: Not a file" Fpath.pp file
   with
   | Unix.Unix_error (Unix.EINTR, _, _) -> must_exist file

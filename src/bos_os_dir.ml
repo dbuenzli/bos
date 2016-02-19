@@ -21,9 +21,8 @@ let rec exists dir =
 let rec must_exist dir =
   try
     match Unix.((stat @@ Fpath.to_string dir).st_kind) with
-    | Unix.S_DIR -> Ok ()
-    | _ ->
-        R.error_msgf "%a must exist: Not a directory" Fpath.pp dir
+    | Unix.S_DIR -> Ok dir
+    | _ -> R.error_msgf "%a must exist: Not a directory" Fpath.pp dir
   with
   | Unix.Unix_error (Unix.EINTR, _, _) -> must_exist dir
   | Unix.Unix_error (Unix.ENOENT, _, _) ->

@@ -18,7 +18,7 @@ let exists path =
       R.error_msgf "%a: %s" Fpath.pp path (uerror e)
 
 let must_exist path =
-  try Ok (ignore @@ Unix.stat (Fpath.to_string path)) with
+  try Ok (ignore @@ Unix.stat (Fpath.to_string path); path) with
   | Unix.Unix_error (Unix.ENOENT, _, _) ->
       R.error_msgf "%a: No such path" Fpath.pp path
   | Unix.Unix_error (e, _, _) ->

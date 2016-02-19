@@ -560,8 +560,8 @@ let main () = main ()
     (** [exists p] is [true] if [p] exists for the file system
         and [false] otherwise. *)
 
-    val must_exist : Fpath.t -> (unit, 'e) result
-    (** [must_exist p] is [()] if [p] exists for the file system
+    val must_exist : Fpath.t -> (Fpath.t, 'e) result
+    (** [must_exist p] is [p] if [p] exists for the file system
         and an error otherwise. *)
 
     val move :
@@ -720,8 +720,8 @@ let main () = main ()
         file system and [false] otherwise.  Symbolic links are
         followed. *)
 
-    val must_exist : Fpath.t -> (unit, 'e) result
-    (** [must_exist file] is [()] if [file] is a regular file in the
+    val must_exist : Fpath.t -> (Fpath.t, 'e) result
+    (** [must_exist file] is [p] if [file] is a regular file in the
         file system and an error otherwise. Symbolic links are
         followed. *)
 
@@ -888,8 +888,8 @@ end
     (** [exists dir] is [true] if [dir] is a directory in the file system
         and [false] otherwise. Symbolic links are followed. *)
 
-    val must_exist : Fpath.t -> (unit, 'e) result
-    (** [must_exist dir] is [()] if [dir] is a directory in the file system
+    val must_exist : Fpath.t -> (Fpath.t, 'e) result
+    (** [must_exist dir] is [p] if [dir] is a directory in the file system
         and an error otherwise. Symbolic links are followed. *)
 
     val create :
@@ -1012,8 +1012,8 @@ contents d >>= Path.fold err dotfiles elements traverse f acc
     (** [exists cmd] is [true] if the executable of [cmd] can be found in
         the path and [false] otherwise. *)
 
-    val must_exist : Cmd.t -> (unit, 'e) result
-    (** [must_exist cmd] is [()] if the executable of [cmd] can be found
+    val must_exist : Cmd.t -> (Cmd.t, 'e) result
+    (** [must_exist cmd] is [cmd] if the executable of [cmd] can be found
         in the path and an error otherwise. *)
 
     (** {1:exec Command line execution} *)
@@ -1034,8 +1034,8 @@ contents d >>= Path.fold err dotfiles elements traverse f acc
         contents is passed to {!String.trim} before being returned. *)
 
     val exec_read_lines : Cmd.t -> (string list, 'e) result
-    (** [exec_read_lines l] is like [exec_read ~trim:false cmd args] but
-        the input is splitted at ['\n']. *)
+    (** [exec_read_lines l] is like [exec_read ~trim:true cmd args] but
+        the result is splitted at ['\n']. *)
 
     val exec_write : Cmd.t -> Fpath.t -> (unit, 'e) result
     (** [exec_write cmd args file] execute [cmd] with arguments [args] and

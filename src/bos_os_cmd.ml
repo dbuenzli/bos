@@ -24,7 +24,7 @@ let exists cmd =
 let must_exist cmd =
   exists cmd >>= function
   | false -> R.error_msgf "%s: no such command" (List.hd (Bos_cmd.to_list cmd))
-  | true -> Ok ()
+  | true -> Ok cmd
 
 (* FIXME in these functions [cmd] and [args] should be quoted. *)
 let trace line =
