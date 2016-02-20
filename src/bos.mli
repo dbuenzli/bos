@@ -231,8 +231,11 @@ module OS : sig
 
     (** {1:env Process environment} *)
 
-    val vars : unit -> (string String.Map.t, 'e) result
-    (** [vars ()] is a string map corresponding to the process environment. *)
+    type t = string String.map
+    (** The type for process environments. *)
+
+    val current : unit -> (t, 'e) result
+    (** [current ()] is the current process environment. *)
 
     (** {1:vars Variables} *)
 

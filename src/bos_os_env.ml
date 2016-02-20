@@ -7,9 +7,12 @@
 open Rresult
 open Astring
 
-(* Variables *)
 
-let vars () = try
+(* Process environment *)
+
+type t = string String.map
+
+let current () = try
   let env = Unix.environment () in
   let add acc assign = match acc with
   | Error _ as e -> e
@@ -25,6 +28,8 @@ with
 | Unix.Unix_error (e, _, _) ->
     R.error_msgf
       "could not get process environment: %s" (Unix.error_message e)
+
+(* Variables *)
 
 let var name = try Some (Unix.getenv name) with Not_found -> None
 
