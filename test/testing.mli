@@ -4,6 +4,8 @@
    %%NAME%% release %%VERSION%%
   ---------------------------------------------------------------------------*)
 
+open Rresult
+
 (* {1 Value equality and pretty printing} *)
 
 type 'a eq = 'a -> 'a -> bool
@@ -11,6 +13,7 @@ type 'a pp = Format.formatter -> 'a -> unit
 
 (* {1 Pretty printers} *)
 
+val pp_unit : unit pp
 val pp_int : int pp
 val pp_bool : bool pp
 val pp_float : float pp
@@ -56,8 +59,17 @@ val eq_nan : float -> unit
 val eq_option : eq:'a eq -> pp:'a pp -> 'a option -> 'a option -> unit
 val eq_some : 'a option -> unit
 val eq_none : pp:'a pp -> 'a option -> unit
-
 val eq_list : eq:'a eq -> pp:'a pp -> 'a list -> 'a list -> unit
+
+val eq_result : eq_ok:'a eq -> pp_ok:'a pp -> eq_error:'b eq ->
+  pp_error:'b pp -> ('a, 'b) result -> ('a, 'b) result -> unit
+
+val eq_result_msg : eq_ok:'a eq -> pp_ok:'a pp ->
+  ('a, [`Msg of string]) result -> ('a, [`Msg of string]) result -> unit
+
+
+val eq_ok : eq:'a eq -> pp:'a pp -> ('a, 'b) result -> 'a -> unit
+
 
 (* {1 Tracing and checking function applications} *)
 

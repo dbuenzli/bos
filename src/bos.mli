@@ -8,7 +8,7 @@
 
     Open the module to use it, this defines only modules in your scope.
 
-    {e Release %%VERSION%% - %%MAINTAINER%% } *)
+    {e v%%VERSION%% - {{:%%PKG_WWW%% }homepage}} *)
 
 (** {1 Basic types} *)
 
@@ -546,10 +546,9 @@ let main () =
 let main () = main ()
 ]}
  *)
-
   end
 
-  (** {1 File system operations and commands}
+  (** {1 File system operations}
 
       {b Note.} When paths are relative they are expressed relative to
       the {{!Dir.current}current working directory}. *)
@@ -698,8 +697,8 @@ let main () = main ()
 
     (** {1:paths Famous file paths} *)
 
-    val dev_null : Fpath.t
-    (** [dev_null] is [Fpath.v "/dev/null"] on POSIX and [Fpath.v "NUL"] on
+    val null : Fpath.t
+    (** [null] is [Fpath.v "/dev/null"] on POSIX and [Fpath.v "NUL"] on
         Windows. It represents a file on the OS that discards all
         writes and returns end of file on reads. *)
 
@@ -1003,12 +1002,15 @@ contents d >>= Path.fold err dotfiles elements traverse f acc
         [p]. *)
   end
 
-  (** Executing command lines.
+  (** {1 Commands} *)
 
-      Programs are searched in PATH unless they contain a / character.
+  (** Command existence and run.
 
-      {b Warning.} All the functions of this module raise [Invalid_argument]
-      if the given command line {!is_empty}. *)
+      {b Warning.} All functions involving {!Cmd.t} values raise
+      [Invalid_argument] on {{!Cmd.is_empty}empty} commands.
+
+      {b Note.} Programs are searched the PATH unless they contain
+      a ['/'] character. *)
   module Cmd : sig
 
     (** {1:exist Command existence} *)
@@ -1021,34 +1023,179 @@ contents d >>= Path.fold err dotfiles elements traverse f acc
     (** [must_exist cmd] is [cmd] if the executable of [cmd] can be found
         in the path and an error otherwise. *)
 
-    (** {1:exec Command line execution} *)
+    (** {1:run Command runs}
+
+        The following set of combinators are designed to be used with
+        {!Pervasives.(|>)} operator. See a few {{!ex}examples}.
+
+    {2:run_exit Run statuses} *)
 
     type status = [ `Exited of int | `Signaled of int ]
-    (** The type for execution exit status. *)
+    (** The type for process exit statuses. *)
 
-    val exec_ret : Cmd.t -> (status, 'e) result
-    (** [exec_ret l] executes command line [l] and returns the exit
-        status of the invocation. *)
+    val pp_status : status Fmt.t
+    (** [pp] is a formatter for statuses. *)
 
-    val exec : Cmd.t -> (unit, 'e) result
-    (** [exec l] executes the command line [l]. On exit code [0] returns
-        [`Ok ()]. Otherwise an error message with the failed
-        invocation and its exit code is returned in [`Error]. *)
+    type run_status = Cmd.t * status
+    (** The type for run statuses the command that was run and
+        the run status. *)
 
-    val exec_read : ?trim:bool -> Cmd.t -> (string, 'e) result
-    (** [exec_read ~trim l] executes the command line [l] and returns
-        its standard output. If the excution return code is non zero
-        returns an error message. If [trim] is [true] (default) the
-        contents is passed to {!String.trim} before being returned. *)
+    val success : ('a * run_status, 'e) result -> ('a, 'e) result
+    (** [success r] is:
+        {ul
+        {- [Ok v] if [r = Ok (v, (_, `Exited 0))]}
+        {- [Error _] otherwise. Non [`Exited 0] statuses are turned
+           into an error message.}} *)
 
-    val exec_read_lines : Cmd.t -> (string list, 'e) result
-    (** [exec_read_lines l] is like [exec_read ~trim:true cmd args] but
-        the result is splitted at ['\n']. *)
+    (** {2:stderrs Run standard errors} *)
 
-    val exec_write : ?mode:int -> Cmd.t -> Fpath.t -> (unit, 'e) result
-    (** [exec_write cmd args file] execute [cmd] with arguments [args] and
-        writes the invocation's [stdout] to [file]. In [cmd]'s return code
-        is non zero returns an error message and [file] is left intact. *)
+    type run_err
+    (** The type for representing the standard error of a command run. *)
+
+    val err_file : ?append:bool -> Fpath.t -> run_err
+    (** [err_file f] is a standard error that writes to file [f]. If [append]
+        is [true] (defaults to [false]) the data is appended to [f]. *)
+
+    val err_null : run_err
+    (** [err_null] is [err_file File.null]. *)
+
+    val err_run_out : run_err
+    (** [err_run_out] is a standard error that is redirected to the run's
+        standard output. *)
+
+    val err_stderr : run_err
+    (** [err_stderr] is a standard error that is redirected to the current
+        process standard error. *)
+
+    (** {2:stdins Run standard inputs} *)
+
+    type run_in
+    (** The type for representing the standard input of a command run. *)
+
+    val in_string : string -> run_in
+    (** [in_string s] is a standard input that reads [s]. *)
+
+    val in_file : Fpath.t -> run_in
+    (** [in_file f] is a standard input that reads from file [f]. *)
+
+    val in_null : run_in
+    (** [in_null] is [in_file File.null]. *)
+
+    val in_stdin : run_in
+    (** [in_stdin] is a standard input that reads from the current
+        process standard input. *)
+
+    (** {2:stdouts Run standard outputs}
+
+        The following functions trigger actual command runs, consume
+        their standard output and return the command and its status. In
+        {{!out_run_in}pipelined} runs, the reported status is the one
+        of the first failing run in the pipeline.
+
+        {b Warning.} When a value of type {!run_out} has been "consumed"
+        with one of the following functions it cannot be reused. *)
+
+    type run_out
+    (** The type for representing the standard output and status of a
+        command run. *)
+
+    val out_string : ?trim:bool -> run_out -> (string * run_status, 'e) result
+    (** [out_string ~trim o] captures the standard output [o] as
+        a string. If [trim] is [true] (default) the result is passed through
+        {!String.trim}. *)
+
+    val out_lines :
+      ?trim:bool -> run_out -> (string list * run_status, 'e) result
+    (** [out_lines] is like {!out_string} but the result is splitted on
+        newlines (['\n']). *)
+
+    val out_file :
+      ?append:bool -> Fpath.t -> run_out -> (unit * run_status, 'e) result
+    (** [out_file f o] writes the standard output [o] to file [f]. If
+        [append] is [true] (defaults to [false]) the data is appended
+        to [f]. *)
+
+    val out_run_in : run_out -> (run_in, 'e) result
+    (** [out_run_in o] is a run input that can be used to feed the
+        standard output of [o] to the standard input of another, {b
+        single}, command run. Note that when the function returns the
+        command run of [o] may not be terminated yet. The run using
+        the resulting input will report an unsucessful status or
+        error of [o] rather than its own error. *)
+
+    val out_null : run_out -> (unit * run_status, 'e) result
+    (** [out_null o] is [out_file File.null o]. *)
+
+    val out_stdout : run_out -> (unit * run_status, 'e) result
+    (** [to_stdout o] redirects the standard output [o] to the current
+        process standard output. *)
+
+    (** {3:success Extracting success}
+
+        The following functions can be used if you only care about
+        success. *)
+
+    val to_string : ?trim:bool -> run_out -> (string, 'e) result
+    (** [to_string ~trim o] is [(out_string ~trim o |> success)]. *)
+
+    val to_lines : ?trim:bool -> run_out -> (string list, 'e) result
+    (** [to_lines ~trim o] is [(out_lines ~trim o |> success)]. *)
+
+    val to_file : ?append:bool -> Fpath.t -> run_out -> (unit, 'e) result
+    (** [to_file ?append f o] is [(out_file ?append f o |> success)]. *)
+
+    val to_null : run_out -> (unit, 'e) result
+    (** [to_null o] is [to_file File.null o]. *)
+
+    val to_stdout : run_out -> (unit, 'e) result
+    (** [to_stdout o] is [(out_stdout o |> success)]. *)
+
+    (** {2:runs Run specifications} *)
+
+    val run_io : ?env:Env.t -> ?err:run_err -> Cmd.t -> run_in -> run_out
+    (** [run_io ~env ~err cmd i] represents the standard output of the
+        command run [cmd] performed in process environment [env] with
+        its standard error output handled according to [err] (defaults
+        to {!err_stderr}) and standard input connected to [i]. Note that
+        the command run is not started before the output is consumed, see
+        {{!stdouts}run standard outputs}. *)
+
+    val run_out : ?env:Env.t -> ?err:run_err -> Cmd.t -> run_out
+    (** [run_out ?env ?err cmd] is [(in_stdin |> run_io ?env ?err cmd)]. *)
+
+    val run_in : ?env:Env.t -> ?err:run_err -> Cmd.t -> run_in ->
+      (unit, 'e) result
+    (** [run_in ?env ?err cmd i] is [(run_io ?env ?err cmd |> to_stdout)]. *)
+
+    val run : ?env:Env.t -> ?err:run_err -> Cmd.t -> (unit, 'e) result
+    (** [run ?env ?err cmd] is
+        [(in_stdin |> run_io ?env ?err cmd |> to_stdout)]. *)
+
+    (** {1:ex Examples}
+
+    Get the current list of git tracked files in OCaml:
+{[
+let git = Cmd.v "git"
+let git_tracked () =
+  let git_ls_files = Cmd.(git % "ls-files") in
+  OS.Cmd.(run_out git_ls_files |> to_lines)
+]}
+   Tarbzip the current list of git tracked files, without reading the
+   tracked files in OCaml:
+{[
+let tbz_git_tracked dst =
+  let git_ls_files = Cmd.(git % "ls-files") in
+  let tbz = Cmd.(v "tar" % "-cvzf" % p dst % "-T" % "-") in
+  OS.Cmd.(run_out git_ls_files |> out_run_in) >>= fun tracked ->
+  OS.Cmd.(tracked |> run_in tbz)
+]}
+    Send the email [mail].
+{[
+let send_email mail =
+  let sendmail = Cmd.v "sendmail" in
+  OS.Cmd.(in_string mail |> run_in sendmail)
+]} *)
+
   end
 
   (** {1 Low level {!Unix} access} *)
@@ -1056,7 +1203,7 @@ contents d >>= Path.fold err dotfiles elements traverse f acc
   (** Low level {!Unix} access.
 
       These functions simply {{!call}call} functions from the {!Unix}
-      module and replace strings with {!path} where appropriate.  They
+      module and replace strings with {!Fpath.t} where appropriate.  They
       also provide more fine grained error handling, for example
       {!OS.Path.stat} converts the error to a message while {!stat}
       gives you the {{!Unix.error}Unix error}. *)

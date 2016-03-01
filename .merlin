@@ -1,4 +1,4 @@
-PKG unix rresult astring fpath fmt logs mtime.os
+PKG unix result rresult astring fpath fmt logs mtime.os
 S src
 S test
 B _build/**

@@ -29,6 +29,10 @@ with
     R.error_msgf
       "could not get process environment: %s" (Unix.error_message e)
 
+let to_array env =
+  let add_var name value acc = String.concat [name; "="; value] :: acc in
+  Array.of_list (String.Map.fold add_var env [])
+
 (* Variables *)
 
 let var name = try Some (Unix.getenv name) with Not_found -> None

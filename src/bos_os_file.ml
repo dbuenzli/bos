@@ -15,7 +15,7 @@ let uerror = Unix.error_message
 
 (* Famous file paths *)
 
-let dev_null = Fpath.v (if Sys.os_type = "Win32" then "NUL" else "/dev/null")
+let null = Fpath.v (if Sys.os_type = "Win32" then "NUL" else "/dev/null")
 let dash = Fpath.v "-"
 let is_dash = Fpath.equal dash
 

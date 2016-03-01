@@ -4,6 +4,8 @@
    %%NAME%% release %%VERSION%%
   ---------------------------------------------------------------------------*)
 
+open Rresult
+
 (* Value equality and pretty printing *)
 
 type 'a eq = 'a -> 'a -> bool
@@ -12,6 +14,7 @@ type 'a pp = Format.formatter -> 'a -> unit
 (* Pretty printers *)
 
 let pp = Format.fprintf
+let pp_unit ppf v = pp ppf "()"
 let pp_exn ppf v = pp ppf "%s" (Printexc.to_string v)
 let pp_bool ppf v = pp ppf "%b" v
 let pp_char ppf v = pp ppf "%C" v
@@ -157,6 +160,31 @@ let eq_none ~pp = function
 let eq_list ~eq:eq_v ~pp:pp_v =
   let eql l l' = try List.for_all2 eq_v l l' with Invalid_argument _ -> false in
   fun l l' -> eq ~eq:eql ~pp:(pp_list pp_v) l l'
+
+let eq_result ~eq_ok ~pp_ok ~eq_error ~pp_error =
+  let eqr v v' = match v, v' with
+  | Ok v, Ok v' -> eq_ok v v'
+  | Error e, Error e' -> eq_error e e'
+  | _ -> false
+  in
+  let pp ppf r = Rresult.R.pp ~pp_ok ~pp_error ppf r in
+  fun v v' -> eq ~eq:eqr ~pp v v'
+
+let eq_result_msg ~eq_ok ~pp_ok =
+  let eq_error (`Msg e) (`Msg e') = (e = e') in
+  eq_result ~eq_ok ~pp_ok ~eq_error:eq_error ~pp_error:R.pp_msg
+
+let eq_ok ~eq:eq_v ~pp:pp_v =
+  let eq_ok v v' = match v, v' with
+  | Ok v, Ok v' -> eq_v v v'
+  | Error _, _-> false
+  | _ -> assert false
+  in
+  let pp ppf = function
+  | Ok v -> Format.fprintf ppf "@[Ok %a@]" pp_v v
+  | Error _ -> Format.fprintf ppf "@[Error _@]"
+  in
+  fun v v' -> eq ~eq:eq_ok ~pp v (Ok v')
 
 (* Tracing and checking function applications. *)
 
