@@ -18,3 +18,14 @@ package "top" (
   archive(native, plugin) = "bos_top.cmxs"
   exists_if = "bos_top.cma"
 )
+
+package "setup" (
+  description = "Bos quick setup for simple programs"
+  version = "%%VERSION%%"
+  requires = "fmt.tty logs.fmt bos"
+  archive(byte) = "bos_setup.cma"
+  archive(byte, plugin) = "bos_setup.cma"
+  archive(native) = "bos_setup.cmxa"
+  archive(native, plugin) = "bos_setup.cmxs"
+  exists_if = "bos_setup.cma"
+)

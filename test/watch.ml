@@ -4,9 +4,7 @@
    %%NAME%% release %%VERSION%%
   ---------------------------------------------------------------------------*)
 
-open Rresult
-open Astring
-open Bos
+open Bos_setup
 
 (* Watch a directory for changes. First run will create a database
    watchdb in the directory with modification times. Subsquent runs
