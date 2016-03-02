@@ -473,6 +473,18 @@ let run_io ?env ?err:(run_err = Err_stderr) cmd run_in =
 let run_out ?env ?err cmd = run_io ?env ?err cmd in_stdin
 let run_in ?env ?err cmd i = run_io ?env ?err cmd i |> to_stdout
 let run ?env ?err cmd = run_io  ?env ?err cmd in_stdin |> to_stdout
+let run_status ?env ?err ?(quiet = false) cmd =
+  let err = match err with
+  | None -> if quiet then err_null else err_stderr
+  | Some err -> err
+  in
+  let ret = match quiet with
+  | true -> in_null |> run_io ?env ~err cmd |> out_null
+  | false -> in_stdin |> run_io ?env ~err cmd |> out_stdout
+  in
+  match ret with
+  | Ok ((), (_, status)) -> Ok status
+  | Error _ as e -> e
 
 (*---------------------------------------------------------------------------
    Copyright (c) 2015 Daniel C. Bünzli.

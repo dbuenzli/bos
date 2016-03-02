@@ -1171,6 +1171,17 @@ contents d >>= Path.fold err dotfiles elements traverse f acc
     (** [run ?env ?err cmd] is
         [(in_stdin |> run_io ?env ?err cmd |> to_stdout)]. *)
 
+    val run_status : ?env:Env.t -> ?err:run_err -> ?quiet:bool -> Cmd.t ->
+      (status, 'e) result
+    (** [run_status ?env ?err ?quiet cmd] is
+        [(in_stdin |> run_io ?env ?err ?cmd |> out_stdout)] and extracts
+        the run status.
+
+        If [quiet] is [true] (defaults to [false]), [in_stdin] and
+        [out_stdout] are respectively replaced by [in_null] and
+        [out_null] and [err] defaults to [err_null] rather than
+        [err_stderr]. *)
+
     (** {1:ex Examples}
 
     Get the current list of git tracked files in OCaml:
