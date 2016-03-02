@@ -68,13 +68,13 @@ let create_process cmd env ~stdin ~stdout ~stderr =
   match env with
   | None ->
       let pid = create_process prog line stdin stdout stderr in
-      Bos_log.info
+      Bos_log.debug
         (fun m -> m ~header:(log_header pid) "@[<1>%a@]" Bos_cmd.dump cmd);
       pid
   | Some env ->
       let env = Bos_os_env.to_array env in
       let pid = create_process_env prog line env stdin stdout stderr in
-      Bos_log.info
+      Bos_log.debug
         (fun m -> m ~header:(log_header pid) "@[<v>%a@,%a@]"
             Fmt.Dump.(array String.dump) env Bos_cmd.dump cmd);
       pid
