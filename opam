@@ -11,6 +11,7 @@ license: "ISC"
 available: [ ocaml-version >= "4.02.0"]
 depends: [
   "ocamlfind" {build}
+  "ocamlbuild" {build}
   "base-unix"
   "rresult"
   "astring"
