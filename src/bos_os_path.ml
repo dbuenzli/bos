@@ -9,7 +9,7 @@ open Rresult
 
 let uerror = Unix.error_message
 
-(* Existence and move *)
+(* Existence, move information and mode *)
 
 let exists path =
   try Ok (ignore @@ Unix.stat (Fpath.to_string path); true) with
@@ -89,8 +89,14 @@ let rec symlink ?(force = false) ~target p =
         Fpath.pp target Fpath.pp p (uerror e)
 
 let rec symlink_target p =
-  (* FIXME do not trust the OS use Fpath.of_string *)
-  try Ok (Fpath.v (Unix.readlink (Fpath.to_string p))) with
+  try
+    let l = Unix.readlink (Fpath.to_string p) in
+    match Fpath.of_string l with
+    | Some l -> Ok l
+    | None ->
+        R.error_msgf "target of %a: could not read a path from %a"
+          Fpath.pp p String.dump l
+  with
   | Unix.Unix_error (Unix.EINTR, _, _) -> symlink_target p
   | Unix.Unix_error (Unix.EINVAL, _, _) ->
       R.error_msgf "target of %a: Not a symbolic link" Fpath.pp p

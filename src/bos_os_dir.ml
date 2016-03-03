@@ -158,7 +158,31 @@ let delete ?must_exist:(must = false) ?(recurse = false) dir =
   | Error (`Msg msg) ->
       R.error_msgf "delete directory %a: %s" Fpath.pp dir msg
 
-(* Current working directory *)
+(* User and current working directory *)
+
+let user () =
+  let debug err = Bos_log.debug (fun m -> m "OS.Dir.user: %s" err) in
+  let env_var_fallback () =
+    Bos_os_env.(parse "HOME" (some path) ~absent:None) >>= function
+    | Some p -> Ok p
+    | None -> R.error_msgf "cannot determine user home directory: \
+                            HOME environment variable is undefined"
+  in
+  if Sys.os_type = "Win32" then env_var_fallback () else
+  try
+    let uid = Unix.getuid () in
+    let home = (Unix.getpwuid uid).Unix.pw_dir in
+    match Fpath.of_string home with
+    | Some p -> Ok p
+    | None ->
+        debug (strf "could not parse path (%a) from passwd entry"
+                 String.dump home);
+        env_var_fallback ()
+  with
+  | Unix.Unix_error (e, _, _) -> (* should not happen *)
+      debug (uerror e); env_var_fallback ()
+  | Not_found ->
+      env_var_fallback ()
 
 let rec current () =
   try
@@ -185,39 +209,15 @@ let with_current dir f v =
   current () >>= fun old ->
   try
     set_current dir >>= fun () ->
-    let r = f v in
+    let ret = f v in
     match set_current old with
-    | Ok () -> r
+    | Ok () -> ret
     | Error _ as e ->
-        match r with
-        | Ok _ -> e
-        | Error _ as e -> e (* communicate error from [f], TODO bos log *)
+        match ret with
+        | Ok _ -> e (* error setting back old dir *)
+        | Error _ as e -> (* return error from [f] *) e
   with
-  | exn -> ignore (set_current old) (* TODO bos log *); raise exn
-
-let user () =
-  let debug err = Bos_log.debug (fun m -> m "OS.Dir.user: %s" err) in
-  let env_var_fallback () =
-    Bos_os_env.(parse "HOME" (some path) ~absent:None) >>= function
-    | Some p -> Ok p
-    | None -> R.error_msgf "cannot determine user home directory: \
-                            HOME environment variable is undefined"
-  in
-  if Sys.os_type = "Win32" then env_var_fallback () else
-  try
-    let uid = Unix.getuid () in
-    let home = (Unix.getpwuid uid).Unix.pw_dir in
-    match Fpath.of_string home with
-    | Some p -> Ok p
-    | None ->
-        debug (strf "could not parse path (%a) from passwd entry"
-                 String.dump home);
-        env_var_fallback ()
-  with
-  | Unix.Unix_error (e, _, _) -> (* should not happen *)
-      debug (uerror e); env_var_fallback ()
-  | Not_found ->
-      env_var_fallback ()
+  | exn -> ignore (set_current old); raise exn
 
 (* Temporary directories *)
 

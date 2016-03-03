@@ -173,7 +173,7 @@ let tmp ?(mode = default_tmp_mode) ?dir pat =
   create_tmp_path mode dir pat >>= fun (file, fd) ->
   let rec close fd = try Unix.close fd with
   | Unix.Unix_error (Unix.EINTR, _, _) -> close fd
-  | Unix.Unix_error (e, _, _) -> () (* TODO bos log *)
+  | Unix.Unix_error (e, _, _) -> ()
   in
   close fd; tmps_add file; Ok file
 

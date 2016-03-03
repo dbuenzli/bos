@@ -609,7 +609,7 @@ let main () = main ()
         link.*)
 
     val symlink_target : Fpath.t -> (Fpath.t, 'e) result
-    (** [slink_target p] is [p]'s target if [p] is a symbolic link. *)
+    (** [slink_target p] is [p]'s target iff [p] is a symbolic link. *)
 
     val symlink_stat : Fpath.t -> (Unix.stats, 'e) result
     (** [symlink_stat p] is the same as {!stat} but if [p] is a link
@@ -933,8 +933,13 @@ contents d >>= Path.fold err dotfiles elements traverse f acc
 ]}
         For more details see {!Path.fold}. *)
 
+    (** {1:user_current User and current working directory} *)
 
-    (** {1:current Current working and user directory} *)
+    val user : unit -> (Fpath.t, 'e) result
+    (** [user ()] is the home directory of the user executing
+        the process. Determined by consulting the [passwd] database
+        with the user id of the process. If this fails or on Windows
+        falls back to parse a path from the [HOME] environment variable. *)
 
     val current : unit -> (Fpath.t, 'e) result
     (** [current ()] is the current working directory. The resulting
@@ -949,12 +954,6 @@ contents d >>= Path.fold err dotfiles elements traverse f acc
     (** [with_current dir f v] is [f v] with the current working directory
         bound to [dir]. After the function returns the current working
         directory is back to its initial value. *)
-
-    val user : unit -> (Fpath.t, 'e) result
-    (** [user ()] is the home directory of the user executing
-        the process. Determined by consulting the [passwd] database
-        with the user id of the process. If this fails or on Windows
-        falls back to parse a path from the [HOME] environment variable. *)
 
     (** {1:tmpdirs Temporary directories} *)
 
@@ -995,7 +994,7 @@ contents d >>= Path.fold err dotfiles elements traverse f acc
         {ul
         {- On POSIX, the value of the [TMPDIR] environment variable or
            [Fpath.v "/tmp"] if the variable is not set or empty.}
-        {- On Windows, the value [TEMP] environment variable or
+        {- On Windows, the value of the [TEMP] environment variable or
            {!Fpath.cur_dir} if it is not set or empty}} *)
 
     val set_default_tmp : Fpath.t -> unit
