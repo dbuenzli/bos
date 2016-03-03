@@ -341,7 +341,8 @@ let timeout : int option =
     (** {1 Executable name} *)
 
     val exec : string
-    (** [exec] is the name of the executable. *)
+    (** [exec] is the name of the executable. This is [Sys.argv.(0)]
+        if [Sys.argv] is non-empty or {!Sys.executable_name} otherwise. *)
 
     (** {1:conv Argument converters}
 

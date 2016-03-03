@@ -31,7 +31,9 @@ let err_too_many ppf l =
 
 (* Executable name. *)
 
-let exec = if Array.length Sys.argv = 0 then "" else Sys.argv.(0)
+let exec = match Array.length Sys.argv with
+| 0 -> Sys.executable_name
+| n -> Sys.argv.(0)
 
 (* Argument converters *)
 
@@ -56,10 +58,7 @@ let some ?(none = "") (parse, print) =
 
 (* Parsing *)
 
-type parse =
-  | Done
-  | Perror of R.msg
-  | Line of string list
+type parse = Done | Perror of R.msg | Line of string list
 
 let raw_args = match Array.to_list Sys.argv with
 | [] -> []
@@ -113,7 +112,7 @@ let partition_opt_pos l =
 
 (* Documentation *)
 
-let undocumented = "Undocumented, complain loudly to the author."
+let undocumented = "Undocumented, complain loudly to the program author."
 
 type doc_opt_kind =
   | Flag of string
