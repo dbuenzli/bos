@@ -1,4 +1,4 @@
-description = "Light, basic OS interaction for OCaml"
+description = "Basic OS interaction for OCaml"
 version = "%%VERSION%%"
 
 requires = "rresult astring fpath fmt unix logs"

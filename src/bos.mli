@@ -4,9 +4,11 @@
    %%NAME%% v%%VERSION%%
   ---------------------------------------------------------------------------*)
 
-(** Light, basic OS interaction.
+(** Basic OS interaction.
 
     Open the module to use it, this defines only modules in your scope.
+
+    {b WARNING.} Bos' APIs are still subject to change in the future.
 
     {e v%%VERSION%% - {{:%%PKG_WWW%% }homepage}} *)
 
