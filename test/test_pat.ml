@@ -41,26 +41,22 @@ let dom = test "Pat.dom" @@ fun () ->
   ()
 
 let subst = test "Pat.subst" @@ fun () ->
-  let eq p f s = eq_str Pat.(to_string @@ subst (v p) f) s in
-  let subst = function "bli" -> Some "bla" | _ -> None in
-  eq "hey $(bli) $(bla)" subst "hey bla $(bla)";
-  eq "hey $(blo) $(bla)" subst "hey $(blo) $(bla)";
-  ()
-
-let subst_env = test "Pat.subst_env" @@ fun () ->
-  let eq p e s = eq_str Pat.(to_string @@ subst_env (v p) e) s in
-  let env = String.Map.of_list ["bli", "bla"] in
-  eq "hey $(bli) $(bla)" env "hey bla $(bla)";
-  eq "hey $(blo) $(bla)" env "hey $(blo) $(bla)";
+  let eq ?undef defs p s =
+    eq_str Pat.(to_string @@ subst ?undef defs (v p)) s
+  in
+  let defs = String.Map.of_list ["bli", "bla"] in
+  let undef = function "blu" -> Some "bla$" | _ -> None in
+  eq ~undef defs "hey $$ $(bli) $(bla) $(blu)" "hey $$ bla $(bla) bla$$";
+  eq defs "hey $(blo) $(bla) $(blu)" "hey $(blo) $(bla) $(blu)";
   ()
 
 let format = test "Pat.format" @@ fun () ->
-  let eq p env s = eq_str (Pat.(format (v p) env)) s in
-  let env = String.Map.of_list ["hey", "ho"; "hi", "ha"] in
-  app_invalid ~pp:Fmt.(unit "()") (eq "a $(hu)" env) "bla";
-  eq_str Pat.(format ~undef:(fun _ -> "undef") (v "a $(hu)") env) "a undef";
-  eq "a $(hey) $(hi)" env "a ho ha";
-  eq "a $$(hey) $$(hi)" env "a $(hey) $(hi)";
+  let eq ?undef defs p s = eq_str (Pat.(format ?undef defs (v p))) s in
+  let defs = String.Map.of_list ["hey", "ho"; "hi", "ha$"] in
+  let undef = fun _ -> "undef" in
+  eq ~undef defs "a $$ $(hu)" "a $ undef";
+  eq ~undef defs "a $(hey) $(hi)" "a ho ha$";
+  eq defs "a $$(hey) $$(hi) $(ha)" "a $(hey) $(hi) ";
   ()
 
 let matches = test "Pat.matches" @@ fun () ->
@@ -93,13 +89,13 @@ let query = test "Pat.query" @@ fun () ->
   eq "$(mod).mli" "string.mli " None;
   eq "$(mod).$(suff)" "string.mli" (Some ["mod", "string"; "suff", "mli"]);
   eq "$(mod).$(suff)" "string.mli" (Some ["mod", "string"; "suff", "mli"]);
+  eq "$(m).$(m)" "string.mli" (Some ["m", "string"]);
   ()
 
 let suite = suite "Pat module"
     [ string_conv;
       dom;
       subst;
-      subst_env;
       format;
       matches;
       query; ]

@@ -148,7 +148,6 @@ let match_path ?(dotfiles = false) ~env p =
   let err _ =
     R.msgf "Unexpected error while matching `%a'" Fpath.pp p
   in
-  let buf = Buffer.create 256 in
   let vol, start, segs =
     let vol, segs = Fpath.split_volume p in
     match Fpath.segs segs with
@@ -188,7 +187,7 @@ let match_path ?(dotfiles = false) ~env p =
       in
       match_segs (loop [] acc) segs
   | seg :: segs ->
-      match Bos_pat.of_string ~buf seg with
+      match Bos_pat.of_string seg with
       | Error _ as e -> e
       | Ok seg ->
           let rec loop acc = function

@@ -9,56 +9,35 @@ open Astring
 
 (* Errors *)
 
-let err_malformed_pat s = strf "malformed named string pattern: `%s`" s
-let err_undef_var s = strf "variable `%s` undefined in environment" s
-
-(* Misc. *)
-
-let get_cleared_buf = function
-| None -> Buffer.create 255
-| Some buf -> Buffer.clear buf; buf
+let err_malformed_pat s =
+  strf "malformed named string pattern: %a" String.dump s
 
 (* Patterns *)
 
 type lexeme = Lit of string | Var of string
 type t = lexeme list
 
+let empty = []
 let dom p =
-  let rec loop acc = function
-  | Lit _ :: p -> loop acc p
-  | Var v :: p -> loop (String.Set.add v acc) p
-  | [] -> acc
-  in
-  loop String.Set.empty p
-
-let subst p subst =
-  let rec loop acc = function
-  | Lit _ as l :: p -> loop (l :: acc) p
-  | Var v as var :: p ->
-      begin match subst v with
-      | None -> loop (var :: acc) p
-      | Some l -> loop (Lit l :: acc) p
-      end
-  | [] -> List.rev acc
-  in
-  loop [] p
+  let add acc = function Lit _ -> acc | Var v -> String.Set.add v acc in
+  List.fold_left add String.Set.empty p
 
 let equal p p' = p = p'
 let compare p p' = Pervasives.compare p p'
 
 type parse_state = S_lit | S_dollar | S_var
 
-let of_string ?buf s =
-  let b = get_cleared_buf buf in
+let of_string s =
+  let b = Buffer.create 255 in
   let flush b = let s = Buffer.contents b in (Buffer.clear b; s) in
+  let err () = R.error_msg (err_malformed_pat s) in
   let push_lit b acc =
     if Buffer.length b <> 0 then Lit (flush b) :: acc else acc
   in
   let max_i = String.length s - 1 in
   let rec loop acc state i =
     if i > max_i then
-      if state <> S_lit then R.error_msg (err_malformed_pat s) else
-      (Ok (List.rev (push_lit b acc)))
+      if state <> S_lit then err () else (Ok (List.rev (push_lit b acc)))
     else match state with
     | S_lit ->
         begin match s.[i] with
@@ -69,12 +48,12 @@ let of_string ?buf s =
         begin match s.[i] with
         | '$' -> Buffer.add_char b '$'; loop acc S_lit (i + 1)
         | '(' -> loop (push_lit b acc) S_var (i + 1)
-        | _ -> R.error_msg (err_malformed_pat s)
+        | _ -> err ()
         end
     | S_var ->
         begin match s.[i] with
         | ')' -> loop (Var (flush b) :: acc) S_lit (i + 1);
-        | ',' -> R.error_msg (err_malformed_pat s)
+        | ',' -> err ()
         | c -> Buffer.add_char b c; loop acc S_var (i + 1)
         end
   in
@@ -82,8 +61,8 @@ let of_string ?buf s =
 
 let v s = R.error_msg_to_invalid_arg (of_string s)
 
-let to_string ?buf p =
-  let b = get_cleared_buf buf in
+let to_string p =
+  let b = Buffer.create 255 in
   let add = function
   | Lit l ->
       let max_i = String.length l - 1 in
@@ -141,34 +120,31 @@ let dump ppf p =
   in
   Fmt.pf ppf "\"%a\"" dump p
 
-(* Pattern environments *)
+(* Substitution *)
 
-type env = string String.map
+type defs = string String.map
 
-let subst_env p env =
-  let rec loop acc = function
-  | Lit _ as l :: p -> loop (l :: acc) p
-  | Var v as var :: p ->
-      begin match String.Map.find v env with
-      | None -> loop (var :: acc) p
-      | Some l -> loop (Lit l :: acc) p
-      end
-  | [] -> List.rev acc
+let subst ?(undef = fun _ -> None) defs p =
+  let subst acc = function
+  | Lit _ as l -> l :: acc
+  | Var v as var ->
+      match String.Map.find v defs with
+      | Some lit -> (Lit lit) :: acc
+      | None ->
+          match undef v with
+          | Some lit -> (Lit lit) :: acc
+          | None -> var :: acc
   in
-  loop [] p
+  List.(rev (fold_left subst [] p))
 
-let format ?buf ?undef p env =
-  let undef = match undef with
-  | None -> fun v -> invalid_arg (err_undef_var v)
-  | Some undef -> undef
-  in
-  let b = get_cleared_buf buf in
+let format ?(undef = fun _ -> "") defs p =
+  let b = Buffer.create 255 in
   let add = function
   | Lit l -> Buffer.add_string b l
   | Var v ->
-      match String.Map.find v env with
-      | None -> Buffer.add_string b (undef v)
+      match String.Map.find v defs with
       | Some s -> Buffer.add_string b s
+      | None -> Buffer.add_string b (undef v)
   in
   List.iter add p;
   Buffer.contents b

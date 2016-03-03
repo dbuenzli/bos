@@ -20,9 +20,9 @@ open Astring
 (** Named string patterns.
 
     Named string patterns are strings with variables of the form
-    ["$(VAR)"] where [VAR] is any sequence of bytes except [')'] or
-    [',']. In a named string pattern a ["$"] litteral must be escaped
-    by ["$$"].
+    ["$(VAR)"] where [VAR] is any (possibly empty) sequence of bytes
+    except [')'] or [',']. In a named string pattern a ["$"] literal
+    must be escaped by ["$$"].
 
     Named string patterns can be used to {{!format}format} strings or
     to {{!match}match} data. *)
@@ -39,12 +39,11 @@ module Pat : sig
       @raise Invalid_argument if [s] is not a valid pattern. Use
       {!of_string} to deal with errors. *)
 
+  val empty : t
+  (** [empty] is an empty pattern. *)
+
   val dom : t -> String.Set.t
   (** [dom p] is the set of variables in [p]. *)
-
-  val subst : t -> (string -> string option) -> t
-  (** [subst p subst] substitutes variables in [p] by the value
-      they map to in [subst] (if any). See also {!subst_env}. *)
 
   val equal : t -> t -> bool
   (** [equal p p'] is [p = p']. *)
@@ -52,14 +51,13 @@ module Pat : sig
   val compare : t -> t -> int
   (** [compare p p'] is {!Pervasives.compare}[ p p']. *)
 
-  val of_string : ?buf:Buffer.t -> string -> (t, [> R.msg]) Result.result
-  (** [of_string ?buf s] parses [s] according to the pattern syntax
-      (i.e.  a '$' will be represented by ["$$"]). [buf] can specify a
-      temporary buffer to use. *)
+  val of_string : string -> (t, [> R.msg]) Result.result
+  (** [of_string s] parses [s] according to the pattern syntax
+      (i.e. a literal '$' must be represented by ["$$"] in [s]). *)
 
-  val to_string : ?buf:Buffer.t -> t -> string
+  val to_string : t -> string
   (** [to_string p] converts [p] to a string according to the pattern
-      syntax. [buf] can specify a temporary buffer to use.  *)
+      syntax (i.e. a literal ['$'] will be represented by ["$$"]).  *)
 
   val pp : Format.formatter -> t -> unit
   (** [pp ppf p] prints [p] on [ppf] according to the pattern syntax. *)
@@ -68,29 +66,26 @@ module Pat : sig
   (** [dump ppf p] prints [p] as a syntactically valid OCaml string on
       [ppf]. *)
 
-  (** {1:envs Pattern environments} *)
+  (** {1:subst Substitution}
 
-  type env = string String.Map.t
-  (** Type type for pattern environments. Maps pattern variable names
-      to string values. *)
+      {b Note.} Substitution replaces variables with data,
+      i.e. strings. It cannot substitute variables with variables. *)
 
-  val subst_env : t -> env -> t
-  (** [subst_env p env] substitutes variables in [p] by the value
-      they map to in [env]. The {{!dom}domain} of the resulting pattern
-      is [String.Set.diff (dom p) (String.Map.dom env)]. *)
+  type defs = string String.Map.t
+  (** Type type for variable definitions. Maps pattern variable names
+      to strings. *)
 
-  val format : ?buf:Buffer.t -> ?undef:(string -> string) -> t -> env ->
-    string
-  (** [format p env] formats a string by substituting the variables of
-      [p] with their value as found in [env]. The resulting string is
-      is not in pattern syntax (a ['$'] will be represented by ['$'] in
-      the result). [buf] can specify a temporary buffer to use.
+  val subst : ?undef:(string -> string option) -> defs -> t -> t
+  (** [subst ~undef defs p] tries to substitute variables in [p] by
+      their definition. First a value is looked up in [defs] and if
+      not found in [undef]. [undef] defaults to [(fun _ -> None)]. *)
 
-      If [undef] is provided and a variable [v] of [p] is undefined in
-      [env] the value of [undef v] is substituted.
-
-      @raise Invalid_argument if [dom p] is not included in
-      [String.Map.dom env] and [undef] is unspecified. *)
+  val format : ?undef:(string -> string) -> defs -> t -> string
+  (** [format ~undef defs p] substitutes all variables in [p] with
+      data. First a value is looked up in [defs] and if not found in
+      [undef] (defaults to [fun _ -> ""]). The resulting string is
+      not in pattern syntax (i.e.  a literal ['$'] is represented by
+      ['$'] in the result). *)
 
   (** {1:match Matching}
 
@@ -107,13 +102,13 @@ module Pat : sig
       {- [matches (v "$(mod).$(suff)") "string.mli"] is [true].}
       {- [matches (v "$(mod).$(suff)") "string.mli "] is [true].}} *)
 
-  val query : ?init:env -> t -> string -> env option
+  val query : ?init:defs -> t -> string -> defs option
   (** [query ~init p s] is like {!matches} except that a matching
-      string returns an environment mapping each pattern variable to
-      its matched part in the string (mappings are added to [init],
-      defaults to {!String.Map.empty}) or [None] if [s] doesn't match
-      [p].  If a variable appears more than once in [pat] the actual
-      mapping for the variable is unspecified. *)
+      string returns a map from each pattern variable to its matched
+      part in the string (mappings are added to [init], defaults to
+      {!String.Map.empty}) or [None] if [s] doesn't match [p].  If a
+      variable appears more than once in [pat] the first match is
+      returned in the map. *)
 end
 
 (** Command lines.
@@ -641,8 +636,8 @@ let main () = main ()
         starts with a ['.'] character are not part of the list. *)
 
     val query :
-      ?dotfiles:bool -> ?init:Pat.env -> Fpath.t ->
-      ((Fpath.t * Pat.env) list, 'e) result
+      ?dotfiles:bool -> ?init:Pat.defs -> Fpath.t ->
+      ((Fpath.t * Pat.defs) list, 'e) result
     (** [query ~init pat] is like {!matches} except each matching path
         is returned with an environment mapping pattern variables to
         their matched part in the path. For each path the mappings are
