@@ -113,13 +113,14 @@ end
 
 (** Command lines.
 
-    For API usability reasons we represent both command lines and
-    command line fragments using the same {{!t}type}. When a command
-    line is {{!section:OS.Cmd.exec}executed} the first element of the
-    line defines the program name and each other element is an
-    argument that will be passed {e as is} in the program's [argv]
-    array: no shell interpretation or any form of argument
-    concatenation occurs.
+    Both command lines and command line fragments using the same are
+    represented with the same {{!t}type}.
+
+    When a command line is {{!section:OS.Cmd.run}run}, the first
+    element of the line defines the program name and each other
+    element is an argument that will be passed {e as is} in the
+    program's [argv] array: no shell interpretation or any form of
+    argument quoting and/or concatenation occurs.
 
     See {{!ex}examples}. *)
 module Cmd : sig
@@ -131,7 +132,7 @@ module Cmd : sig
 
   val v : string -> t
   (** [v cmd] is a new command line (or command line fragment)
-      made of [cmd]. *)
+      whose first argument is [cmd]. *)
 
   val empty : t
   (** [empty] is an empty command line. *)
@@ -143,7 +144,7 @@ module Cmd : sig
     (** [l % arg] adds [arg] to the command line [l]. *)
 
   val ( %% ) : t -> t -> t
-  (** [l %% frag] appends line fragment [frag] to [l]. *)
+  (** [l %% frag] appends the line fragment [frag] to [l]. *)
 
   val add_arg : t -> string -> t
   (** [add_arg l arg] is [l % arg]. *)
@@ -156,8 +157,8 @@ module Cmd : sig
       otherwise. *)
 
   val p : Fpath.t -> string
-  (** [p] is {!Fpath.to_string}. This combinator is here to make
-      path argument specification brief. *)
+  (** [p] is {!Fpath.to_string}. This combinator makes path argument
+      specification brief. *)
 
   (** {1:predicates Predicates and comparison} *)
 
@@ -165,7 +166,7 @@ module Cmd : sig
   (** [equal l l'] is [true] iff [l] and [l'] are litterally equal. *)
 
   val compare : t -> t -> int
-  (** [compare l l'] is a total order on lines. *)
+  (** [compare l l'] is a total order on command lines. *)
 
   (** {1:convert Conversions and pretty printing} *)
 
@@ -173,9 +174,9 @@ module Cmd : sig
   (** [to_list l] is [l] as a list of strings. *)
 
   val of_list : ?slip:string -> string list -> t
-  (** [of_list ?slip l] is a command line from the list [l]. If [slip]
-      is specified it is added on the command line before each element
-      of [l]. *)
+  (** [of_list ?slip l] is a command line from the list of arguments
+      [l].  If [slip] is specified it is added on the command line
+      before each element of [l]. *)
 
   val pp : Format.formatter -> t -> unit
   (** [pp ppf l] formats an unspecified representation of [l] on
@@ -198,10 +199,11 @@ let opam_install pkgs = Cmd.(opam "install" %% of_list pkgs)
 let ocamlc ?(debug = false) file =
   Cmd.(v "ocamlc" % "-c" %% (on debug @@ v "-g") % p file)
 
-let ocamlopt ?(profile = false) ?(debug = false) file =
+let ocamlopt ?(profile = false) ?(debug = false) incs file =
   let profile = Cmd.(on profile @@ v "-p") in
   let debug = Cmd.(on debug @@ v "-g") in
-  Cmd.(v "ocamlopt" % "-c" %% debug %% profile % p file)
+  let incs = Cmd.of_list ~slip:"-I" incs in
+  Cmd.(v "ocamlopt" % "-c" %% debug %% profile %% incs % p file)
 ]} *)
 end
 

@@ -6,20 +6,15 @@
 
 open Rresult
 
-(* Patterns and logging *)
+(* Basic types *)
 
 module Pat = Bos_pat
-module Log = Bos_log
-
-(* Command lines *)
-
 module Cmd = Bos_cmd
 
 (* OS interaction *)
 
 module OS = struct
   type ('a, 'b) result = ('a, [> R.msg] as 'b) R.t
-
   module Env = Bos_os_env
   module Arg = Bos_os_arg
   module Path = Bos_os_path

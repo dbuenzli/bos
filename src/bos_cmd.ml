@@ -13,16 +13,12 @@ type t = string list
 
 let empty = []
 let is_empty = function [] -> true | _ -> false
-
 let v a = [a]
 let ( % ) l a = a :: l
 let ( %% ) l0 l1 = List.rev_append (List.rev l1) l0
-
 let add_arg l a = l % a
 let add_args l a = l %% a
-
 let on bool l = if bool then l else []
-
 let p = Fpath.to_string
 
 (* Predicates and comparison *)
