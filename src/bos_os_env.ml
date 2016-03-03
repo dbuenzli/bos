@@ -7,27 +7,27 @@
 open Rresult
 open Astring
 
-
 (* Process environment *)
 
 type t = string String.map
 
-let current () = try
-  let env = Unix.environment () in
-  let add acc assign = match acc with
-  | Error _ as e -> e
-  | Ok m ->
-      match String.cut ~sep:"=" assign with
-      | Some (var, value) -> R.ok (String.Map.add var value m)
-      | None ->
-          R.error_msgf
-            "could not parse process environment variable (%S)" assign
-  in
-  Array.fold_left add (R.ok String.Map.empty) env
-with
-| Unix.Unix_error (e, _, _) ->
-    R.error_msgf
-      "could not get process environment: %s" (Unix.error_message e)
+let current () =
+  try
+    let env = Unix.environment () in
+    let add acc assign = match acc with
+    | Error _ as e -> e
+    | Ok m ->
+        match String.cut ~sep:"=" assign with
+        | Some (var, value) -> R.ok (String.Map.add var value m)
+        | None ->
+            R.error_msgf
+              "could not parse process environment variable (%S)" assign
+    in
+    Array.fold_left add (R.ok String.Map.empty) env
+  with
+  | Unix.Unix_error (e, _, _) ->
+      R.error_msgf
+        "could not get process environment: %s" (Unix.error_message e)
 
 let to_array env =
   let add_var name value acc = String.concat [name; "="; value] :: acc in
@@ -36,12 +36,11 @@ let to_array env =
 (* Variables *)
 
 let var name = try Some (Unix.getenv name) with Not_found -> None
-
 let set_var name v =
   let v = match v with None -> "" | Some v -> v in
   try R.ok (Unix.putenv name v) with
   | Unix.Unix_error (e, _, _) ->
-      R.error_msgf "environment variable %s: %s" name (Unix.error_message e)
+      R.error_msgf "set environment variable %s: %s" name (Unix.error_message e)
 
 let opt_var name ~absent = try Unix.getenv name with Not_found -> absent
 let req_var name = try Ok (Unix.getenv name) with
@@ -65,13 +64,8 @@ let bool =
   parser "bool" of_string
 
 let string = fun s -> Ok s
-
 let path = parser "path" Fpath.of_string
-
-let some p =
-  fun s -> match p s with
-  | Ok v -> Ok (Some v)
-  | Error _ as e -> e
+let some p = fun s -> match p s with Ok v -> Ok (Some v) | Error _ as e -> e
 
 let parse name p ~absent = match var name with
 | None -> Ok absent
@@ -81,8 +75,7 @@ let parse name p ~absent = match var name with
       (fun err -> R.msgf "environment variable %s: %s" name err)
 
 let value ?(log = Logs.Error) name p ~absent =
-  Bos_log.on_error_msg ~level:log ~use:(fun () -> absent)
-      (parse name p ~absent)
+  Bos_log.on_error_msg ~level:log ~use:(fun () -> absent) (parse name p ~absent)
 
 (*---------------------------------------------------------------------------
    Copyright (c) 2015 Daniel C. Bünzli

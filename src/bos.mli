@@ -8,7 +8,8 @@
 
     Open the module to use it, this defines only modules in your scope.
 
-    {b WARNING.} Bos' APIs are still subject to change in the future.
+    {b WARNING.} This API is still subject to change in the future but
+    feedback and suggestions are welcome on the project's issue tracker.
 
     {e v%%VERSION%% - {{:%%PKG_WWW%% }homepage}} *)
 
