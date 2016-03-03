@@ -11,7 +11,7 @@ command line programs with light OS interaction requirements. It
 (should) work equally well on POSIX and Windows systems.
 
 Bos depends on [Rresult][1], [Astring][2], [Fmt][3] and [Logs][4] and the
-OCaml Unix library. It is distributed under the BSD3 license.
+OCaml Unix library. It is distributed under the ISC license.
 
 [1]: http://erratique.ch/software/rresult
 [2]: http://erratique.ch/software/astring
