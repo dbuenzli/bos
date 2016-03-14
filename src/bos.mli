@@ -720,11 +720,11 @@ let main () = main ()
 
     val exists : Fpath.t -> (bool, 'e) result
     (** [exists file] is [true] if [file] is a regular file in the
-        file system and [false] otherwise.  Symbolic links are
+        file system and [false] otherwise. Symbolic links are
         followed. *)
 
     val must_exist : Fpath.t -> (Fpath.t, 'e) result
-    (** [must_exist file] is [p] if [file] is a regular file in the
+    (** [must_exist file] is [file] if [file] is a regular file in the
         file system and an error otherwise. Symbolic links are
         followed. *)
 
@@ -892,7 +892,7 @@ end
         and [false] otherwise. Symbolic links are followed. *)
 
     val must_exist : Fpath.t -> (Fpath.t, 'e) result
-    (** [must_exist dir] is [p] if [dir] is a directory in the file system
+    (** [must_exist dir] is [dir] if [dir] is a directory in the file system
         and an error otherwise. Symbolic links are followed. *)
 
     val create :
