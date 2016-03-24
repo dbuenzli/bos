@@ -68,7 +68,7 @@ let rec contents ?(rel = false) dir =
             readdir dh ((if rel then f else Fpath.(dir // f)) :: acc)
         | None ->
             R.error_msgf
-              "%a directory contents: cannot parse element to a path (%a)"
+              "directory contents %a: cannot parse element to a path (%a)"
               Fpath.pp dir String.dump f
   in
   try
@@ -77,7 +77,7 @@ let rec contents ?(rel = false) dir =
   with
   | Unix.Unix_error (Unix.EINTR, _, _) -> contents ~rel dir
   | Unix.Unix_error (e, _, _) ->
-      R.error_msgf "%a directory contents: %s" Fpath.pp dir (uerror e)
+      R.error_msgf "directory contents %a: %s" Fpath.pp dir (uerror e)
 
 let fold_contents ?err ?dotfiles ?elements ?traverse f acc d =
   contents d >>= Bos_os_path.fold ?err ?dotfiles ?elements ?traverse f acc
@@ -203,7 +203,8 @@ let rec current () =
 let rec set_current dir = try Ok (Unix.chdir (Fpath.to_string dir)) with
 | Unix.Unix_error (Unix.EINTR, _, _) -> set_current dir
 | Unix.Unix_error (e, _, _) ->
-    R.error_msgf "set current working directory: %s" (uerror e)
+    R.error_msgf "set current working directory to %a: %s"
+      Fpath.pp dir (uerror e)
 
 let with_current dir f v =
   current () >>= fun old ->
