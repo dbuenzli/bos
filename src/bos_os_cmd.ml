@@ -454,7 +454,8 @@ let out_string ?(trim = true) o = match run_cmd o To_string with
 | r -> r
 
 let out_lines ?trim o =
-  out_string ?trim o >>= fun (s, st) -> Ok (String.cuts ~sep:"\n" s, st)
+  out_string ?trim o  >>= fun (s, st) ->
+  Ok ((if s = "" then [] else String.cuts ~sep:"\n" s), st)
 
 let out_file ?(append = false) f o = run_cmd o (To_file (f, append))
 let out_run_in o = run_cmd o To_run_in
