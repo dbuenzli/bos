@@ -64,9 +64,9 @@ let rec contents ?(rel = false) dir =
     | Some (".." | ".") -> readdir dh acc
     | Some f ->
         match Fpath.of_string f with
-        | Some f ->
+        | Ok f ->
             readdir dh ((if rel then f else Fpath.(dir // f)) :: acc)
-        | None ->
+        | Error (`Msg m) ->
             R.error_msgf
               "directory contents %a: cannot parse element to a path (%a)"
               Fpath.pp dir String.dump f
@@ -173,8 +173,8 @@ let user () =
     let uid = Unix.getuid () in
     let home = (Unix.getpwuid uid).Unix.pw_dir in
     match Fpath.of_string home with
-    | Some p -> Ok p
-    | None ->
+    | Ok p -> Ok p
+    | Error _ ->
         debug (strf "could not parse path (%a) from passwd entry"
                  String.dump home);
         env_var_fallback ()
@@ -188,10 +188,10 @@ let rec current () =
   try
     let p = Unix.getcwd () in
     match Fpath.of_string p with
-    | Some dir ->
+    | Ok dir ->
         if Fpath.is_abs dir then Ok dir else
         R.error_msgf "getcwd(3) returned a relative path: (%a)" Fpath.pp dir
-    | None ->
+    | Error _ ->
         R.error_msgf
           "get current working directory: cannot parse it to a path (%a)"
           String.dump p

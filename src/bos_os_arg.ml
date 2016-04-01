@@ -406,7 +406,9 @@ let parse ?(doc = undocumented) ?usage ~pos:(parse, print) () =
 (* Predefined argument converters *)
 
 let string = (fun s -> Ok s), Fmt.string
-let path = converter "a path" Fpath.of_string Fpath.pp
+let path = converter
+    "a path" (fun p -> R.to_option (Fpath.of_string p)) Fpath.pp
+
 let bin = (fun s -> Ok (Bos_cmd.v s)), Bos_cmd.pp
 let char = converter "a character" String.to_char Fmt.char
 let bool = converter "`true' or `false'" String.to_bool Fmt.bool

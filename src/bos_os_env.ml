@@ -64,7 +64,7 @@ let bool =
   parser "bool" of_string
 
 let string = fun s -> Ok s
-let path = parser "path" Fpath.of_string
+let path = parser "path" (fun s -> R.to_option (Fpath.of_string s))
 let some p = fun s -> match p s with Ok v -> Ok (Some v) | Error _ as e -> e
 
 let parse name p ~absent = match var name with
