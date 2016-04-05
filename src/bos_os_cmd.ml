@@ -166,7 +166,7 @@ let string_to_fd_async s fd =
   let rec step fd s first len () =
     match Unix.single_write_substring fd s first len with
     | c when c = len -> `Ok ()
-    | c -> step fd s c (len - c) ()
+    | c -> step fd s (first + c) (len - c) ()
     | exception Unix.Unix_error (Unix.EINTR, _, _) -> step fd s first len ()
     | exception Unix.Unix_error ((Unix.EWOULDBLOCK | Unix.EAGAIN), _, _) ->
         `Await (step fd s first len)
@@ -175,7 +175,7 @@ let string_to_fd_async s fd =
   step fd s 0 (String.length s)
 
 let string_to_fd s fd =
-  let rec loop = function `Ok s -> s | `Await step -> loop (step ()) in
+  let rec loop = function `Ok () -> () | `Await step -> loop (step ()) in
   loop (string_to_fd_async s fd ())
 
 let string_to_of_fd s ~to_fd ~of_fd =
