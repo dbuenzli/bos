@@ -88,7 +88,7 @@ let exists line =
   let test = Bos_cmd.(v test % cmd) in
   try
     let null = Fpath.to_string Bos_os_file.null in
-    let null = openfile null [Unix.O_RDWR] 0x644 in
+    let null = openfile null [Unix.O_RDWR] 0o644 in
     try
       let p = create_process test None ~stdin:null ~stdout:null ~stderr:null in
       match snd (waitpid [] p) with
@@ -137,11 +137,11 @@ let write_fd_for_file ~append f =
   try
     let flags = Unix.([O_WRONLY; O_CREAT]) in
     let flags = if append then Unix.O_APPEND :: flags else flags in
-    Ok (openfile (Fpath.to_string f) flags 0x644)
+    Ok (openfile (Fpath.to_string f) flags 0o644)
   with Unix.Unix_error (e, _, _) -> err_file f e
 
 let read_fd_for_file f =
-  try Ok (openfile (Fpath.to_string f) [Unix.O_RDONLY] 0x644)
+  try Ok (openfile (Fpath.to_string f) [Unix.O_RDONLY] 0o644)
   with Unix.Unix_error (e, _, _) -> err_file f e
 
 let string_of_fd_async fd =

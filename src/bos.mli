@@ -875,7 +875,7 @@ let main () = main ()
     (** [with_tmp_oc mode dir pat f v] is a new temporary file in
         [dir] (defaults to {!Dir.default_tmp}) named according to
         [pat] and atomically created and opened with permission [mode]
-        (defaults to [0x600] only readable and writable by the
+        (defaults to [0o600] only readable and writable by the
         user). Returns [Ok (f file oc v)] with [file] the file path
         and [oc] an output channel to write the file. After the
         function returns (normally or via an exception), [oc] is
