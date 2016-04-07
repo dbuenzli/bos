@@ -410,6 +410,12 @@ let path = converter
     "a path" (fun p -> R.to_option (Fpath.of_string p)) Fpath.pp
 
 let bin = (fun s -> Ok (Bos_cmd.v s)), Bos_cmd.pp
+let cmd = converter "a command line"
+    (fun s -> match Bos_cmd.of_string s with
+     | Error _ -> None
+     | Ok cmd when Bos_cmd.is_empty cmd -> None
+     | Ok cmd -> Some cmd) Bos_cmd.pp
+
 let char = converter "a character" String.to_char Fmt.char
 let bool = converter "`true' or `false'" String.to_bool Fmt.bool
 let int = converter "an integer" String.to_int Fmt.int

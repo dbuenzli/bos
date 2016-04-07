@@ -171,6 +171,33 @@ module Cmd : sig
 
   (** {1:convert Conversions and pretty printing} *)
 
+  val of_string : string -> (t, R.msg) result
+  (** [of_string s] tokenizes [s] into a command line. The tokens
+      are recognized according to the [token] production of the following
+      grammar which should be mostly be compatible with POSIX shell
+      tokenization.
+{v
+white   ::= ' ' | '\t' | '\n' | '\x0B' | '\x0C' | '\r'
+squot   ::= '\''
+dquot   ::= '\"'
+bslash  ::= '\\'
+tokens  ::= white+ tokens | token tokens | ϵ
+token   ::= ([^squot dquot white] | squoted | dquoted) token | ϵ
+squoted ::= squot [^squot]* squot
+dquoted ::= dquot (qchar | [^dquot])* dquot
+qchar   ::= bslash (bslash | dquot | '$' | '`' | '\n')
+v}
+
+      [qchar] are substitued by the byte they escape except for ['\n']
+      which removes the backslash and newline from the byte stream.
+      [squoted] and [dquoted] represent the bytes they enclose. *)
+
+  val to_string : t -> string
+  (** [to_string l] converts [l] to a string that can be passed
+      to the
+      {{:http://pubs.opengroup.org/onlinepubs/9699919799/functions/system.html}
+      [command(3)]} POSIX system call. *)
+
   val to_list : t -> string list
   (** [to_list l] is [l] as a list of strings. *)
 
@@ -285,6 +312,10 @@ module OS : sig
 
     val path : Fpath.t parser
     (** [path s] is a path parser using {!Fpath.of_string}. *)
+
+    val cmd : Cmd.t parser
+    (** [cmd s] is a {b non-empty} command parser using
+        {!Cmd.of_string}. *)
 
     val some : 'a parser -> 'a option parser
     (** [some p] is wraps [p]'s parse result in [Some]. *)
@@ -473,9 +504,8 @@ let timeout : int option =
     val bin : Cmd.t converter
     (** [bin] is {!string} mapped by {!Cmd.v}. *)
 
-   (* FIXME add:
     val cmd : Cmd.t converter
-    (** [cmd] converts a command line with {!Cmd.of_string} *) *)
+    (** [cmd] converts a {b non-empty} command line with {!Cmd.of_string} *)
 
     val char : char converter
     (** [char] converts a single character. *)

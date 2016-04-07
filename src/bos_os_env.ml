@@ -64,7 +64,12 @@ let bool =
   parser "bool" of_string
 
 let string = fun s -> Ok s
-let path = parser "path" (fun s -> R.to_option (Fpath.of_string s))
+let path = Fpath.of_string
+let cmd = fun s -> match Bos_cmd.of_string s with
+| Error _ as err -> err
+| Ok cmd when Bos_cmd.is_empty cmd -> R.error_msgf "command line is empty"
+| Ok _ as cmd -> cmd
+
 let some p = fun s -> match p s with Ok v -> Ok (Some v) | Error _ as e -> e
 
 let parse name p ~absent = match var name with

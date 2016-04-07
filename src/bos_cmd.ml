@@ -28,6 +28,77 @@ let compare l l' = Pervasives.compare l l'
 
 (* Conversions and pretty printing *)
 
+(* Parsing is loosely based on
+   http://pubs.opengroup.org/onlinepubs/009695399/utilities/\
+   xcu_chap02.html#tag_02_03 *)
+
+let parse_cmdline s =
+  try
+    let err_unclosed kind s =
+      failwith @@
+      strf "%d: unclosed %s quote delimited string"
+        (String.Sub.start_pos s) kind
+    in
+    let skip_white s = String.Sub.drop ~sat:Char.Ascii.is_white s in
+    let tok_sep c = c = '\'' || c = '\"' || Char.Ascii.is_white c in
+    let tok_char c = not (tok_sep c) in
+    let not_squote c = c <> '\'' in
+    let parse_squoted s =
+      let tok, rem = String.Sub.span ~sat:not_squote (String.Sub.tail s) in
+      if not (String.Sub.is_empty rem) then tok, String.Sub.tail rem else
+      err_unclosed "single" s
+    in
+    let parse_dquoted acc s =
+      let is_data = function '\\' | '"' -> false | _ -> true in
+      let rec loop acc s =
+        let data, rem = String.Sub.span ~sat:is_data s in
+        match String.Sub.head rem with
+        | Some '"' -> (data :: acc), (String.Sub.tail rem)
+        | Some '\\' ->
+            let rem = String.Sub.tail rem in
+            begin match String.Sub.head rem with
+            | Some ('"' | '\\' | '$' | '`' as c) ->
+                let acc = String.(sub (of_char c)) :: data :: acc in
+                loop acc (String.Sub.tail rem)
+            | Some ('\n') -> loop (data :: acc) (String.Sub.tail rem)
+            | Some c ->
+                let acc = String.Sub.extend ~max:2 data :: acc in
+                loop acc (String.Sub.tail rem)
+            | None ->
+                err_unclosed "double" s
+            end
+        | None -> err_unclosed "double" s
+        | Some _ -> assert false
+      in
+      loop acc (String.Sub.tail s)
+    in
+    let parse_token s =
+      let ret acc s = String.Sub.(to_string @@ concat (List.rev acc)), s in
+      let rec loop acc s = match String.Sub.head s with
+      | None -> ret acc s
+      | Some c when Char.Ascii.is_white c -> ret acc s
+      | Some '\'' ->
+          let tok, rem = parse_squoted s in loop (tok :: acc) rem
+      | Some '\"' ->
+          let acc, rem = parse_dquoted acc s in loop acc rem
+      | Some c ->
+          let sat = tok_char in
+          let tok, rem = String.Sub.span ~sat s in loop (tok :: acc) rem
+      in
+      loop [] s
+    in
+    let rec loop acc s =
+      if String.Sub.is_empty s then acc else
+      let token, s = parse_token s in
+      loop (token :: acc) (skip_white s)
+    in
+    Ok (loop [] (skip_white (String.sub s)))
+  with Failure err -> R.error_msgf "command line %a:%s" String.dump s err
+
+let of_string s = parse_cmdline s
+
+let to_string l = String.concat ~sep:" " (List.rev_map Filename.quote l)
+
 let to_list line = List.rev line
 let of_list ?slip line = match slip with
 | None -> List.rev line

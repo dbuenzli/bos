@@ -4,14 +4,32 @@
    %%NAME%% v%%VERSION%%
   ---------------------------------------------------------------------------*)
 
-let tests () = Testing.run
-    [ Test_pat.suite;
-      Test_cmd.suite;
-      Test_os_cmd.suite; ]
+open Testing
+open Rresult
+open Astring
+open Bos
 
-let run () = tests (); Testing.log_results ()
+let of_string = test "Cmd.of_string" @@ fun () ->
+  let eq cmd l = match Cmd.of_string cmd with
+  | Error (`Msg msg) -> fail "%s" msg
+  | Ok l' -> eq_list ~eq:(=) ~pp:pp_str (Cmd.to_list l') l
+  in
+  eq "" [];
+  eq "bla" ["bla"];
+  eq " bla bli" ["bla"; "bli"];
+  eq " bla bli  " ["bla"; "bli"];
+  eq " bla b\\li  " ["bla"; "b\\li"];
+  eq " b'haha'la bli  " ["bhahala"; "bli"];
+  eq " b\"haha\"la bli  " ["bhahala"; "bli"];
+  eq " b\"'\"la bli  " ["b'la"; "bli"];
+  eq " b''''la bli  " ["bla"; "bli"];
+  eq " b'u'\"'\"'i'la bli  " ["bu'ila"; "bli"];
+  eq " b\"\\\"\"ila bli  " ["b\"ila"; "bli"];
+  eq " b\"\\\n\"ila bli  " ["bila"; "bli"];
+  ()
 
-let () = if run () then exit 0 else exit 1
+let suite = suite "Cmd module"
+    [ of_string; ]
 
 (*---------------------------------------------------------------------------
    Copyright (c) 2015 Daniel C. Bünzli
