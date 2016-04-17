@@ -21,6 +21,11 @@ let add_args l a = l %% a
 let on bool l = if bool then l else []
 let p = Fpath.to_string
 
+(* Command lines *)
+
+let line_exec l = try Some List.(hd @@ rev l) with Failure _ -> None
+let line_args l = try List.(tl @@ rev l) with Failure _ -> []
+
 (* Predicates and comparison *)
 
 let equal l l' = l = l'
@@ -96,7 +101,6 @@ let parse_cmdline s =
   with Failure err -> R.error_msgf "command line %a:%s" String.dump s err
 
 let of_string s = parse_cmdline s
-
 let to_string l = String.concat ~sep:" " (List.rev_map Filename.quote l)
 
 let to_list line = List.rev line

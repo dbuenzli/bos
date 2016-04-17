@@ -126,7 +126,7 @@ end
     See {{!ex}examples}. *)
 module Cmd : sig
 
-  (** {1:lines Command line fragments} *)
+  (** {1:frags Command line fragments} *)
 
   type t
   (** The type for command line fragments. *)
@@ -160,6 +160,15 @@ module Cmd : sig
   val p : Fpath.t -> string
   (** [p] is {!Fpath.to_string}. This combinator makes path argument
       specification brief. *)
+
+  (** {1:lines Command lines} *)
+
+  val line_exec : t -> string option
+  (** [line_exec l] is [l]'s first element, usually the executable name. *)
+
+  val line_args : t -> string list
+  (** [line_args] is [l]'s command line arguments, the elements of [l] without
+      the command name. *)
 
   (** {1:predicates Predicates and comparison} *)
 
