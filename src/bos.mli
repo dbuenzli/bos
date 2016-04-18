@@ -234,7 +234,7 @@ let opam cmd = Cmd.(v "opam" % cmd)
 let opam_install pkgs = Cmd.(opam "install" %% of_list pkgs)
 
 let ocamlc ?(debug = false) file =
-  Cmd.(v "ocamlc" % "-c" %% (on debug @@ v "-g") % p file)
+  Cmd.(v "ocamlc" % "-c" %% on debug (v "-g") % p file)
 
 let ocamlopt ?(profile = false) ?(debug = false) incs file =
   let profile = Cmd.(on profile @@ v "-p") in
