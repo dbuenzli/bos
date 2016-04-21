@@ -1045,22 +1045,20 @@ contents d >>= Path.fold err dotfiles elements traverse f acc
 
   (** Command existence and run.
 
-      {b Warning.} All functions involving {!Cmd.t} values raise
-      [Invalid_argument] on {{!Cmd.is_empty}empty} commands.
-
-      {b Note.} Programs are searched the PATH unless they contain
-      a ['/'] character. *)
+      {b Note.} Executables are searched the PATH unless they contain
+      a ['/'] character. {{!Cmd.is_empty}Empty} command lines result
+      in errors. *)
   module Cmd : sig
 
     (** {1:exist Command existence} *)
 
     val exists : Cmd.t -> (bool, 'e) result
-    (** [exists cmd] is [true] if the executable of [cmd] can be found in
-        the path and [false] otherwise. *)
+    (** [exists cmd] is [true] if the {{!Cmd.line_exec}executable} of [cmd]
+        can be found in the path and [false] otherwise. *)
 
     val must_exist : Cmd.t -> (Cmd.t, 'e) result
-    (** [must_exist cmd] is [cmd] if the executable of [cmd] can be found
-        in the path and an error otherwise. *)
+    (** [must_exist cmd] is [cmd] is like {!exists} but errors if [false]
+        is returned. *)
 
     (** {1:run Command runs}
 

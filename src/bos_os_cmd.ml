@@ -19,7 +19,7 @@ let pp_process_status ppf = function
 
 (* Error messages *)
 
-let err_empty_line = "empty command line"
+let err_empty_line = "no command, empty command line"
 let err_file f e = R.error_msgf "%a: %a" Fpath.pp f pp_unix_error e
 let err_run cmd pp e = R.error_msgf "run %a: %a" Bos_cmd.dump cmd pp e
 
@@ -63,7 +63,7 @@ let rec select r w e t = try Unix.select r w e t with
 let create_process cmd env ~stdin ~stdout ~stderr =
   let log_header pid = "EXEC:" ^ String.of_int pid in
   let line = Bos_cmd.to_list cmd in
-  let prog = try List.hd line with Failure _ -> invalid_arg err_empty_line in
+  let prog = try List.hd line with Failure _ -> failwith err_empty_line in
   let line = Array.of_list line in
   match env with
   | None ->
@@ -82,11 +82,11 @@ let create_process cmd env ~stdin ~stdout ~stderr =
 (* Command existence *)
 
 let exists line =
-  let line = Bos_cmd.to_list line in
-  let cmd = try List.hd line with Failure _ -> invalid_arg err_empty_line in
-  let test = match Sys.os_type with "Win32" -> "where" | _ -> "type" in
-  let test = Bos_cmd.(v test % cmd) in
   try
+    let line = Bos_cmd.to_list line in
+    let cmd = try List.hd line with Failure _ -> failwith err_empty_line in
+    let test = match Sys.os_type with "Win32" -> "where" | _ -> "type" in
+    let test = Bos_cmd.(v test % cmd) in
     let null = Fpath.to_string Bos_os_file.null in
     let null = openfile null [Unix.O_RDWR] 0o644 in
     try
@@ -103,6 +103,7 @@ let exists line =
       close_no_err null;
       R.error_msgf "cmd %s exists: %a" cmd pp_unix_error e
   with
+  | Failure msg -> Error (`Msg msg)
   | Unix.Unix_error (e, _, _) -> err_file Bos_os_file.null e
 
 let must_exist cmd =
@@ -314,6 +315,7 @@ let do_in_fd_read_stdout stdin o pids do_read =
         Fds.close stdout fds;
         do_read fds read_stdout ((o.cmd, pid) :: pids)
   with
+  | Failure msg -> Error (`Msg msg)
   | Unix.Unix_error (e, _, _) ->
       Fds.close_all fds; err_run o.cmd pp_unix_error e
 
@@ -348,6 +350,7 @@ let do_in_fd_out_fd stdin stdout o pids =
         Fds.close_all fds;
         Ok ((), ret)
   with
+  | Failure msg -> Error (`Msg msg)
   | Unix.Unix_error (e, _, _) ->
       Fds.close_all fds; err_run o.cmd pp_unix_error e
 
@@ -375,6 +378,7 @@ let do_in_string_read_stdout s o do_read =
         Fds.close stdout fds;
         do_read fds write_stdin read_stdout pid
   with
+  | Failure msg -> Error (`Msg msg)
   | Unix.Unix_error (e, _, _) ->
       Fds.close_all fds; err_run o.cmd pp_unix_error e
 
@@ -416,6 +420,7 @@ let do_in_string_out_fd s stdout o =
         Fds.close_all fds;
         Ok ((), ret)
   with
+  | Failure msg -> Error (`Msg msg)
   | Unix.Unix_error (e, _, _) ->
       Fds.close_all fds; err_run o.cmd pp_unix_error e
 
