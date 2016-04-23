@@ -4,16 +4,22 @@
    %%NAME%% v%%VERSION%%
   ---------------------------------------------------------------------------*)
 
+module R = Rresult.R
+include R.Infix
+type ('a, 'b) result = ('a, 'b) Result.result = Ok of 'a | Error of 'b
+
+let strf = Astring.strf
+let (^) = Astring.(^)
+
 module Char = Astring.Char
 module String = Astring.String
+
 module Pat = Bos.Pat
 module Cmd = Bos.Cmd
 module OS = Bos.OS
-module R = Rresult.R
 
-type ('a, 'b) result = ('a, 'b) Result.result = Ok of 'a | Error of 'b
-
-include R.Infix
+module Fmt = Fmt
+module Logs = Logs
 
 let setup () =
   Fmt_tty.setup_std_outputs ();

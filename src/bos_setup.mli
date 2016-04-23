@@ -47,6 +47,12 @@ module R = Rresult.R
 
 (** {1 Astring} *)
 
+val strf : ('a, Format.formatter, unit, string) Pervasives.format4 -> 'a
+(** [strf] is {!Astring.strf}. *)
+
+val (^) : string -> string -> string
+(** [^] is {!Astring.(^)}. *)
+
 module Char = Astring.Char
 module String = Astring.String
 
@@ -55,6 +61,17 @@ module String = Astring.String
 module Pat = Bos.Pat
 module Cmd = Bos.Cmd
 module OS = Bos.OS
+
+(** {1 Fmt & Logs}
+
+    {b Note.} The following aliases are strictly speaking not needed but they
+    allow to end-users to use them by expressing a single dependency towards
+    [bos.setup]. *)
+
+module Fmt = Fmt
+module Logs = Logs
+
+
 
 (*---------------------------------------------------------------------------
    Copyright (c) 2016 Daniel C. Bünzli
