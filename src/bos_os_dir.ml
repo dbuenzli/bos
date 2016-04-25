@@ -57,19 +57,21 @@ let create ?(path = true) ?(mode = 0o755) dir =
           >>= fun dirs -> create_them dirs ()
           >>= fun () -> Ok false
 
-let rec contents ?(rel = false) dir =
+let rec contents ?(dotfiles = false) ?(rel = false) dir =
   let rec readdir dh acc =
     match (try Some (Unix.readdir dh) with End_of_file -> None) with
     | None -> Ok acc
     | Some (".." | ".") -> readdir dh acc
-    | Some f ->
-        match Fpath.of_string f with
+    | Some f when dotfiles || not (String.is_prefix "." f) ->
+        begin match Fpath.of_string f with
         | Ok f ->
             readdir dh ((if rel then f else Fpath.(dir // f)) :: acc)
         | Error (`Msg m) ->
             R.error_msgf
               "directory contents %a: cannot parse element to a path (%a)"
               Fpath.pp dir String.dump f
+        end
+    | Some _ -> readdir dh acc
   in
   try
     let dh = Unix.opendir (Fpath.to_string dir) in

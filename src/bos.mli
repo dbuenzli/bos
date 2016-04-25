@@ -956,11 +956,12 @@ end
         recursively deleted first. *)
 
     val contents :
-      ?rel:bool -> Fpath.t -> (Fpath.t list, 'e) result
-    (** [contents ~rel dir] is the contents of [dir].  If [rel] is
-        [true] (defaults to [false]) the resulting paths are relative
-        to [dir], otherwise they have [dir] prepended. See also
-        {!fold_contents}. *)
+      ?dotfiles:bool -> ?rel:bool -> Fpath.t -> (Fpath.t list, 'e) result
+    (** [contents ~dotfiles ~rel dir] is the list of directories and files
+        in [dir]. If [rel] is [true] (defaults to [false]) the resulting paths
+        are relative to [dir], otherwise they have [dir] prepended. See also
+        {!fold_contents}. If [dotfiles] is [false] (default) elements that
+        start with a [.] are omitted. *)
 
     val fold_contents :
       ?err:'b Path.fold_error -> ?dotfiles:bool -> ?elements:Path.elements ->

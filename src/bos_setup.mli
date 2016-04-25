@@ -71,8 +71,6 @@ module OS = Bos.OS
 module Fmt = Fmt
 module Logs = Logs
 
-
-
 (*---------------------------------------------------------------------------
    Copyright (c) 2016 Daniel C. Bünzli
 
