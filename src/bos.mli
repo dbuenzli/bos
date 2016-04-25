@@ -593,17 +593,21 @@ let main () = main ()
       {b Note.} When paths are relative they are expressed relative to
       the {{!Dir.current}current working directory}. *)
 
-  (** Path operations. *)
+  (** Path operations.
+
+      These functions operate on files and directories equally. Similar
+      and specific functions operating only on one kind of path
+      can be found in the {!File} and {!Dir} modules. *)
   module Path : sig
 
-    (** {1:ops Existence, move, information and mode } *)
+    (** {1:ops Existence, move, deletion, information and mode } *)
 
     val exists : Fpath.t -> (bool, 'e) result
     (** [exists p] is [true] if [p] exists for the file system
         and [false] otherwise. *)
 
     val must_exist : Fpath.t -> (Fpath.t, 'e) result
-    (** [must_exist p] is [p] if [p] exists for the file system
+    (** [must_exist p] is [Ok p] if [p] exists for the file system
         and an error otherwise. *)
 
     val move :
@@ -611,6 +615,14 @@ let main () = main ()
     (** [move ~force src dst] moves path [src] to [dst]. If [force] is
         [true] (defaults to [false]) the operation doesn't error if
         [dst] exists and can be replaced by [src]. *)
+
+    val delete :
+      ?must_exist:bool -> ?recurse:bool -> Fpath.t -> (unit, 'e) result
+    (** [delete ~must_exist ~recurse p] deletes the path [p]. If
+        [must_exist] is [true] (defaults to [false]) an error is returned
+        if [p] doesn't exist. If [recurse] is [true] (defaults to [false])
+        and [p] is a directory, no error occurs if the directory is
+        non-empty: its contents is recursively deleted first. *)
 
     val stat : Fpath.t -> (Unix.stats, 'e) result
     (** [stat p] is [p]'s file information. *)
@@ -763,7 +775,7 @@ let main () = main ()
         followed. *)
 
     val must_exist : Fpath.t -> (Fpath.t, 'e) result
-    (** [must_exist file] is [file] if [file] is a regular file in the
+    (** [must_exist file] is [Ok file] if [file] is a regular file in the
         file system and an error otherwise. Symbolic links are
         followed. *)
 
@@ -931,7 +943,7 @@ end
         and [false] otherwise. Symbolic links are followed. *)
 
     val must_exist : Fpath.t -> (Fpath.t, 'e) result
-    (** [must_exist dir] is [dir] if [dir] is a directory in the file system
+    (** [must_exist dir] is [Ok dir] if [dir] is a directory in the file system
         and an error otherwise. Symbolic links are followed. *)
 
     val create :
@@ -1058,8 +1070,8 @@ contents d >>= Path.fold err dotfiles elements traverse f acc
         can be found in the path and [false] otherwise. *)
 
     val must_exist : Cmd.t -> (Cmd.t, 'e) result
-    (** [must_exist cmd] is [cmd] is like {!exists} but errors if [false]
-        is returned. *)
+    (** [must_exist cmd] is [Ok cmd] if {!exists} is [true] and an error
+        otherwise. *)
 
     (** {1:run Command runs}
 

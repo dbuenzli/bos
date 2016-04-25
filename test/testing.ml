@@ -167,7 +167,7 @@ let eq_result ~eq_ok ~pp_ok ~eq_error ~pp_error =
   | Error e, Error e' -> eq_error e e'
   | _ -> false
   in
-  let pp ppf r = Rresult.R.pp ~pp_ok ~pp_error ppf r in
+  let pp ppf r = Rresult.R.pp ~ok:pp_ok ~error:pp_error ppf r in
   fun v v' -> eq ~eq:eqr ~pp v v'
 
 let eq_result_msg ~eq_ok ~pp_ok =

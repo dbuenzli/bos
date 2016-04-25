@@ -21,35 +21,9 @@ let is_dash = Fpath.equal dash
 
 (* Existence and deletion *)
 
-let rec exists file =
-  try Ok (Unix.((stat @@ Fpath.to_string file).st_kind = S_REG)) with
-  | Unix.Unix_error (Unix.EINTR, _, _) -> exists file
-  | Unix.Unix_error (Unix.ENOENT, _, _) -> Ok false
-  | Unix.Unix_error (e, _, _) ->
-      R.error_msgf "file %a exists: %s" Fpath.pp file (uerror e)
-
-let rec must_exist file =
-  try
-    match Unix.((stat @@ Fpath.to_string file).st_kind) with
-    | Unix.S_REG -> Ok file
-    | _ -> R.error_msgf "file %a must exist: Not a file" Fpath.pp file
-  with
-  | Unix.Unix_error (Unix.EINTR, _, _) -> must_exist file
-  | Unix.Unix_error (Unix.ENOENT, _, _) ->
-      R.error_msgf "file %a must exist: No such file" Fpath.pp file
-  | Unix.Unix_error (e, _, _) ->
-      R.error_msgf "file %a must exist: %s" Fpath.pp file (uerror e)
-
-let delete ?(must_exist = false) file =
-  let rec unlink file = try Ok (Unix.unlink @@ Fpath.to_string file) with
-  | Unix.Unix_error (Unix.EINTR, _, _) -> unlink file
-  | Unix.Unix_error (Unix.ENOENT, _, _) ->
-      if not must_exist then Ok () else
-      R.error_msgf "delete file %a: No such file" Fpath.pp file
-  | Unix.Unix_error (e, _, _) ->
-      R.error_msgf "delete file %a: %s" Fpath.pp file (uerror e)
-  in
-  unlink file
+let exists = Bos_os_path.file_exists
+let must_exist = Bos_os_path.file_must_exist
+let delete = Bos_os_path.delete_file
 
 let rec truncate p size =
   try Ok (Unix.truncate (Fpath.to_string p) size) with

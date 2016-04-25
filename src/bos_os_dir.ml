@@ -11,24 +11,9 @@ let uerror = Unix.error_message
 
 (* Existence, creation, deletion, contents *)
 
-let rec exists dir =
-  try Ok (Unix.((stat @@ Fpath.to_string dir).st_kind = S_DIR)) with
-  | Unix.Unix_error (Unix.EINTR, _, _) -> exists dir
-  | Unix.Unix_error (Unix.ENOENT, _, _) -> Ok false
-  | Unix.Unix_error (e, _, _) ->
-      R.error_msgf "%a exists: %s" Fpath.pp dir (uerror e)
-
-let rec must_exist dir =
-  try
-    match Unix.((stat @@ Fpath.to_string dir).st_kind) with
-    | Unix.S_DIR -> Ok dir
-    | _ -> R.error_msgf "%a must exist: Not a directory" Fpath.pp dir
-  with
-  | Unix.Unix_error (Unix.EINTR, _, _) -> must_exist dir
-  | Unix.Unix_error (Unix.ENOENT, _, _) ->
-      R.error_msgf "%a must exist: No such directory" Fpath.pp dir
-  | Unix.Unix_error (e, _, _) ->
-      R.error_msgf "%a must exist: %s" Fpath.pp dir (uerror e)
+let exists = Bos_os_path.dir_exists
+let must_exist = Bos_os_path.dir_must_exist
+let delete = Bos_os_path.delete_dir
 
 let create ?(path = true) ?(mode = 0o755) dir =
   let rec mkdir d mode = try Ok (Unix.mkdir (Fpath.to_string d) mode) with
@@ -83,82 +68,6 @@ let rec contents ?(dotfiles = false) ?(rel = false) dir =
 
 let fold_contents ?err ?dotfiles ?elements ?traverse f acc d =
   contents d >>= Bos_os_path.fold ?err ?dotfiles ?elements ?traverse f acc
-
-let rec delete_files to_rmdir dirs = match dirs with
-| [] -> Ok to_rmdir
-| dir :: todo ->
-    let rec delete_dir_files dh dirs =
-      match (try Some (Unix.readdir dh) with End_of_file -> None) with
-      | None -> Ok dirs
-      | Some (".." | ".") -> delete_dir_files dh dirs
-      | Some file ->
-          let rec try_unlink file =
-            try (Unix.unlink (Fpath.to_string file); Ok dirs) with
-            | Unix.Unix_error (Unix.ENOENT, _, _) -> Ok dirs
-            | Unix.Unix_error (Unix.EPERM, _, _) -> Ok (file :: dirs)
-            | Unix.Unix_error (Unix.EINTR, _, _) -> try_unlink file
-            | Unix.Unix_error (e, _, _) ->
-                R.error_msgf "%a: %s" Fpath.pp file (uerror e)
-          in
-          match try_unlink Fpath.(dir / file) with
-          | Ok dirs -> delete_dir_files dh dirs
-          | Error _ as e -> e
-    in
-    try
-      let dh = Unix.opendir (Fpath.to_string dir) in
-      match Bos_base.apply (delete_dir_files dh) [] ~finally:Unix.closedir dh
-      with
-      | Ok dirs -> delete_files (dir :: to_rmdir) (List.rev_append dirs todo)
-      | Error _ as e -> e
-    with
-    | Unix.Unix_error (Unix.ENOENT, _, _) -> delete_files to_rmdir todo
-    | Unix.Unix_error (Unix.EINTR, _, _) -> delete_files to_rmdir dirs
-    | Unix.Unix_error (e, _, _) ->
-        R.error_msgf "%a: %s" Fpath.pp dir (uerror e)
-
-let rec delete_dirs = function
-| [] -> Ok ()
-| dir :: dirs ->
-    let rec rmdir dir = try Ok (Unix.rmdir (Fpath.to_string dir)) with
-    | Unix.Unix_error (Unix.ENOENT, _, _) -> Ok ()
-    | Unix.Unix_error (Unix.EINTR, _, _) -> rmdir dir
-    | Unix.Unix_error (e, _, _) ->
-        R.error_msgf "%a: %s" Fpath.pp dir (uerror e)
-    in
-    match rmdir dir with
-    | Ok () -> delete_dirs dirs
-    | Error _ as e -> e
-
-let delete ?must_exist:(must = false) ?(recurse = false) dir =
-  let rec must_exist dir =
-    try
-      match Unix.((stat (Fpath.to_string dir)).st_kind) with
-      | Unix.S_DIR -> Ok ()
-      | _ -> R.error_msg "Not a directory"
-    with
-    | Unix.Unix_error (Unix.EINTR, _, _) -> must_exist dir
-    | Unix.Unix_error (Unix.ENOENT, _, _) -> R.error_msg "No such directory"
-    | Unix.Unix_error (e, _, _) -> R.error_msgf "%s" (uerror e)
-  in
-  let delete recurse dir =
-    if not recurse then
-      let rec rmdir dir = try Ok (Unix.rmdir (Fpath.to_string dir)) with
-      | Unix.Unix_error (Unix.ENOENT, _, _) -> Ok ()
-      | Unix.Unix_error (Unix.EINTR, _, _) -> rmdir dir
-      | Unix.Unix_error (e, _, _) -> R.error_msgf "%s" (uerror e)
-      in
-      rmdir dir
-    else
-    delete_files [] [dir] >>= fun rmdirs ->
-    delete_dirs rmdirs
-  in
-  match
-    if must then must_exist dir >>= fun () -> delete recurse dir else
-    delete recurse dir
-  with
-  | Ok _ as r -> r
-  | Error (`Msg msg) ->
-      R.error_msgf "delete directory %a: %s" Fpath.pp dir msg
 
 (* User and current working directory *)
 
