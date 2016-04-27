@@ -92,8 +92,8 @@ let rec symlink_target p =
   try
     let l = Unix.readlink (Fpath.to_string p) in
     match Fpath.of_string l with
-    | Ok l -> Ok l
-    | Error _ ->
+    | Some l -> Ok l
+    | None ->
         R.error_msgf "target of %a: could not read a path from %a"
           Fpath.pp p String.dump l
   with
