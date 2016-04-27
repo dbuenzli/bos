@@ -14,8 +14,8 @@ let default_dir_init =
     | None -> absent
     | Some v ->
         match Fpath.of_string v with
-        | Result.Error _ -> absent (* FIXME log something ? *)
-        | Result.Ok v -> v
+        | None -> absent
+        | Some v -> v
   in
   if Sys.os_type = "Win32" then from_env "TEMP" ~absent:Fpath.(v "./") else
   from_env "TMPDIR" ~absent:(Fpath.v "/tmp")

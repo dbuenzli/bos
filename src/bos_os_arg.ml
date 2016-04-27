@@ -407,7 +407,7 @@ let parse ?(doc = undocumented) ?usage ~pos:(parse, print) () =
 
 let string = (fun s -> Ok s), Fmt.string
 let path = converter
-    "a path" (fun p -> R.to_option (Fpath.of_string p)) Fpath.pp
+    "a path" Fpath.of_string Fpath.pp
 
 let bin = (fun s -> Ok (Bos_cmd.v s)), Bos_cmd.pp
 let cmd = converter "a command line"
