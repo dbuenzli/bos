@@ -9,14 +9,15 @@ system and run command line programs.
 
 Bos (should) work equally well on POSIX and Windows operating systems.
 
-Bos depends on [Rresult][rresult], [Astring][astring], [Fmt][fmt] and
-[Logs][logs] and the OCaml Unix library. It is distributed under the
-ISC license.
+Bos depends on [Rresult][rresult], [Astring][astring], [Fmt][fmt],
+[Fpath][fpath] and [Logs][logs] and the OCaml Unix library. It is
+distributed under the ISC license.
 
 [rresult]: http://erratique.ch/software/rresult
 [astring]: http://erratique.ch/software/astring
 [fmt]: http://erratique.ch/software/fmt
-[logs]: http://erratique.ch/software/logs]
+[fpath]: http://erratique.ch/software/fpath
+[logs]: http://erratique.ch/software/logs
 
 Home page: http://erratique.ch/software/bos  
 Contact: Daniel Bünzli `<daniel.buenzl i@erratique.ch>`
