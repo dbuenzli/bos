@@ -1023,9 +1023,8 @@ contents d >>= Path.fold err dotfiles elements traverse f acc
         {!Pervasives.at_exit} handler. *)
 
     val with_tmp :
-      ?mode:int -> ?dir:Fpath.t -> tmp_name_pat ->
-      (Fpath.t -> 'a -> ('b, 'e) result ) -> 'a ->
-      ('b, 'e) result
+      ?mode:int -> ?dir:Fpath.t -> tmp_name_pat -> (Fpath.t -> 'a -> 'b) ->
+      'a -> ('b, 'e) result
     (** [with_tmp mode dir pat f v] is a new empty directory in [dir]
         (defaults to {!Dir.default_tmp}) named according to [pat] and
         created with permissions [mode] (defaults to [0o700] only

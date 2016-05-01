@@ -163,9 +163,9 @@ let tmp ?(mode = default_tmp_mode) ?dir pat =
 let with_tmp ?mode ?dir pat f v =
   tmp ?mode ?dir pat >>= fun dir ->
   try
-    let r = f dir v in
+    let ret = f dir v in
     tmps_rem dir;
-    r
+    Ok ret
   with e -> tmps_rem dir; raise e
 
 (* Default temporary directory *)
