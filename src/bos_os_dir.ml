@@ -122,12 +122,7 @@ let with_current dir f v =
   try
     set_current dir >>= fun () ->
     let ret = f v in
-    match set_current old with
-    | Ok () -> ret
-    | Error _ as e ->
-        match ret with
-        | Ok _ -> e (* error setting back old dir *)
-        | Error _ as e -> (* return error from [f] *) e
+    set_current old >>= fun () -> Ok ret
   with
   | exn -> ignore (set_current old); raise exn
 

@@ -1000,9 +1000,7 @@ contents d >>= Path.fold err dotfiles elements traverse f acc
     val set_current : Fpath.t -> (unit, 'e) result
     (** [set_current dir] sets the current working directory to [dir]. *)
 
-    val with_current :
-      Fpath.t -> ('a -> ('b, 'e) result ) -> 'a ->
-      ('b, 'e) result
+    val with_current : Fpath.t -> ('a -> 'b) -> 'a -> ('b, 'e) result
     (** [with_current dir f v] is [f v] with the current working directory
         bound to [dir]. After the function returns the current working
         directory is back to its initial value. *)
