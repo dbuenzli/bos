@@ -24,6 +24,9 @@ let p = Fpath.to_string
 (* Command lines *)
 
 let line_exec l = try Some List.(hd @@ rev l) with Failure _ -> None
+let get_line_exec l =
+  try List.(hd @@ rev l) with Failure _ -> invalid_arg "the command is empty"
+
 let line_args l = try List.(tl @@ rev l) with Failure _ -> []
 
 (* Predicates and comparison *)

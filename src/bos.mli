@@ -166,6 +166,10 @@ module Cmd : sig
   val line_exec : t -> string option
   (** [line_exec l] is [l]'s first element, usually the executable name. *)
 
+  val get_line_exec : t -> string
+  (** [get_line_exec l] is like {!line_exec} but @raise Invalid_argument
+      if there's no first element. *)
+
   val line_args : t -> string list
   (** [line_args] is [l]'s command line arguments, the elements of [l] without
       the command name. *)
