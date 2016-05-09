@@ -43,7 +43,9 @@ val ( >>= ) : ('a, 'b) result -> ('a -> ('c, 'b) result) -> ('c, 'b) result
 val ( >>| ) : ('a, 'b) result -> ('a -> 'c) -> ('c, 'b) result
 (** [(>>|)] is {!R.( >>| )}. *)
 
-module R = Rresult.R
+module R : sig
+  include module type of struct include Rresult.R end
+end
 
 (** {1 Astring} *)
 
@@ -53,14 +55,27 @@ val strf : ('a, Format.formatter, unit, string) Pervasives.format4 -> 'a
 val (^) : string -> string -> string
 (** [^] is {!Astring.(^)}. *)
 
-module Char = Astring.Char
-module String = Astring.String
+module Char : sig
+  include module type of struct include Astring.Char end
+end
+
+module String : sig
+  include module type of struct include Astring.String end
+end
 
 (** {1 Bos} *)
 
-module Pat = Bos.Pat
-module Cmd = Bos.Cmd
-module OS = Bos.OS
+module Pat : sig
+  include module type of struct include Bos.Pat end
+end
+
+module Cmd : sig
+  include module type of struct include Bos.Cmd end
+end
+
+module OS : sig
+  include module type of struct include Bos.OS end
+end
 
 (** {1 Fmt & Logs}
 
@@ -68,8 +83,13 @@ module OS = Bos.OS
     allow to end-users to use them by expressing a single dependency towards
     [bos.setup]. *)
 
-module Fmt = Fmt
-module Logs = Logs
+module Fmt : sig
+  include module type of struct include Fmt end
+end
+
+module Logs : sig
+  include module type of struct include Logs end
+end
 
 (*---------------------------------------------------------------------------
    Copyright (c) 2016 Daniel C. Bünzli

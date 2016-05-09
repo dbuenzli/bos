@@ -33,7 +33,7 @@ let rec truncate p size =
 
 (* Input *)
 
-type input = unit -> (bytes * int * int) option
+type input = unit -> (Bytes.t * int * int) option
 
 let with_input file f v =
   try
@@ -74,7 +74,8 @@ let read file =
     let rec loop () =
       let rc = input stdin b 0 bsize in
       if rc = 0 then Ok (Buffer.contents buf) else
-      (Buffer.add_subbytes buf b 0 rc; loop ())
+(* FIXME After 4.01  (Buffer.add_subbytes buf b 0 rc; loop ()) *)
+      (Buffer.add_substring buf (Bytes.unsafe_to_string b) 0 rc; loop ())
     in
     loop ()
   in
@@ -182,7 +183,7 @@ let with_tmp_output ?(mode = default_tmp_mode) ?dir pat f v =
 
 (* Output *)
 
-type output = (bytes * int * int) option -> unit
+type output = (Bytes.t * int * int) option -> unit
 
 let default_mode = 0o622
 

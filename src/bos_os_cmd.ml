@@ -149,11 +149,16 @@ let string_of_fd_async fd =
   let len = unix_buffer_size in
   let buf = Buffer.create len in
   let b = Bytes.create len in
-  let rec step fd store b () = match Unix.read fd b 0 len with
-  | 0 -> `Ok (Buffer.contents buf)
-  | n -> Buffer.add_subbytes buf b 0 n; step fd store b ()
-  | exception Unix.Unix_error (Unix.EINTR, _, _) -> step fd buf b ()
-  | exception Unix.Unix_error ((Unix.EWOULDBLOCK | Unix.EAGAIN), _, _) ->
+  let rec step fd store b () =
+    try match Unix.read fd b 0 len with
+    | 0 -> `Ok (Buffer.contents buf)
+    | n ->
+        (* FIXME After 4.01 Buffer.add_subbytes buf b 0 n; step fd store b () *)
+        Buffer.add_substring buf (Bytes.unsafe_to_string b) 0 n;
+        step fd store b ()
+    with
+    | Unix.Unix_error (Unix.EINTR, _, _) -> step fd buf b ()
+    | Unix.Unix_error ((Unix.EWOULDBLOCK | Unix.EAGAIN), _, _) ->
       `Await (step fd buf b)
   in
   set_nonblock fd;
@@ -165,11 +170,14 @@ let string_of_fd fd =
 
 let string_to_fd_async s fd =
   let rec step fd s first len () =
-    match Unix.single_write_substring fd s first len with
+(* FIXME After 4.01 try match Unix.single_write_substring fd s first len with *)
+    let b = Bytes.unsafe_of_string s in
+    try match Unix.single_write fd b first len with
     | c when c = len -> `Ok ()
     | c -> step fd s (first + c) (len - c) ()
-    | exception Unix.Unix_error (Unix.EINTR, _, _) -> step fd s first len ()
-    | exception Unix.Unix_error ((Unix.EWOULDBLOCK | Unix.EAGAIN), _, _) ->
+    with
+    | Unix.Unix_error (Unix.EINTR, _, _) -> step fd s first len ()
+    | Unix.Unix_error ((Unix.EWOULDBLOCK | Unix.EAGAIN), _, _) ->
         `Await (step fd s first len)
   in
   set_nonblock fd;

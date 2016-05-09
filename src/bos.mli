@@ -796,7 +796,7 @@ let main () = main ()
         {b Stdin.} In the following functions if the path is {!dash},
         bytes are read from [stdin]. *)
 
-    type input = unit -> (bytes * int * int) option
+    type input = unit -> (Bytes.t * int * int) option
     (** The type for file inputs. The function is called by the client
         to input more bytes. It returns [Some (b, pos, len)] if the
         bytes [b] can be read in the range \[[pos];[pos+len]\]; this
@@ -848,7 +848,7 @@ let main () = main ()
         renames it to [f] on success. In case of error [t] is
         deleted and [f] left intact. *)
 
-    type output = (bytes * int * int) option -> unit
+    type output = (Bytes.t * int * int) option -> unit
     (** The type for file outputs. The function is called by the
         client with [Some (b, pos, len)] to output the bytes of [b] in
         the range \[[pos];[pos+len]\]. [None] is called to denote
