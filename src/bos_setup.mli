@@ -26,9 +26,9 @@ file with:
 #require "bos.setup"
 open Bos_setup
 ]}
-   In [emacs] a [M-x merlin-use bos.setup] will allow merlin
-   to function correctly.
-*)
+To allow {{:https://github.com/the-lambda-church/merlin}merlin} to function
+correctly issue [M-x merlin-use bos.setup] in [emacs] or
+[:MerlinUse bos.setup] in [vim]. *)
 
 (** {1 Results} *)
 
