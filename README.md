@@ -7,7 +7,7 @@ operating system in OCaml. It has functions to access the process
 environment, parse command line arguments, interact with the file
 system and run command line programs.
 
-Bos (should) work equally well on POSIX and Windows operating systems.
+Bos works equally well on POSIX and Windows operating systems.
 
 Bos depends on [Rresult][rresult], [Astring][astring], [Fmt][fmt],
 [Fpath][fpath] and [Logs][logs] and the OCaml Unix library. It is

@@ -12,8 +12,8 @@ action ()
     case $1 in
         default) $OCAMLBUILD bos.cmx bos_setup.cmx ;;
         tests)   $OCAMLBUILD test/tests.otarget ;;
-        doc)     shift; pkg-doc $* doc/dev-api.docdir ;;
-        api-doc) shift; pkg-doc $* doc/api.docdir ;;
+        doc)     shift; topkg doc --dev $* ;;
+        api-doc) shift; topkg doc $* ;;
         clean)   $OCAMLBUILD -clean ;;
         *)       $OCAMLBUILD $* ;;
     esac
