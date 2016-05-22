@@ -1,7 +1,7 @@
 (*---------------------------------------------------------------------------
    Copyright (c) 2016 Daniel C. Bünzli. All rights reserved.
    Distributed under the ISC license, see terms at the end of the file.
-   %%NAME%% v%%VERSION%%
+   %%NAME%% %%VERSION%%
   ---------------------------------------------------------------------------*)
 
 (** Quick setup for simple programs.
@@ -14,7 +14,7 @@ open Bos_setup
     {!Bos} in scope. See also how to use this for
     {{!interpreted}interpreted programs}.
 
-    {e v%%VERSION%% - {{:%%PKG_WWW%% }homepage}} *)
+    {e %%VERSION%% - {{:%%PKG_HOMEPAGE%% }homepage}} *)
 
 (** {1:interpreted Interpreted programs}
 

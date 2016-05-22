@@ -5,13 +5,13 @@ homepage: "http://erratique.ch/software/bos"
 doc: "http://erratique.ch/software/bos"
 dev-repo: "http://erratique.ch/repos/bos.git"
 bug-reports: "https://github.com/dbuenzli/bos/issues"
-tags: [ "os" "system" "cli" "command" "file" "path" "log" "unix"
-        "org:erratique" ]
+tags: [ "os" "system" "cli" "command" "file" "path" "log" "unix" "org:erratique" ]
 license: "ISC"
 available: [ ocaml-version >= "4.01.0"]
 depends: [
   "ocamlfind" {build}
   "ocamlbuild" {build}
+  "topkg" {build}
   "base-unix"
   "rresult"
   "astring"
@@ -20,11 +20,6 @@ depends: [
   "logs"
   "mtime" {test}
 ]
-build:
-[
-  [ "ocaml" "pkg/git.ml" ]
-  [ "ocaml" "pkg/build.ml" "native=%{ocaml-native}%"
-                           "native-dynlink=%{ocaml-native-dynlink}%"
-                           "unix=%{base-unix:installed}%"
- ]
-]
+build: [[
+  "ocaml" "pkg/pkg.ml" "build"
+          "--installer" "true" ]]
