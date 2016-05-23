@@ -24,7 +24,7 @@ module Db = struct
     OS.Dir.current () >>= fun dir ->
     OS.Dir.fold_contents ~dotfiles:true ~elements:`Files add [] dir
 
-  let dump oc db = Marshal.(to_channel oc db [No_sharing; Compat_32])
+  let dump oc db = Ok (Marshal.(to_channel oc db [No_sharing; Compat_32]))
   let slurp ic () = (Marshal.from_channel ic : float Fpath.Map.t)
 
   let create files =
@@ -33,7 +33,7 @@ module Db = struct
     let count = ref 0 in
     let add acc (f, time) = incr count; Fpath.Map.add f time acc in
     let db = List.fold_left add Fpath.Map.empty files in
-    OS.File.with_oc db_file dump db >>= fun () -> Ok !count
+    R.join @@ OS.File.with_oc db_file dump db >>= fun () -> Ok !count
 
   let check files =
     let count = ref 0 in

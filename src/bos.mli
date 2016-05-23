@@ -54,7 +54,7 @@ module Pat : sig
 
   val of_string : string -> (t, [> R.msg]) Result.result
   (** [of_string s] parses [s] according to the pattern syntax
-      (i.e. a literal '$' must be represented by ["$$"] in [s]). *)
+      (i.e. a literal ['$'] must be represented by ["$$"] in [s]). *)
 
   val to_string : t -> string
   (** [to_string p] converts [p] to a string according to the pattern
@@ -78,7 +78,7 @@ module Pat : sig
 
   val subst : ?undef:(string -> string option) -> defs -> t -> t
   (** [subst ~undef defs p] tries to substitute variables in [p] by
-      their definition. First a value is looked up in [defs] and if
+      their value. First a value is looked up in [defs] and if
       not found in [undef]. [undef] defaults to [(fun _ -> None)]. *)
 
   val format : ?undef:(string -> string) -> defs -> t -> string
@@ -855,19 +855,23 @@ let main () = main ()
         end of output. *)
 
     val with_output :
-      ?mode:int -> Fpath.t -> (output -> 'a -> 'b) -> 'a ->
+      ?mode:int -> Fpath.t ->
+      (output -> 'a -> (('c, 'd) Result.result as 'b)) -> 'a ->
       ('b, 'e) result
     (** [with_output file f v] writes the contents of [file] using an
-        output [o] given to [f] and returns [Ok (f o v)]. After the
-        function returns (normally or via an exception) a call to [o]
-        by the client raises [Invalid_argument]. *)
+        output [o] given to [f] and returns [Ok (f o v)]. [file] is
+        not written if [f] returns an error. After the function
+        returns (normally or via an exception) a call to [o] by the
+        client raises [Invalid_argument]. *)
 
     val with_oc :
-      ?mode:int -> Fpath.t -> (out_channel -> 'a -> 'b) -> 'a ->
-      ('b, 'e) result
+      ?mode:int -> Fpath.t ->
+      (out_channel -> 'a -> (('c, 'd) Result.result as 'b)) ->
+      'a -> ('b, 'e) result
     (** [with_oc file f v] opens [file] as a channel [oc] and returns
         [Ok (f oc v)]. After the function returns (normally or via an
-        exception) [oc] is closed. If [file] is {!dash}, [oc] is
+        exception) [oc] is closed. [file] is not written if [f]
+        returns an error. If [file] is {!dash}, [oc] is
         {!Pervasives.stdout} and not closed when the function
         returns. *)
 

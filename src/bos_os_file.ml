@@ -209,11 +209,12 @@ let stdout_with_output f v =
 
 let with_output ?(mode = default_mode) file f v =
   if is_dash file then stdout_with_output f v else
-  let do_write tmp tmp_out v =
-    let r = f tmp_out v in
-    match rename tmp file with
-    | Error _ as e -> e
-    | Ok () -> Ok r
+  let do_write tmp tmp_out v = match f tmp_out v with
+  | Error _ as v -> Ok v
+  | Ok _ as v ->
+      match rename tmp file with
+      | Error _ as e -> e
+      | Ok () -> Ok v
   in
   match with_tmp_output ~mode ~dir:(Fpath.parent file) "bos-%s.tmp" do_write v
   with
@@ -225,33 +226,33 @@ let with_oc ?(mode = default_mode) file f v =
   if is_dash file
   then Ok (Bos_base.apply (f stdout) v ~finally:(fun () -> ()) ())
   else
-  let do_write tmp tmp_oc v =
-    let r = f tmp_oc v in
-    match rename tmp file with
-    | Error _ as e -> e
-    | Ok () -> Ok r
+  let do_write tmp tmp_oc v = match f tmp_oc v with
+  | Error _ as v -> Ok v
+  | Ok _ as v ->
+      match rename tmp file with
+      | Error _ as e -> e
+      | Ok () -> Ok v
   in
-  match with_tmp_oc ~mode ~dir:(Fpath.parent file) "bos-%s.tmp" do_write v
-  with
+  match with_tmp_oc ~mode ~dir:(Fpath.parent file) "bos-%s.tmp" do_write v with
   | Ok (Ok _ as r) -> r
   | Ok (Error _ as e) -> e
   | Error _ as e -> e
 
 let write ?mode file contents =
-  let write oc contents = output_string oc contents; () in
-  with_oc ?mode file write contents
+  let write oc contents = output_string oc contents; Ok () in
+  R.join @@ with_oc ?mode file write contents
 
 let writef ?mode file fmt = (* FIXME avoid the kstrf  *)
   Fmt.kstrf (fun content -> write ?mode file content) fmt
 
 let write_lines ?mode file lines =
   let rec write oc = function
-  | [] -> ()
+  | [] -> Ok ()
   | l :: ls ->
       output_string oc l;
-      if ls <> [] then (output_char oc '\n'; write oc ls) else ()
+      if ls <> [] then (output_char oc '\n'; write oc ls) else Ok ()
   in
-  with_oc ?mode file write lines
+  R.join @@ with_oc ?mode file write lines
 
 (*---------------------------------------------------------------------------
    Copyright (c) 2015 Daniel C. Bünzli
