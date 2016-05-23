@@ -394,23 +394,36 @@ let timeout : int option =
         line to OCaml values. Consult the predefined
         {{!predefconvs}converters}. *)
 
-    type 'a parser = string -> ('a, R.msg) Result.result
-    (** The type for option argument parsers. *)
-
-    type 'a printer = Format.formatter -> 'a -> unit
-    (** The type for converted argument printers. *)
-
-    type 'a converter = 'a parser * 'a printer
+    type 'a conv
     (** The type for argument converters. *)
 
-    val converter : string -> (string -> 'a option) -> 'a printer ->
-      'a converter
-    (** [converter kind k_of_string pp_k] is a converter for values
-        using the [k_of_string] function for parsing and [pp_k] for
-        printing. [kind] is the kind of value and used for error
-        reports (e.g. could be ["an integer"] for an [int] parser. *)
+    val conv :
+      ?docv:string ->
+      (string -> ('a, R.msg) Result.result) ->
+      (Format.formatter -> 'a -> unit) -> 'a conv
+    (** [conv ~docv parse print] is an argument converter parsing
+        values with [parse] and printing them with [print]. [docv]
+        is a documentation meta-variable used in the documentation
+        to stand for the argument value, defaults to ["VALUE"]. *)
 
-    val some : ?none:string -> 'a converter -> 'a option converter
+    val conv_parser : 'a conv -> (string -> ('a, R.msg) Result.result)
+    (** [conv_parser c] is [c]'s parser. *)
+
+    val conv_printer : 'a conv -> (Format.formatter -> 'a -> unit)
+    (** [conv_printer c] is [c]'s printer. *)
+
+    val conv_docv : 'a conv -> string
+    (** [conv_printer c] is [c]'s documentation meta-variable. *)
+
+    val parser_of_kind_of_string :
+      kind:string -> (string -> 'a option) ->
+      (string -> ('a, R.msg) Result.result)
+    (** [parser_of_kind_of_string ~kind kind_of_string] is an argument
+        parser using the [kind_of_string] function for parsing and
+        [kind] for errors (e.g. could be ["an integer"] for an [int]
+        parser). *)
+
+    val some : ?none:string -> 'a conv -> 'a option conv
     (** [some none c] is like the converter [c] but wraps its result
         in [Some]. This is used for command line arguments that
         default to [None] when absent. [none] is what should be printed
@@ -450,7 +463,7 @@ let timeout : int option =
         value is parsed with {!Env.bool} and converted to an integer. *)
 
     val opt : ?docv:string -> ?doc:string -> ?env:string -> string list ->
-      'a converter -> absent:'a -> 'a
+      'a conv -> absent:'a -> 'a
     (** [opt ~docv ~doc ~env names c ~absent] is a value defined by
         the value of an optional argument that may appear {e at most
         once} on the command line under one of the names specified by
@@ -464,11 +477,12 @@ let timeout : int option =
 
         [doc] is is a documentation string. [docv] a documentation
         meta-variable used in the documentation to stand for the option
-        argument. In [doc] occurences of the substring [$(docv)] in are
-        replaced by the value of [docv] *)
+        argument, if unspecified [c]'s {!conv_docv} is used. In [doc]
+        occurences of the substring ["$(docv)"] in are replaced by the value
+        of [docv]. *)
 
     val opt_all : ?docv:string -> ?doc:string -> ?env:string -> string list ->
-      'a converter -> absent:'a list -> 'a list
+      'a conv -> absent:'a list -> 'a list
     (** [opt_all] is like {!opt} but the optional argument can be repeated. *)
 
     (** {1:parse Parsing}
@@ -499,7 +513,7 @@ let timeout : int option =
         automatically inferred).  [doc] is a documentation string for
         the program. *)
 
-    val parse : ?doc:string -> ?usage:string -> pos:'a converter -> unit ->
+    val parse : ?doc:string -> ?usage:string -> pos:'a conv -> unit ->
       'a list
     (** [parse ~pos] is like {!parse_opts} but returns and converts
         the positional arguments with [pos] rather than error on them.
@@ -508,40 +522,40 @@ let timeout : int option =
 
     (** {1:predefconvs Predefined argument converters} *)
 
-    val string : string converter
+    val string : string conv
     (** [string] converts a string argument. This never errors. *)
 
-    val path : Fpath.t converter
+    val path : Fpath.t conv
     (** [path] converts a path argument using {!Fpath.of_string}. *)
 
-    val bin : Cmd.t converter
+    val bin : Cmd.t conv
     (** [bin] is {!string} mapped by {!Cmd.v}. *)
 
-    val cmd : Cmd.t converter
+    val cmd : Cmd.t conv
     (** [cmd] converts a {b non-empty} command line with {!Cmd.of_string} *)
 
-    val char : char converter
+    val char : char conv
     (** [char] converts a single character. *)
 
-    val bool : bool converter
+    val bool : bool conv
     (** [bool] converts a boolean with {!String.to_bool}. *)
 
-    val int : int converter
+    val int : int conv
     (** [int] converts an integer with {!String.to_int}. *)
 
-    val nativeint : nativeint converter
+    val nativeint : nativeint conv
     (** [int] converts a [nativeint] with {!String.to_nativeint}. *)
 
-    val int32 : int32 converter
+    val int32 : int32 conv
     (** [int32] converts an [int32] with {!String.to_int32}. *)
 
-    val int64 : int64 converter
+    val int64 : int64 conv
     (** [int64] converts an [int64] with {!String.to_int64}. *)
 
-    val float : float converter
+    val float : float conv
     (** [float] converts an float with {!String.to_float}. *)
 
-    val enum : (string * 'a) list -> 'a converter
+    val enum : (string * 'a) list -> 'a conv
     (** [enum l p] converts values such that string names in [l]
         map to the corresponding value of type ['a].
 
@@ -550,16 +564,15 @@ let timeout : int option =
 
         @raise Invalid_argument if [l] is empty. *)
 
-    val list : ?sep:string -> 'a converter -> 'a list converter
+    val list : ?sep:string -> 'a conv -> 'a list conv
     (** [list ~sep c] converts a list of [c]. For parsing the
         argument is first {!String.cuts}[ ~sep] and the resulting
         string list is converted using [c]. *)
 
-    val array : ?sep:string -> 'a converter -> 'a array converter
+    val array : ?sep:string -> 'a conv -> 'a array conv
     (** [array ~sep c] is like {!list} but returns an array instead. *)
 
-    val pair : ?sep:string -> 'a converter -> 'b converter -> ('a * 'b)
-        converter
+    val pair : ?sep:string -> 'a conv -> 'b conv -> ('a * 'b) conv
     (** [pair ~sep fst snd] converts a pair of [fst] and [snd]. For parsing
         the argument is {!String.cut}[ ~sep] and the resulting strings
         are converted using [fst] and [snd]. *)

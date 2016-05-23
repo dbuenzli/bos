@@ -20,7 +20,7 @@ let main () =
   Logs.set_reporter (Logs_fmt.reporter ());
   let depth =
     OS.Arg.(opt ["d"; "depth"] int ~absent:2
-              ~doc:"Specifies depth of $(docv) iterations." ~docv:"INT")
+              ~doc:"Specifies depth of $(docv) iterations.")
   in
   let doc = "Testing the OS.Arg module." in
   print_parse depth (OS.Arg.(parse ~doc ~pos:int ()))

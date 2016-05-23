@@ -37,24 +37,32 @@ let exec = match Array.length Sys.argv with
 
 (* Argument converters *)
 
-type 'a parser = string -> ('a, Rresult.R.msg) Rresult.result
-type 'a printer = Format.formatter -> 'a -> unit
-type 'a converter = 'a parser * 'a printer
+type 'a conv =
+  { parse : string -> ('a, Rresult.R.msg) Rresult.result;
+    print : Format.formatter -> 'a -> unit;
+    docv : string }
+
+let conv ?(docv = "VALUE") parse print = { parse; print; docv }
+let conv_parser c = c.parse
+let conv_printer c = c.print
+let conv_docv c = c.docv
+let conv_with_docv conv ~docv = { conv with docv }
 
 let err_invalid s kind =
   R.msgf "invalid value %a, expected %s" (quote Fmt.string) s kind
 
-let converter kind k_of_string print =
-  let parse s = match k_of_string s with
+let parser_of_kind_of_string ~kind k_of_string =
+  fun s -> match k_of_string s with
   | None -> Error (err_invalid s kind)
   | Some v -> Ok v
-  in
-  parse, print
 
-let some ?(none = "") (parse, print) =
-  let parse s = match parse s with Error _ as e -> e | Ok v -> Ok (Some v) in
-  let print = Fmt.option ~none:Fmt.(const string none) print in
-  parse, print
+let some ?(none = "") c =
+  let parse s = match c.parse s with
+  | Ok v -> Ok (Some v)
+  | Error _ as e -> e
+  in
+  let print = Fmt.option ~none:Fmt.(const string none) c.print in
+  { c with parse; print }
 
 (* Parsing *)
 
@@ -112,11 +120,11 @@ let partition_opt_pos l =
 
 (* Documentation *)
 
-let undocumented = "Undocumented, complain loudly to the program author."
+let undocumented = "Undocumented."
 
 type doc_opt_kind =
-  | Flag of string
-  | Opt of string * string * unit Fmt.t (* pretty prints the absent value. *)
+| Flag of string
+| Opt of string * string * unit Fmt.t (* pretty prints the absent value. *)
 
 type opt_doc =
   { names : string list;
@@ -272,10 +280,10 @@ let rec rem_option names rleft = function
     end
 | [] -> Ok None
 
-let opt ?(docv = "VAL") ?(doc = undocumented) ?env names (parse, print) ~absent
-  =
+let opt ?docv ?(doc = undocumented) ?env names c ~absent =
   let names = make_opt_names names in
-  let opt = Opt (doc, docv, fun ppf () -> print ppf absent) in
+  let docv = match docv with None -> c.docv | Some docv -> docv in
+  let opt = Opt (doc, docv, fun ppf () -> c.print ppf absent) in
   add_opt_doc { names; env; repeat = false; kind = opt };
   match get_parse () with
   | Done -> invalid_arg err_done
@@ -284,7 +292,7 @@ let opt ?(docv = "VAL") ?(doc = undocumented) ?env names (parse, print) ~absent
       match rem_option names [] line with
       | Error e -> set_parse (Perror e); absent
       | Ok None ->
-          begin match env_default env parse with
+          begin match env_default env c.parse with
           | Ok (Some v) -> v
           | Ok None -> absent
           | Error e -> set_parse (Perror e); absent
@@ -292,7 +300,7 @@ let opt ?(docv = "VAL") ?(doc = undocumented) ?env names (parse, print) ~absent
       | Ok (Some (opt, arg, rest)) ->
           match rem_option names [] rest with
           | Ok None -> set_parse (Line rest);
-              begin match parse arg with
+              begin match c.parse arg with
               | Ok v -> v
               | Error e -> set_parse (Perror e); absent
               end
@@ -302,11 +310,12 @@ let opt ?(docv = "VAL") ?(doc = undocumented) ?env names (parse, print) ~absent
               else (set_parse @@ Perror (err_dupe opt opt'); absent)
           | Error e -> (* well... *) set_parse (Perror e); absent
 
-let opt_all ?(docv = "VAL") ?(doc = undocumented) ?env names (parse, print)
-    ~absent
-  =
+let opt_all ?docv ?(doc = undocumented) ?env names c ~absent =
   let names = make_opt_names names in
-  let opt = Opt (doc, docv, fun ppf () -> Fmt.(list ~sep:sp print) ppf absent)in
+  let docv = match docv with None -> c.docv | Some docv -> docv in
+  let opt =
+    Opt (doc, docv, fun ppf () -> Fmt.(list ~sep:sp c.print) ppf absent)
+  in
   add_opt_doc { names; env; repeat = false; kind = opt };
   match get_parse () with
   | Done -> invalid_arg err_done
@@ -315,13 +324,13 @@ let opt_all ?(docv = "VAL") ?(doc = undocumented) ?env names (parse, print)
       let rec find acc line = match rem_option names [] line with
       | Error e -> set_parse (Perror e); absent
       | Ok (Some (_, arg, rest)) ->
-          begin match parse arg with
+          begin match c.parse arg with
           | Error e -> set_parse (Perror e); absent
           | Ok arg ->  find (arg :: acc) rest
           end
       | Ok None ->
           if acc <> [] then (set_parse (Line line); acc) else
-          match env_default env parse with
+          match env_default env c.parse with
           | Ok (Some v) -> [v]
           | Ok None -> absent
           | Error e -> set_parse (Perror e); absent
@@ -386,7 +395,7 @@ let parse_pos_args parse ps =
   in
   loop [] ps
 
-let parse ?(doc = undocumented) ?usage ~pos:(parse, print) () =
+let parse ?(doc = undocumented) ?usage ~pos:c () =
   let usage = get_pp_usage ~pos:true usage in
   maybe_help ~doc ~usage;
   match get_parse () with
@@ -399,30 +408,50 @@ let parse ?(doc = undocumented) ?usage ~pos:(parse, print) () =
         pp_usage_try_help Fmt.stderr usage;
         exit 1
       end;
-      match parse_pos_args parse poss with
+      match parse_pos_args c.parse poss with
       | Error (`Msg e) -> parse_error ~usage e
       | Ok poss -> poss
 
 (* Predefined argument converters *)
 
-let string = (fun s -> Ok s), Fmt.string
-let path = converter
-    "a path" (fun p -> R.to_option (Fpath.of_string p)) Fpath.pp
+let kconv ?docv ~kind k_of_string print =
+  let parse = parser_of_kind_of_string ~kind k_of_string in
+  conv ?docv parse print
 
-let bin = (fun s -> Ok (Bos_cmd.v s)), Bos_cmd.pp
-let cmd = converter "a command line"
-    (fun s -> match Bos_cmd.of_string s with
-     | Error _ -> None
-     | Ok cmd when Bos_cmd.is_empty cmd -> None
-     | Ok cmd -> Some cmd) Bos_cmd.pp
+let string = conv ~docv:"STRING" (fun s -> Ok s) Fmt.string
+let path =
+  let parse s = R.to_option (Fpath.of_string s) in
+  kconv ~docv:"PATH" ~kind:"a path" parse Fpath.pp
 
-let char = converter "a character" String.to_char Fmt.char
-let bool = converter "`true' or `false'" String.to_bool Fmt.bool
-let int = converter "an integer" String.to_int Fmt.int
-let nativeint = converter "a native integer" String.to_nativeint Fmt.nativeint
-let int32 = converter "a 32-bit integer" String.to_int32 Fmt.int32
-let int64 = converter "a 64-bit integer" String.to_int64 Fmt.int64
-let float = converter "a float" String.to_float Fmt.float
+let bin = conv ~docv:"EXEC" (fun s -> Ok (Bos_cmd.v s)) Bos_cmd.pp
+let cmd =
+  let parse s = match Bos_cmd.of_string s with
+  | Error _ -> None
+  | Ok cmd when Bos_cmd.is_empty cmd -> None
+  | Ok cmd -> Some cmd
+  in
+  kconv ~docv:"CMD" ~kind:"a command line" parse Bos_cmd.pp
+
+let char =
+  kconv ~docv:"CHAR" ~kind:"a character" String.to_char Fmt.char
+
+let bool =
+  kconv ~docv:"BOOL" ~kind:"`true' or `false'" String.to_bool Fmt.bool
+
+let int =
+  kconv ~docv:"INT" ~kind:"an integer" String.to_int Fmt.int
+
+let nativeint =
+  kconv ~docv:"INT" ~kind:"a native integer" String.to_nativeint Fmt.nativeint
+
+let int32 =
+  kconv ~docv:"INT32" ~kind:"a 32-bit integer" String.to_int32 Fmt.int32
+
+let int64 =
+  kconv ~docv:"INT64" ~kind:"a 64-bit integer" String.to_int64 Fmt.int64
+
+let float =
+  kconv ~docv:"FLOAT" ~kind:"a float" String.to_float Fmt.float
 
 let enum enum =
   if enum = [] then invalid_arg "empty enumeration" else
@@ -439,7 +468,7 @@ let enum enum =
     in
     Fmt.(using to_string string) ppf v
   in
-  parse, print
+  conv ~docv:"ENUM" parse print
 
 let parse_split ?(sep = ",") s parse =
   let rec loop acc = function
@@ -448,29 +477,29 @@ let parse_split ?(sep = ",") s parse =
   in
   loop [] (String.cuts ~sep:"," s)
 
-let list ?sep (parse, print) =
-  let parse s = parse_split ?sep s parse in
-  let print = Fmt.list ~sep:(Fmt.unit ",") print in
-  parse, print
+let list ?sep c =
+  let parse s = parse_split ?sep s c.parse in
+  let print = Fmt.list ~sep:(Fmt.unit ",") c.print in
+  conv ~docv:(strf "LIST %s" c.docv) parse print
 
-let array ?sep (parse, print) =
-  let parse s = match parse_split ?sep s parse with
+let array ?sep c =
+  let parse s = match parse_split ?sep s c.parse with
   | Error _ as e -> e
   | Ok l -> Ok (Array.of_list l)
   in
-  let print = Fmt.array ~sep:(Fmt.unit ",") print in
-  parse, print
+  let print = Fmt.array ~sep:(Fmt.unit ",") c.print in
+  conv ~docv:(strf "ARRAY %s" c.docv) parse print
 
-let pair ?(sep = ",") (lparse, lprint) (rparse, rprint) =
+let pair ?(sep = ",") l r =
   let parse s = match String.cut ~sep s with
   | None -> Error (err_invalid s (strf "a separator `%s' in the string" sep))
-  | Some (l, r) ->
-      lparse l >>= fun l ->
-      rparse r >>= fun r ->
+  | Some (ls, rs) ->
+      l.parse ls >>= fun l ->
+      r.parse rs >>= fun r ->
       Ok (l, r)
   in
-  let print = Fmt.pair ~sep:Fmt.(const string sep) lprint rprint in
-  parse, print
+  let print = Fmt.pair ~sep:Fmt.(const string sep) l.print r.print in
+  conv ~docv:(strf "%s%s%s" l.docv sep r.docv) parse print
 
 (*---------------------------------------------------------------------------
    Copyright (c) 2015 Daniel C. Bünzli
