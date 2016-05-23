@@ -1096,17 +1096,23 @@ contents d >>= Path.fold err dotfiles elements traverse f acc
         The following set of combinators are designed to be used with
         {!Pervasives.(|>)} operator. See a few {{!ex}examples}.
 
-    {2:run_exit Run statuses} *)
+    {2:run_exit Run statuses & information} *)
 
     type status = [ `Exited of int | `Signaled of int ]
     (** The type for process exit statuses. *)
 
     val pp_status : status Fmt.t
-    (** [pp] is a formatter for statuses. *)
+    (** [pp_status] is a formatter for statuses. *)
 
-    type run_status = Cmd.t * status
-    (** The type for run statuses the command that was run and
-        the run status. *)
+    type run_info
+    (** The type for run information. *)
+
+    val run_info_cmd : run_info -> Cmd.t
+    (** [run_info_cmd ri] is the command that was run. *)
+
+    type run_status = run_info * status
+    (** The type for run statuses the run information and the process
+        exit status. *)
 
     val success : ('a * run_status, 'e) result -> ('a, 'e) result
     (** [success r] is:

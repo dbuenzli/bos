@@ -222,11 +222,14 @@ let string_to_of_fd s ~to_fd ~of_fd =
 
 type status = [ `Exited of int | `Signaled of int ]
 
+type run_info = Bos_cmd.t
+let run_info_cmd ri = ri
+
 let pp_status ppf = function
 | `Exited c -> Fmt.pf ppf "exited with %d" c
 | `Signaled s -> Fmt.pf ppf "killed by signal %a" Fmt.Dump.signal s
 
-type run_status = Bos_cmd.t * status
+type run_status = run_info * status
 
 let success = function
 | Ok (v, (_, `Exited 0)) -> Ok v
