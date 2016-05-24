@@ -593,8 +593,7 @@ let debug = OS.Arg.(flag ["g"; "debug"] ~env:"DEBUG" ~doc:"debug mode.")
 
 let main () =
   let depth =
-    OS.Arg.(opt ["d"; "depth"] int ~absent:2
-              ~doc:"recurses $(docv) times." ~docv:"INT")
+    OS.Arg.(opt ["d"; "depth"] int ~absent:2 ~doc:"recurses $(docv) times.")
   in
   let pos_args = OS.Arg.(parse ~pos:string ()) in
   (* No command line error or help request occured, run the program. *)
