@@ -87,8 +87,8 @@ let delete_dir ?must_exist:(must = false) ?(recurse = false) dir =
             let rec try_unlink file =
               try (Unix.unlink (Fpath.to_string file); Ok dirs) with
               | Unix.Unix_error (Unix.ENOENT, _, _) -> Ok dirs
-              | Unix.Unix_error ((Unix.EPERM (* OSX *)
-                                 |Unix.EISDIR), _, _) -> Ok (file :: dirs)
+              | Unix.Unix_error ((Unix.EISDIR (* Linux *)
+                                 |Unix.EPERM), _, _) -> Ok (file :: dirs)
               | Unix.Unix_error (Unix.EINTR, _, _) -> try_unlink file
               | Unix.Unix_error (e, _, _) ->
                   R.error_msgf "%a: %s" Fpath.pp file (uerror e)
