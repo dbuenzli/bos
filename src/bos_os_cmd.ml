@@ -44,9 +44,6 @@ let rec pipe () = try Unix.pipe () with
 let rec set_close_on_exec fd = try Unix.set_close_on_exec fd with
 | Unix.Unix_error (Unix.EINTR, _, _) -> set_close_on_exec fd
 
-let rec set_nonblock fd = try Unix.set_nonblock fd with
-| Unix.Unix_error (Unix.EINTR, _, _) -> set_nonblock fd
-
 let rec openfile fn mode perm = try Unix.openfile fn mode perm with
 | Unix.Unix_error (Unix.EINTR, _, _) -> openfile fn mode perm
 
@@ -161,7 +158,6 @@ let string_of_fd_async fd =
     | Unix.Unix_error ((Unix.EWOULDBLOCK | Unix.EAGAIN), _, _) ->
       `Await (step fd buf b)
   in
-  set_nonblock fd;
   step fd buf b
 
 let string_of_fd fd =
@@ -180,7 +176,6 @@ let string_to_fd_async s fd =
     | Unix.Unix_error ((Unix.EWOULDBLOCK | Unix.EAGAIN), _, _) ->
         `Await (step fd s first len)
   in
-  set_nonblock fd;
   step fd s 0 (String.length s)
 
 let string_to_fd s fd =
