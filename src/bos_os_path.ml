@@ -89,6 +89,11 @@ let delete_dir ?must_exist:(must = false) ?(recurse = false) dir =
               | Unix.Unix_error (Unix.ENOENT, _, _) -> Ok dirs
               | Unix.Unix_error ((Unix.EISDIR (* Linux *)
                                  |Unix.EPERM), _, _) -> Ok (file :: dirs)
+              | Unix.Unix_error ((Unix.EACCES, _, _)) when Sys.win32 ->
+                  (* That's what Unix uses on Windows
+                     https://msdn.microsoft.com/en-us/library/1c3tczd6.aspx
+                     and it's rather unhelpful w.r.t. error codes. *)
+                  Ok (file :: dirs)
               | Unix.Unix_error (Unix.EINTR, _, _) -> try_unlink file
               | Unix.Unix_error (e, _, _) ->
                   R.error_msgf "%a: %s" Fpath.pp file (uerror e)
