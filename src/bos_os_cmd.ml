@@ -82,7 +82,7 @@ let exists line =
   try
     let line = Bos_cmd.to_list line in
     let cmd = try List.hd line with Failure _ -> failwith err_empty_line in
-    let test = match Sys.os_type with "Win32" -> "where" | _ -> "type" in
+    let test = match Sys.os_type with "Win32" -> "where" | _ -> "which" in
     let test = Bos_cmd.(v test % cmd) in
     let null = Fpath.to_string Bos_os_file.null in
     let null = openfile null [Unix.O_RDWR] 0o644 in
