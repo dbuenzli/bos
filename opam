@@ -12,6 +12,7 @@ depends: [
   "ocamlfind" {build}
   "ocamlbuild" {build}
   "topkg" {build}
+  "conf-which"
   "base-unix"
   "rresult"
   "astring"
