@@ -14,10 +14,8 @@ let eqs = eq_result_msg ~eq_ok:(=) ~pp_ok:pp_str
 let equ = eq_result_msg ~eq_ok:(=) ~pp_ok:pp_unit
 let eql = eq_result_msg ~eq_ok:(=) ~pp_ok:(pp_list pp_str)
 
-let win32 = Sys.os_type = "win32"
-
-let cat = if win32 then Cmd.(v "type") else Cmd.(v "cat")
-let cat_stdin = Cmd.(cat % if win32 then "CON" else "-")
+let cat = Cmd.(v "cat")
+let cat_stdin = Cmd.(cat % "-")
 let unlikely = Cmd.v "6AC0E501-4E30-4CBC-AD03-F880F885BC18"
 
 let exists = test "OS.Cmd.exists" @@ fun () ->
