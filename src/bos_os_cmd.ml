@@ -154,6 +154,11 @@ let string_of_fd_async fd =
         Buffer.add_substring buf (Bytes.unsafe_to_string b) 0 n;
         step fd store b ()
     with
+    | Unix.Unix_error (Unix.EPIPE, _, _) when Sys.win32 ->
+        (* That's the Windows way to say end, see
+           https://msdn.microsoft.com/en-us/library/windows/\
+           desktop/aa365467(v=vs.85).aspx *)
+        `Ok (Buffer.contents buf)
     | Unix.Unix_error (Unix.EINTR, _, _) -> step fd buf b ()
     | Unix.Unix_error ((Unix.EWOULDBLOCK | Unix.EAGAIN), _, _) ->
       `Await (step fd buf b)
