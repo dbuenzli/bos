@@ -206,8 +206,14 @@ let string_to_of_fd s ~to_fd ~of_fd =
     if rset = [] && wset = [] then !ret else
     loop rset read wset write
   in
-  let sigpipe = Sys.signal Sys.sigpipe Sys.Signal_ignore in
-  let restore () = Sys.set_signal Sys.sigpipe sigpipe in
+  let sigpipe =
+    if Sys.win32 then None else
+    Some (Sys.signal Sys.sigpipe Sys.Signal_ignore)
+  in
+  let restore () = match sigpipe with
+  | None -> ()
+  | Some sigpipe -> Sys.set_signal Sys.sigpipe sigpipe
+  in
   try let ret = loop rset read wset write in restore (); ret
   with e -> restore (); raise e
 
