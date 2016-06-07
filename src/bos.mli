@@ -1095,6 +1095,11 @@ contents d >>= Path.fold err dotfiles elements traverse f acc
         The following set of combinators are designed to be used with
         {!Pervasives.(|>)} operator. See a few {{!ex}examples}.
 
+        {b WARNING Windows.} The [~append:true] options for appending
+        to files are unsupported on Windows.
+        {{:http://caml.inria.fr/mantis/view.php?id=4431}This} old
+        feature request should be fixed upstream.
+
     {2:run_exit Run statuses & information} *)
 
     type status = [ `Exited of int | `Signaled of int ]
