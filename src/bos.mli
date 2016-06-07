@@ -1263,6 +1263,10 @@ contents d >>= Path.fold err dotfiles elements traverse f acc
 
     (** {1:ex Examples}
 
+    Identity miaouw.
+{[
+let id s = OS.Cmd.(in_string s |> run_io Cmd.(v "cat") |> out_string)
+]}
     Get the current list of git tracked files in OCaml:
 {[
 let git = Cmd.v "git"
