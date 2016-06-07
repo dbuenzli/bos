@@ -44,6 +44,9 @@ let rec pipe () = try Unix.pipe () with
 let rec set_close_on_exec fd = try Unix.set_close_on_exec fd with
 | Unix.Unix_error (Unix.EINTR, _, _) -> set_close_on_exec fd
 
+let rec clear_close_on_exec fd = try Unix.clear_close_on_exec fd with
+| Unix.Unix_error (Unix.EINTR, _, _) -> clear_close_on_exec fd
+
 let rec openfile fn mode perm = try Unix.openfile fn mode perm with
 | Unix.Unix_error (Unix.EINTR, _, _) -> openfile fn mode perm
 
@@ -328,6 +331,7 @@ let do_in_fd_read_stdout stdin o pids do_read =
         Fds.add stderr fds;
         set_close_on_exec read_stdout; (* child close *)
         let pid = create_process o.cmd o.env ~stdin ~stdout ~stderr in
+        clear_close_on_exec read_stdout; (* not in further childs (pipes) *)
         Fds.close stdin fds;
         Fds.close stdout fds;
         do_read fds read_stdout ((o.cmd, pid) :: pids)
