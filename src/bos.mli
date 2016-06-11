@@ -852,7 +852,7 @@ let main () = main ()
 
         {b Default permission mode.} The optional [mode] argument
         specifies the permissions of the created file. It defaults to
-        [0o622] (readable by everyone writeable by the user).
+        [0o644] (readable by everyone writeable by the user).
 
         {b Atomic writes.} Files are written atomically by the
         functions. They create a temporary file [t] in the directory

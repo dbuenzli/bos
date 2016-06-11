@@ -185,7 +185,7 @@ let with_tmp_output ?(mode = default_tmp_mode) ?dir pat f v =
 
 type output = (Bytes.t * int * int) option -> unit
 
-let default_mode = 0o622
+let default_mode = 0o644
 
 let rec rename src dst =
   try Unix.rename (Fpath.to_string src) (Fpath.to_string dst); Ok () with
