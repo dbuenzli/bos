@@ -703,8 +703,8 @@ let main () = main ()
       ?dotfiles:bool -> Fpath.t -> (Fpath.t list, 'e) result
     (** [matches ~dotfiles pat] is the list of paths in the file
         system that match the path pattern [pat]. If [dotfiles] is
-        [false] (default) paths which have at least one segment that
-        starts with a ['.'] character are not part of the list. *)
+        [false] (default) segments that start with a pattern variable
+        do not match dotfiles. *)
 
     val query :
       ?dotfiles:bool -> ?init:Pat.defs -> Fpath.t ->

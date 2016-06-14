@@ -251,11 +251,13 @@ let rec symlink_stat p = try Ok (Unix.lstat (Fpath.to_string p)) with
 
 let rec match_segment dotfiles ~env acc path seg =
   (* N.B. path can be empty, usually for relative patterns without volume. *)
+  let var_start = match seg with Bos_pat.Var _ :: _ -> true | _ -> false in
   let rec readdir dh acc =
     match (try Some (Unix.readdir dh) with End_of_file -> None) with
     | None -> Ok acc
     | Some (".." | ".") -> readdir dh acc
-    | Some e when String.length e > 1 && e.[0] = '.' && not dotfiles ->
+    | Some e when String.length e > 1 && e.[0] = '.' && not dotfiles &&
+                  var_start ->
         readdir dh acc
     | Some e ->
         match Fpath.is_seg e with
