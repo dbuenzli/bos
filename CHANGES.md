@@ -1,5 +1,7 @@
+v0.1.2 2016-06-17 Cambridge (UK)
+--------------------------------
 
-
+- Fix `OS.File` creation mode from `0o622` to `0o644` (#55).
 - Fix semantics of dotfile handling in `OS.Path.{matches,query}`.
   `~dotfile:false` (default) used to not return any path that had a
   dot segment, even if this was a constant segment without pattern
@@ -8,8 +10,7 @@
   dot files, i.e. it controls the exploration of the file system made
   by the function. Thanks to David Kaloper for the discussion.
   
-
-v0.1.1 2016-05-08 Cambridge (UK)
+v0.1.1 2016-06-08 Cambridge (UK)
 --------------------------------
 
 - Fix `OS.Cmd` combinators on Linux. Thanks to Andreas Hauptmann for
