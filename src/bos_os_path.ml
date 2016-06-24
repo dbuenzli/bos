@@ -27,7 +27,7 @@ let rec dir_exists dir =
 
 let rec exists path =
   try Ok (ignore @@ Unix.stat (Fpath.to_string path); true) with
-  | Unix.Unix_error (Unix.ENOENT, _, _) -> Ok false
+  | Unix.Unix_error ((Unix.ENOENT | Unix.ENOTDIR), _, _) -> Ok false
   | Unix.Unix_error (Unix.EINTR, _, _) -> exists path
   | Unix.Unix_error (e, _, _) ->
       R.error_msgf "path %a exists: %s" Fpath.pp path (uerror e)

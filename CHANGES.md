@@ -1,3 +1,7 @@
+
+- Fix `OS.Path.exists`. Existing file path traversals returned
+  and error rather than `false`.
+  
 v0.1.2 2016-06-17 Cambridge (UK)
 --------------------------------
 
