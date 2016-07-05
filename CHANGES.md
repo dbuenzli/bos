@@ -1,4 +1,8 @@
 
+- `Cmd.dump`, make representation cut and paste friendly. This
+  affects logging made by the library.
+- Add `Cmd.of_values`, converts arbitrary list of values to
+  a corresponding argument list.
 - Fix `OS.Path.exists`. Existing file path traversals returned
   and error rather than `false`.
   

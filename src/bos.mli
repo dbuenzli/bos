@@ -219,6 +219,10 @@ v}
       [l].  If [slip] is specified it is added on the command line
       before each element of [l]. *)
 
+  val of_values : ?slip:string -> ('a -> string) -> 'a list -> t
+  (** [of_values ?slip conv l] is like {!of_list} but acts on a list
+      of values, each converted to an argument with [conv]. *)
+
   val pp : Format.formatter -> t -> unit
   (** [pp ppf l] formats an unspecified representation of [l] on
       [ppf]. *)

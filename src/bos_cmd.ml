@@ -111,6 +111,10 @@ let of_list ?slip line = match slip with
 | None -> List.rev line
 | Some slip -> List.fold_left (fun acc v -> v :: slip :: acc) [] line
 
+let of_values ?slip conv vs = match slip with
+| None -> List.rev_map conv vs
+| Some slip -> List.fold_left (fun acc v -> conv v :: slip :: acc) [] vs
+
 let pp ppf cmd = match List.rev cmd with
 | [] -> ()
 | cmd :: [] -> Fmt.(pf ppf "%s" cmd)
