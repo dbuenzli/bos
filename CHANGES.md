@@ -1,3 +1,5 @@
+v0.1.3 2016-07-12 Cambridge (UK)
+--------------------------------
 
 - `Cmd.dump`, make representation cut and paste friendly. This
   affects logging made by the library.
