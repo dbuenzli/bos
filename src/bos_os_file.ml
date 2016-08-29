@@ -133,7 +133,8 @@ let create_tmp_path mode dir pat =
     if count < 0 then err () else
     let file = Bos_os_tmp.rand_path dir pat in
     let sfile = Fpath.to_string file in
-    try Ok (file, Unix.(openfile sfile [O_WRONLY; O_CREAT; O_EXCL] mode)) with
+    let open_flags = Unix.([O_WRONLY; O_CREAT; O_EXCL; O_SHARE_DELETE]) in
+    try Ok (file, Unix.(openfile sfile open_flags mode)) with
     | Unix.Unix_error (Unix.EEXIST, _, _) -> loop (count - 1)
     | Unix.Unix_error (Unix.EINTR, _, _) -> loop count
     | Unix.Unix_error (e, _, _) ->
