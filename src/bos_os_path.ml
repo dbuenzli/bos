@@ -441,7 +441,7 @@ let fold
     | _ -> assert false
     in
     let init acc p =
-      if Fpath.(is_current_dir p || is_parent_dir p)
+      if Fpath.(is_current_dir p || is_parent_dir p || is_root (normalize p))
       then process p acc ""
       else process (Fpath.parent p) acc Fpath.(to_string (base p))
     in
