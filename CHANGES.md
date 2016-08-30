@@ -1,3 +1,11 @@
+v0.1.4 2016-08-30 Zagreb
+------------------------
+
+- Fix `OS.Path.fold` on root and relative paths (#61).
+  Thanks to Hezekiah M. Carty for the report and the help.
+- Fix `OS.File.write` on Windows (#59). Thanks
+  to Hezekiah M. Carty for the report and the fix.
+
 v0.1.3 2016-07-12 Cambridge (UK)
 --------------------------------
 
