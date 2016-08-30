@@ -425,25 +425,27 @@ let fold
     let is_element = is_element_fun err elements in
     let is_dir = is_dir_fun err in
     let readdir =  readdir_fun err in
-    let process d (acc, to_traverse as acc') bname =
-      if not dotfiles && String.is_prefix "." bname then acc' else
-      let p = Fpath.(d / bname) in
+    let process_path p (acc, to_traverse) =
       (if is_element p then (f p acc) else acc),
       (if is_dir p && do_traverse p then p :: to_traverse else to_traverse)
+    in
+    let dir_child d acc bname =
+      if not dotfiles && String.is_prefix "." bname then acc else
+      process_path Fpath.(d / bname) acc
     in
     let rec loop acc = function
     | (d :: ds) :: up ->
         let childs = readdir d in
-        let acc, to_traverse = Array.fold_left (process d) (acc, []) childs in
+        let acc, to_traverse = Array.fold_left (dir_child d) (acc, []) childs in
         loop acc (to_traverse :: ds :: up)
     | [] :: [] -> acc
     | [] :: up -> loop acc up
     | _ -> assert false
     in
     let init acc p =
-      if Fpath.(is_current_dir p || is_parent_dir p)
-      then process p acc ""
-      else process (Fpath.parent p) acc Fpath.(to_string (base p))
+      let base = Fpath.(basename @@ normalize p) in
+      if not dotfiles && String.is_prefix "." base then acc else
+      process_path p acc
     in
     let acc, to_traverse = List.fold_left init (acc, []) paths in
     (Ok (loop acc (to_traverse :: [])))
