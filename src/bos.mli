@@ -977,7 +977,7 @@ end
         by everyone, writeable by the user). If [path] is [true]
         (default) intermediate directories are created with the same
         [mode], otherwise missing intermediate directories lead to an
-        error. The result is [false] if [dir] already exists.
+        error. The result is [true] if [dir] already exists.
 
         {b Note.} The mode of existing directories, including
         [dir] if this is the case is kept unchanged. *)
