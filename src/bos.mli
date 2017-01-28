@@ -820,11 +820,14 @@ let main () = main ()
         is returned at the end of input. *)
 
     val with_input :
+      ?bytes:Bytes.t ->
       Fpath.t -> (input -> 'a -> 'b) -> 'a -> ('b, 'e) result
-    (** [with_input file f v] provides contents of [file] with an
-        input [i] and returns [f i v]. After the function returns
-        (normally or via an exception) a call to [i] by the client raises
-        [Invalid_argument]. *)
+    (** [with_input ~bytes file f v] provides contents of [file] with an
+        input [i] using [bytes] to read the data and returns [f i v]. After
+        the function returns (normally or via an exception) a call to [i] by
+        the client raises [Invalid_argument].
+
+        @raise Invalid_argument if the length of [bytes] is [0]. *)
 
     val with_ic :
       Fpath.t -> (in_channel -> 'a -> 'b) -> 'a -> ('b, 'e) result

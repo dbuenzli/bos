@@ -1,3 +1,7 @@
+
+
+- `OS.File.with_input`, allow to specify the input buffer.
+
 v0.1.4 2016-08-30 Zagreb
 ------------------------
 

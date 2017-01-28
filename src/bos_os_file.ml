@@ -9,6 +9,7 @@ open Rresult
 
 (* Error messages *)
 
+let err_empty_buf = "buffer size can't be 0"
 let err_invalid_input = "input no longer valid, did it escape its scope ?"
 let err_invalid_output = "output no longer valid, did it escape its scope ?"
 let uerror = Unix.error_message
@@ -31,11 +32,20 @@ let rec truncate p size =
   | Unix.Unix_error (e, _, _) ->
       R.error_msgf "truncate file %a: %s" Fpath.pp p (uerror e)
 
+(* Bytes buffers *)
+
+let io_buffer_size = 65536                          (* IO_BUFFER_SIZE 4.0.0 *)
+let bytes_buf = function
+| None -> Bytes.create io_buffer_size
+| Some bytes ->
+    if Bytes.length bytes <> 0 then bytes else
+    invalid_arg err_empty_buf
+
 (* Input *)
 
 type input = unit -> (Bytes.t * int * int) option
 
-let with_input file f v =
+let with_input ?bytes file f v =
   try
     let ic = if is_dash file then stdin else open_in_bin (Fpath.to_string file)
     in
@@ -43,8 +53,8 @@ let with_input file f v =
     let close ic =
       ic_valid := false; if is_dash file then () else close_in ic
     in
-    let bsize = 65536 (* IO_BUFFER_SIZE *) in
-    let b = Bytes.create bsize in
+    let b = bytes_buf bytes in
+    let bsize = Bytes.length b in
     let input () =
       if not !ic_valid then invalid_arg err_invalid_input else
       let rc = input ic b 0 bsize in
