@@ -1,6 +1,10 @@
+v0.1.5 2016-03-18 La Forclaz (VS)
+---------------------------------
 
-
-- `OS.File.with_input`, allow to specify the input buffer.
+- Fix `OS.Cmd.{err_file,out_file,to_file}`. Files
+  were not truncated with `append = false` (default).
+- `OS.File.with_input`, allow to specify the input buffer as an
+  optional argument.
 
 v0.1.4 2016-08-30 Zagreb
 ------------------------
