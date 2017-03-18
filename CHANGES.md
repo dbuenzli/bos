@@ -1,5 +1,6 @@
 
-
+- Fix `OS.Cmd.{err_file,out_file,to_file}`. Files
+  were not truncated with `append = false` (default).
 - `OS.File.with_input`, allow to specify the input buffer.
 
 v0.1.4 2016-08-30 Zagreb

@@ -137,7 +137,7 @@ end
 let write_fd_for_file ~append f =
   try
     let flags = Unix.([O_WRONLY; O_CREAT]) in
-    let flags = if append then Unix.O_APPEND :: flags else flags in
+    let flags = (if append then Unix.O_APPEND else Unix.O_TRUNC) :: flags in
     Ok (openfile (Fpath.to_string f) flags 0o644)
   with Unix.Unix_error (e, _, _) -> err_file f e
 
