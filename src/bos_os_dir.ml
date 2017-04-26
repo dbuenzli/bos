@@ -25,7 +25,7 @@ let create ?(path = true) ?(mode = 0o755) dir =
              Fpath.pp dir Fpath.pp d (uerror e)
   in
   exists dir >>= function
-  | true -> Ok true
+  | true -> Ok false
   | false ->
       match path with
       | false -> mkdir dir mode >>= fun () -> Ok false
@@ -40,7 +40,7 @@ let create ?(path = true) ?(mode = 0o755) dir =
           in
           dirs_to_create dir []
           >>= fun dirs -> create_them dirs ()
-          >>= fun () -> Ok false
+          >>= fun () -> Ok true
 
 let rec contents ?(dotfiles = false) ?(rel = false) dir =
   let rec readdir dh acc =
