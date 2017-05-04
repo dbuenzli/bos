@@ -8,4 +8,4 @@ true : bin_annot, safe_string, package(bytes), package(rresult), \
 
 <test> : include
 <test/*> : package(logs.fmt)
-<test/watch*> : package(fmt.tty), package(mtime.os)
+<test/watch*> : package(fmt.tty), package(mtime), package(mtime.clock.os)

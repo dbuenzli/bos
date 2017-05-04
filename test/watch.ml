@@ -55,10 +55,10 @@ let watch () =
   >>= fun exists -> if exists then Db.check files else Db.create files
 
 let main () =
-  let c = Mtime.counter () in
+  let c = Mtime_clock.counter () in
   let count = watch () |> Logs.on_error_msg ~use:(fun _ -> 0) in
   Logs.app (fun m -> m "Watch completed for %d files in %a"
-               count Mtime.pp_span (Mtime.count c))
+               count Mtime.Span.pp (Mtime_clock.count c))
 
 let () = main ()
 
