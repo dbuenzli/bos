@@ -1,11 +1,12 @@
-
+v0.1.6 2017-05-04 La Forclaz (VS)
+---------------------------------
 
 - Fix `OS.Dir.create`. The documentation says it returns `true` if the
   directory was created and `false` otherwise. The implementation did
   the converse, the latter was adjusted to match the doc
   specification.
 
-v0.1.5 2016-03-18 La Forclaz (VS)
+v0.1.5 2017-03-18 La Forclaz (VS)
 ---------------------------------
 
 - Fix `OS.Cmd.{err_file,out_file,to_file}`. Files were not truncated
