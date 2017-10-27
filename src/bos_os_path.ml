@@ -174,6 +174,9 @@ let move ?(force = false) src dst =
       R.error_msgf "move %a to %a: Destination exists"
         Fpath.pp src Fpath.pp dst
 
+let copy ?(recursive = false) src dst =
+  Bos.OS.Cmd.run (Bos.Cmd.(v "cp" %% (on recursive @@ v "-r") % src % dst))
+
 let rec stat p = try Ok (Unix.stat (Fpath.to_string p)) with
 | Unix.Unix_error (Unix.EINTR, _, _) -> stat p
 | Unix.Unix_error (e, _, _) ->
