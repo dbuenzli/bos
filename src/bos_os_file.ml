@@ -32,6 +32,13 @@ let rec truncate p size =
   | Unix.Unix_error (e, _, _) ->
       R.error_msgf "truncate file %a: %s" Fpath.pp p (uerror e)
 
+(* Executability *)
+
+let _is_executable file = try Unix.access file [Unix.X_OK]; true with
+| Unix.Unix_error _ -> false
+
+let is_executable file = _is_executable (Fpath.to_string file)
+
 (* Bytes buffers *)
 
 let io_buffer_size = 65536                          (* IO_BUFFER_SIZE 4.0.0 *)

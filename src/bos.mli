@@ -794,7 +794,7 @@ let main () = main ()
         [Fpath.(cur_dir / "-")] and so can your users on the command
         line by using ["./-"]. *)
 
-    (** {1:ops Existence and deletion} *)
+    (** {1:ops Existence, deletion and properties} *)
 
     val exists : Fpath.t -> (bool, 'e) result
     (** [exists file] is [true] if [file] is a regular file in the
@@ -813,6 +813,10 @@ let main () = main ()
 
     val truncate : Fpath.t -> int -> (unit, 'e) result
     (** [truncate p size] truncates [p] to [s]. *)
+
+    val is_executable : Fpath.t -> bool
+    (** [is_executable p] is [true] iff file [p] exists and is
+        executable. *)
 
     (** {1:input Input}
 
