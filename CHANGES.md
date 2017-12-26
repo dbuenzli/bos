@@ -1,3 +1,9 @@
+
+
+- Fix `OS.Path.symlink ~force:true` when the forced file is a symbolic
+  link, the operation errored before. Thanks to Anil Madhavapeddy for
+  the report.
+
 v0.1.6 2017-05-04 La Forclaz (VS)
 ---------------------------------
 

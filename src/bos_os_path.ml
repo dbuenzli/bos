@@ -197,7 +197,7 @@ end
 
 let rec force_remove op target p =
   let sp = Fpath.to_string p in
-  try match Unix.((stat sp).st_kind) with
+  try match Unix.((lstat sp).st_kind) with
   | Unix.S_DIR -> Ok (Unix.rmdir sp)
   | _ -> Ok (Unix.unlink sp)
   with
