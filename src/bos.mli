@@ -675,7 +675,7 @@ let main () = main ()
       ?force:bool -> target:Fpath.t -> Fpath.t ->
       (unit, 'e) result
     (** [symlink ~force target p] symbolically links [target] to
-        [dst]. If [force] is [true] (defaults to [false]) and [p]
+        [p]. If [force] is [true] (defaults to [false]) and [p]
         exists, it is [rmdir]ed or [unlink]ed before making the
         link.*)
 
