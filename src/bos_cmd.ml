@@ -23,11 +23,19 @@ let p = Fpath.to_string
 
 (* Command lines *)
 
-let line_exec l = try Some List.(hd @@ rev l) with Failure _ -> None
-let get_line_exec l =
-  try List.(hd @@ rev l) with Failure _ -> invalid_arg "the command is empty"
+let line_tool l = match List.rev l with [] -> None | t :: _ -> Some t
+let get_line_tool l = match List.rev l with
+| t :: _ -> t
+| [] -> invalid_arg "the command is empty"
 
-let line_args l = try List.(tl @@ rev l) with Failure _ -> []
+let line_args l = match List.rev l with
+| _ :: args -> args
+| [] -> []
+
+(* Deprecated *)
+
+let line_exec = line_tool
+let get_line_exec = get_line_tool
 
 (* Predicates and comparison *)
 

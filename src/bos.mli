@@ -163,16 +163,23 @@ module Cmd : sig
 
   (** {1:lines Command lines} *)
 
-  val line_exec : t -> string option
-  (** [line_exec l] is [l]'s first element, usually the executable name. *)
+  val line_tool : t -> string option
+  (** [line_tool l] is [l]'s first element, usually the executable tool
+      name or file path. *)
 
-  val get_line_exec : t -> string
-  (** [get_line_exec l] is like {!line_exec} but @raise Invalid_argument
+  val get_line_tool : t -> string
+  (** [get_line_tool l] is like {!line_tool} but @raise Invalid_argument
       if there's no first element. *)
 
   val line_args : t -> string list
   (** [line_args] is [l]'s command line arguments, the elements of [l] without
       the command name. *)
+
+  val line_exec : t -> string option
+  (** @deprecated Use {!line_tool} instead. *)
+
+  val get_line_exec : t -> string
+  (** @deprecated Use {!get_line_tool} instead. *)
 
   (** {1:predicates Predicates and comparison} *)
 

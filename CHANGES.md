@@ -1,5 +1,5 @@
 
-
+- Deprecate `Cmd.[get_]line_exec` in favor of `Cmd.[get_]line_tool`.
 - Fix `OS.Path.symlink ~force:true` when the forced file is a symbolic
   link, the operation errored before. Thanks to Anil Madhavapeddy for
   the report.
