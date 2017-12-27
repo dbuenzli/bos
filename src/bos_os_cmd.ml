@@ -79,37 +79,119 @@ let create_process cmd env ~stdin ~stdout ~stderr =
             Fmt.Dump.(array String.dump) env Bos_cmd.dump cmd);
       pid
 
-(* Command existence *)
+(* Tool existence and search *)
 
-let exists line =
-  try
-    let line = Bos_cmd.to_list line in
-    let cmd = try List.hd line with Failure _ -> failwith err_empty_line in
-    let test = match Sys.os_type with "Win32" -> "where" | _ -> "which" in
-    let test = Bos_cmd.(v test % cmd) in
-    let null = Fpath.to_string Bos_os_file.null in
-    let null = openfile null [Unix.O_RDWR] 0o644 in
-    try
-      let p = create_process test None ~stdin:null ~stdout:null ~stderr:null in
-      match snd (waitpid [] p) with
-      | Unix.WEXITED 0 -> close_no_err null; Ok true
-      | Unix.WEXITED _ -> close_no_err null; Ok false
-      | Unix.WSIGNALED _ as s ->
-          close_no_err null;
-          R.error_msgf "cmd %s exists: %a %a"
-            cmd Bos_cmd.dump test pp_process_status s
-      | Unix.WSTOPPED _ -> assert false
-    with Unix.Unix_error (e, _, _) ->
-      close_no_err null;
-      R.error_msgf "cmd %s exists: %a" cmd pp_unix_error e
-  with
-  | Failure msg -> Error (`Msg msg)
-  | Unix.Unix_error (e, _, _) -> err_file Bos_os_file.null e
+let default_path_sep = if Sys.win32 then ";" else ":"
+let dir_sep = Fpath.dir_sep.[0]
+let exe_is_path t = String.exists (Char.equal dir_sep) t
 
-let must_exist cmd =
-  exists cmd >>= function
-  | false -> R.error_msgf "%s: no such command" (List.hd (Bos_cmd.to_list cmd))
-  | true -> Ok cmd
+let tool_file ~dir tool = match dir.[String.length dir - 1] with
+| c when c = dir_sep -> dir ^ tool
+| _ -> String.concat ~sep:Fpath.dir_sep [dir; tool]
+
+let search_in_path tool =
+  let rec loop tool = function
+  | "" -> None
+  | p ->
+      let dir, p = match String.cut ~sep:default_path_sep p with
+      | None -> p, ""
+      | Some (dir, p) -> dir, p
+      in
+      if dir = "" then loop tool p else
+      let tool_file = tool_file ~dir tool in
+      match Bos_os_file._is_executable tool_file with
+      | false -> loop tool p
+      | true -> Some (Fpath.v tool_file)
+  in
+  try loop tool (Unix.getenv "PATH") with
+  | Not_found -> None
+
+let search_in_dirs ~dirs tool =
+  let rec loop tool = function
+  | [] -> None
+  | d :: dirs ->
+      let tool_file = tool_file ~dir:(Fpath.to_string d) tool in
+      match Bos_os_file._is_executable tool_file with
+      | false -> loop tool dirs
+      | true -> Some (Fpath.v tool_file)
+  in
+  loop tool dirs
+
+let ensure_exe_suffix_if_win32 = match Sys.win32 with
+| false -> fun t -> t
+| true ->
+    fun t -> match String.is_suffix ~affix:".exe" t with
+    | true -> t
+    | false -> t ^ ".exe"
+
+let _find_tool ?search tool = match tool with
+| "" -> Ok None
+| tool ->
+    let tool = ensure_exe_suffix_if_win32 tool in
+    match exe_is_path tool with
+    | true ->
+        begin match Fpath.of_string tool with
+        | Ok t -> Ok (Some t)
+        | Error (`Msg _) as e -> e
+        end
+    | false ->
+        match search with
+        | None -> Ok (search_in_path tool)
+        | Some dirs -> Ok (search_in_dirs ~dirs tool)
+
+let find_tool ?search cmd = match Bos_cmd.to_list cmd with
+| [] -> Ok None
+| c :: _ -> _find_tool ?search c
+
+let err_not_found ?search cmd = match Bos_cmd.is_empty cmd with
+| true -> R.error_msg err_empty_line
+| false ->
+    let pp_search ppf = function
+    | None -> Fmt.string ppf "PATH"
+    | Some dirs ->
+        let pp_dir ppf d = Fmt.string ppf (Filename.quote @@ Fpath.to_string d)
+        in
+        Fmt.(list ~sep:(Fmt.unit ",@ ") pp_dir) ppf dirs
+    in
+    let tool = List.hd @@ Bos_cmd.to_list cmd in
+    R.error_msgf "%s: no such command in %a" tool pp_search search
+
+let get_tool ?search cmd = match find_tool ?search cmd with
+| Ok (Some t) -> Ok t
+| Ok None -> err_not_found ?search cmd
+| Error _ as e -> e
+
+let exists ?search cmd = match find_tool ?search cmd with
+| Ok (Some _) -> Ok true
+| Ok None -> Ok false
+| Error _ as e -> e
+
+let must_exist ?search cmd = match find_tool ?search cmd with
+| Ok (Some _) -> Ok cmd
+| Ok None -> err_not_found ?search cmd
+| Error _ as e -> e
+
+let resolve ?search cmd = match find_tool ?search cmd with
+| Ok (Some t) ->
+    let t = Fpath.to_string t in
+    Ok (Bos_cmd.of_list (t :: List.tl (Bos_cmd.to_list cmd)))
+| Ok None -> err_not_found ?search cmd
+| Error _ as e -> e
+
+let search_path_dirs ?(sep = default_path_sep) path =
+  let rec loop acc = function
+  | ""  -> Ok (List.rev acc)
+  | p ->
+      let dir, p = match String.cut ~sep p with
+      | None -> p, ""
+      | Some (dir, p) -> dir, p
+      in
+      if dir = "" then loop acc p else
+      match Fpath.of_string dir with
+      | Error (`Msg m) -> R.error_msgf "search path value %S: %s" path m
+      | Ok d -> loop (d :: acc) p
+  in
+  loop [] path
 
 (* Fd utils *)
 

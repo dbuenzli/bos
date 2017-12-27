@@ -1091,21 +1091,50 @@ contents d >>= Path.fold err dotfiles elements traverse f acc
 
   (** {1 Commands} *)
 
-  (** Command existence and run.
-
-      {b Note.} Executables are searched the PATH unless they contain
-      a ['/'] character. {{!Cmd.is_empty}Empty} command lines result
-      in errors. *)
+  (** Executing commands. *)
   module Cmd : sig
 
-    (** {1:exist Command existence} *)
+    (** {1:exist Tool existence and search}
 
-    val exists : Cmd.t -> (bool, 'e) result
-    (** [exists cmd] is [true] if the {{!Cmd.line_exec}executable} of [cmd]
-        can be found in the path and [false] otherwise. *)
+      {b Tool search procedure.} Given a list of directories, the
+      {{!Cmd.line_tool}tool} of a command line is searched, in list
+      order, for the first matching {e executable} file. If the tool
+      name is already a file path (i.e. contains a
+      {!Fpath.dir_sep}) it is neither searched nor tested for
+      {{!File.is_executable}existence and executability}. In the
+      functions below if the list of directories [search] is
+      unspecified the result of parsing the [PATH] environment
+      variable with {!search_path_dirs} is used.
 
-    val must_exist : Cmd.t -> (Cmd.t, 'e) result
-    (** [must_exist cmd] is [Ok cmd] if {!exists} is [true] and an error
+      {b Portability.} In order to maximize portability no [.exe]
+      suffix should be added to executable names on Windows, the tool
+      search procedure will add the suffix during the tool search
+      procedure if absent. *)
+
+    val find_tool : ?search:Fpath.t list -> Cmd.t -> (Fpath.t option, 'e) result
+    (** [find_tool ~search cmd] is the path to the {{!Cmd.line_tool}tool}
+        of [cmd] as found by the tool search procedure in [search]. *)
+
+    val get_tool : ?search:Fpath.t list -> Cmd.t -> (Fpath.t, 'e) result
+    (** [get_tool cmd] is like {!find_tool} except it errors if the
+        tool path cannot be found. *)
+
+    val exists : ?search:Fpath.t list -> Cmd.t -> (bool, 'e) result
+    (** [exists ~search cmd] is [Ok true] if {!find_tool} finds a path
+        and [Ok false] if it does not. *)
+
+    val must_exist : ?search:Fpath.t list -> Cmd.t -> (Cmd.t, 'e) result
+    (** [must_exist ~search cmd] is [Ok cmd] if {!get_tool} succeeds. *)
+
+    val resolve : ?search:Fpath.t list -> Cmd.t -> (Cmd.t, 'e) result
+    (** [resolve ~search cmd] is like {!must_exist} except the tool of the
+        resulting command value has the path to the tool of [cmd] as
+        determined by {!get_tool}. *)
+
+    val search_path_dirs : ?sep:string -> string -> (Fpath.t list, 'e) result
+    (** [search_path_dirs ~sep s] parses [sep] seperated file paths
+        from [s]. [sep] is not allowed to appear in the file paths, it
+        defaults to [";"] if {!Sys.win32} is [true] and [":"]
         otherwise. *)
 
     (** {1:run Command runs}

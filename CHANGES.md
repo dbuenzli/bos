@@ -1,4 +1,8 @@
 
+- Built-in support for tool search. No longer relies on `which` or `where`.
+- `OS.Cmd.{exist,must_exist}` get an optional `?search` argument. This can
+  break programs existing programs.
+- Add `OS.Cmd.{find_tool,get_tool,resolve,search_path_dirs}`.
 - Add `OS.File.is_executable`.
 - Deprecate `Cmd.[get_]line_exec` in favor of `Cmd.[get_]line_tool`.
 - Fix `OS.Path.symlink ~force:true` when the forced file is a symbolic
