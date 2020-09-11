@@ -1017,7 +1017,7 @@ end
       ?err:'b Path.fold_error -> ?dotfiles:bool -> ?elements:Path.elements ->
       ?traverse:Path.traverse -> (Fpath.t -> 'a -> 'a) -> 'a -> Fpath.t ->
       ('a, 'e) result
-    (** [contents_fold err dotfiles elements traverse f acc d] is:
+    (** [fold_contents err dotfiles elements traverse f acc d] is:
 {[
 contents d >>= Path.fold err dotfiles elements traverse f acc
 ]}
