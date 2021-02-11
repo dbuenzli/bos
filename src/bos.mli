@@ -191,7 +191,7 @@ module Cmd : sig
 
   (** {1:convert Conversions and pretty printing} *)
 
-  val of_string : string -> (t, R.msg) result
+  val of_string : string -> (t, [> R.msg ]) result
   (** [of_string s] tokenizes [s] into a command line. The tokens
       are recognized according to the [token] production of the following
       grammar which should be mostly be compatible with POSIX shell
