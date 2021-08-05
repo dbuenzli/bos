@@ -4,7 +4,7 @@
    %%NAME%% %%VERSION%%
   ---------------------------------------------------------------------------*)
 
-let () = ignore (Toploop.use_file Format.err_formatter "bos_top_init.ml")
+let () = ignore (Toploop.load_file Format.err_formatter "bos_top_init.ml")
 
 (*---------------------------------------------------------------------------
    Copyright (c) 2015 Daniel C. Bünzli
