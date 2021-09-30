@@ -402,9 +402,15 @@ let is_element_fun err = function
 | `Dirs -> err_predicate_fun err dir_exists
 | `Sat sat -> err_predicate_fun err sat
 
+let is_directory p =
+  let stats = Unix.lstat p in
+  match stats.st_kind with
+  | Unix.S_DIR -> true
+  | _ -> false
+
 let is_dir_fun err =
-  let is_dir p = try Ok (Sys.is_directory (Fpath.to_string p)) with
-  | Sys_error e -> R.error_msg e
+  let is_dir p = try Ok (is_directory (Fpath.to_string p)) with
+  | Unix.Unix_error (e, _, _) -> R.error_msgf "%a: %s" Fpath.pp p (uerror e)  
   in
   err_predicate_fun err is_dir
 
