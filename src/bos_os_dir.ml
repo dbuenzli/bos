@@ -28,7 +28,7 @@ let create ?(path = true) ?(mode = 0o755) dir =
   | true -> Ok false
   | false ->
       match path with
-      | false -> mkdir dir mode >>= fun () -> Ok false
+      | false -> mkdir dir mode >>= fun () -> Ok true
       | true ->
           let rec dirs_to_create p acc = exists p >>= function
           | true -> Ok acc

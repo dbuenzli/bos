@@ -1,5 +1,7 @@
 
-
+- `OS.Dir.create` fix function returning `false` instead of 
+  `true` when the directory is created with `~path:false`.
+  Thanks to Léo Andrès for the report and patch.
 - `OS.File.read` support for reading character devices and named
   pipes. Thanks to Rizo Isrof for the patch.
 
