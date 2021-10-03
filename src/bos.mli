@@ -22,8 +22,8 @@ open Astring
     except [')'] or [',']. In a named string pattern a ["$"] literal
     must be escaped by ["$$"].
 
-    Named string patterns can be used to {{!format}format} strings or
-    to {{!match}match} data. *)
+    Named string patterns can be used to {{!Pat.format}format} strings or
+    to {{!Pat.match}match} data. *)
 module Pat : sig
 
   (** {1:pats Patterns} *)
@@ -47,7 +47,7 @@ module Pat : sig
   (** [equal p p'] is [p = p']. *)
 
   val compare : t -> t -> int
-  (** [compare p p'] is {!Pervasives.compare}[ p p']. *)
+  (** [compare p p'] is {!Stdlib.compare}[ p p']. *)
 
   val of_string : string -> (t, [> R.msg]) result
   (** [of_string s] parses [s] according to the pattern syntax
@@ -112,7 +112,7 @@ end
 (** Command lines.
 
     Both command lines and command line fragments using the same are
-    represented with the same {{!t}type}.
+    represented with the same {{!Cmd.t}type}.
 
     When a command line is {{!section:OS.Cmd.run}run}, the first
     element of the line defines the program name and each other
@@ -120,7 +120,7 @@ end
     program's [argv] array: no shell interpretation or any form of
     argument quoting and/or concatenation occurs.
 
-    See {{!ex}examples}. *)
+    See {{!Cmd.ex}examples}. *)
 module Cmd : sig
 
   (** {1:frags Command line fragments} *)
@@ -165,7 +165,7 @@ module Cmd : sig
       name or file path. *)
 
   val get_line_tool : t -> string
-  (** [get_line_tool l] is like {!line_tool} but @raise Invalid_argument
+  (** [get_line_tool l] is like {!line_tool} but raises [Invalid_argument]
       if there's no first element. *)
 
   val line_args : t -> string list
@@ -516,7 +516,7 @@ let timeout : int option =
         A parsing error occurs either if an option parser failed, if a
         non repeatable option was specified more than once, if there
         is an unknown option on the line, if there is a positional
-        argument on the command line (use {!parse} to parse them).
+        argument on the command line (use {!val-parse} to parse them).
         [usage] is the command argument synopsis (default is
         automatically inferred).  [doc] is a documentation string for
         the program. *)
@@ -568,7 +568,7 @@ let timeout : int option =
         map to the corresponding value of type ['a].
 
         {b Warning.} The type ['a] must be comparable with
-        {!Pervasives.compare}.
+        {!Stdlib.compare}.
 
         @raise Invalid_argument if [l] is empty. *)
 
@@ -589,7 +589,7 @@ let timeout : int option =
 
         To parse a command line, {b first} perform all the option
         {{!queries}queries} and then invoke one of the
-        {{!parse}parsing} functions. Do not invoke any query after
+        {{!section-parse}parsing} functions. Do not invoke any query after
         parsing has been done, this will raise [Invalid_argument].
         This leads to the following program structure:
 {[
@@ -779,8 +779,8 @@ let main () = main ()
         writes and returns end of file on reads. *)
 
     val dash : Fpath.t
-    (** [dash] is [Fpath.v "-"]. This value is used by {{!input}input}
-        and {{!output}output} functions to respectively denote [stdin]
+    (** [dash] is [Fpath.v "-"]. This value is used by {{!section-input}input}
+        and {{!section-output}output} functions to respectively denote [stdin]
         and [stdout].
 
         {b Note.} Representing [stdin] and [stdout] by this path is a
@@ -842,7 +842,7 @@ let main () = main ()
     (** [with_ic file f v] opens [file] as a channel [ic] and returns
         [Ok (f ic v)]. After the function returns (normally or via an
         exception), [ic] is ensured to be closed.  If [file] is
-        {!dash}, [ic] is {!Pervasives.stdin} and not closed when the
+        {!dash}, [ic] is {!Stdlib.stdin} and not closed when the
         function returns. [End_of_file] exceptions raised by [f] are
         turned it into an error message. *)
 
@@ -899,14 +899,14 @@ let main () = main ()
         [Ok (f oc v)]. After the function returns (normally or via an
         exception) [oc] is closed. [file] is not written if [f]
         returns an error. If [file] is {!dash}, [oc] is
-        {!Pervasives.stdout} and not closed when the function
+        {!Stdlib.stdout} and not closed when the function
         returns. *)
 
     val write :
       ?mode:int -> Fpath.t -> string -> (unit, 'e) result
     (** [write file content] outputs [content] to [file]. If [file]
-        is {!dash}, writes to {!Pervasives.stdout}. If an error is
-        returned [file] is left untouched except if {!Pervasives.stdout}
+        is {!dash}, writes to {!Stdlib.stdout}. If an error is
+        returned [file] is left untouched except if {!Stdlib.stdout}
         is written. *)
 
     val writef :
@@ -934,7 +934,7 @@ let main () = main ()
         (defaults to {!Dir.default_tmp}) named according to [pat] and
         created with permissions [mode] (defaults to [0o600] only
         readable and writable by the user). The file is deleted at the
-        end of program execution using a {!Pervasives.at_exit}
+        end of program execution using a {!Stdlib.at_exit}
         handler.
 
         {b Warning.} If you want to write to the file, using
@@ -995,7 +995,7 @@ end
            directory. In this case the mode of [dir] and any other
            directory is kept unchanged.}
         {- [Error _] otherwise and in particular if [dir] exists
-           as a non-directory.} *)
+           as a non-directory}} *)
 
     val delete :
       ?must_exist:bool -> ?recurse:bool -> Fpath.t ->
@@ -1022,7 +1022,7 @@ end
 {[
 contents d >>= Path.fold err dotfiles elements traverse f acc
 ]}
-        For more details see {!Path.fold}. *)
+        For more details see {!Path.section-fold}. *)
 
     (** {1:user_current User and current working directory} *)
 
@@ -1059,7 +1059,7 @@ contents d >>= Path.fold err dotfiles elements traverse f acc
         with permissions [mode] (defaults to [0o700] only readable and
         writable by the user). The directory path and its content is
         deleted at the end of program execution using a
-        {!Pervasives.at_exit} handler. *)
+        {!Stdlib.at_exit} handler. *)
 
     val with_tmp :
       ?mode:int -> ?dir:Fpath.t -> tmp_name_pat -> (Fpath.t -> 'a -> 'b) ->
@@ -1113,7 +1113,7 @@ contents d >>= Path.fold err dotfiles elements traverse f acc
       procedure if absent. *)
 
     val find_tool : ?search:Fpath.t list -> Cmd.t -> (Fpath.t option, 'e) result
-    (** [find_tool ~search cmd] is the path to the {{!Cmd.line_tool}tool}
+    (** [find_tool ~search cmd] is the path to the {{!Bos.Cmd.line_tool}tool}
         of [cmd] as found by the tool search procedure in [search]. *)
 
     val get_tool : ?search:Fpath.t list -> Cmd.t -> (Fpath.t, 'e) result
@@ -1141,7 +1141,7 @@ contents d >>= Path.fold err dotfiles elements traverse f acc
     (** {1:run Command runs}
 
         The following set of combinators are designed to be used with
-        {!Pervasives.(|>)} operator. See a few {{!ex}examples}.
+        {!Stdlib.(|>)} operator. See a few {{!ex}examples}.
 
         {b WARNING Windows.} The [~append:true] options for appending
         to files are unsupported on Windows.
@@ -1218,7 +1218,7 @@ contents d >>= Path.fold err dotfiles elements traverse f acc
         {{!out_run_in}pipelined} runs, the reported status is the one
         of the first failing run in the pipeline.
 
-        {b Warning.} When a value of type {!run_out} has been "consumed"
+        {b Warning.} When a value of type {!type-run_out} has been "consumed"
         with one of the following functions it cannot be reused. *)
 
     type run_out

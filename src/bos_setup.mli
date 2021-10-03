@@ -33,10 +33,10 @@ correctly issue [M-x merlin-use bos.setup] in [emacs] or
 type ('a, 'b) result = ('a, 'b) Stdlib.result = Ok of 'a | Error of 'b
 
 val ( >>= ) : ('a, 'b) result -> ('a -> ('c, 'b) result) -> ('c, 'b) result
-(** [(>>=)] is {!R.( >>= )}. *)
+(** [(>>=)] is {!R.(>>=)}. *)
 
 val ( >>| ) : ('a, 'b) result -> ('a -> 'c) -> ('c, 'b) result
-(** [(>>|)] is {!R.( >>| )}. *)
+(** [(>>|)] is {!R.(>>|)}. *)
 
 module R : sig
   include module type of struct include Rresult.R end
