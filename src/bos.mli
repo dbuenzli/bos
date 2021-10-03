@@ -1234,7 +1234,8 @@ contents d >>= Path.fold err dotfiles elements traverse f acc
       ?trim:bool -> run_out -> (string list * run_status, 'e) result
     (** [out_lines] is like {!out_string} but the result is splitted on
         newlines (['\n']). If the standard output is empty then the empty
-        list is returned. *)
+        list is returned. Note that [trim] is applied before lines are
+        splitted, it is not applied on the individual lines. *)
 
     val out_file :
       ?append:bool -> Fpath.t -> run_out -> (unit * run_status, 'e) result
