@@ -1,7 +1,6 @@
 (*---------------------------------------------------------------------------
    Copyright (c) 2016 The bos programmers. All rights reserved.
    Distributed under the ISC license, see terms at the end of the file.
-   %%NAME%% %%VERSION%%
   ---------------------------------------------------------------------------*)
 
 module R = Rresult.R

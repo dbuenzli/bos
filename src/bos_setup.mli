@@ -1,7 +1,6 @@
 (*---------------------------------------------------------------------------
    Copyright (c) 2016 The bos programmers. All rights reserved.
    Distributed under the ISC license, see terms at the end of the file.
-   %%NAME%% %%VERSION%%
   ---------------------------------------------------------------------------*)
 
 (** Quick setup for simple programs.
@@ -12,9 +11,7 @@ open Bos_setup
 ]}
     in a module is sufficient to bring {!Rresult}, {!Astring} and
     {!Bos} in scope. See also how to use this for
-    {{!interpreted}interpreted programs}.
-
-    {e %%VERSION%% - {{:%%PKG_HOMEPAGE%% }homepage}} *)
+    {{!interpreted}interpreted programs}. *)
 
 (** {1:interpreted Interpreted programs}
 

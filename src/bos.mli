@@ -1,7 +1,6 @@
 (*---------------------------------------------------------------------------
    Copyright (c) 2014 The bos programmers. All rights reserved.
    Distributed under the ISC license, see terms at the end of the file.
-   %%NAME%% %%VERSION%%
   ---------------------------------------------------------------------------*)
 
 (** Basic OS interaction.
@@ -9,9 +8,7 @@
     Open the module to use it, this defines only modules in your scope.
 
     {b WARNING.} This API is still subject to change in the future but
-    feedback and suggestions are welcome on the project's issue tracker.
-
-    {e %%VERSION%% - {{:%%PKG_HOMEPAGE%% }homepage}} *)
+    feedback and suggestions are welcome on the project's issue tracker. *)
 
 (** {1 Basic types} *)
 
