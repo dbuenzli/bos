@@ -24,8 +24,8 @@ let create ?(path = true) ?(mode = 0o755) dir =
       else R.error_msgf "create directory %a: %a: %s"
              Fpath.pp dir Fpath.pp d (uerror e)
   in
-  exists dir >>= function
-  | true -> Ok false
+  Bos_os_path.exists dir >>= function
+  | true -> must_exist dir >>= fun _ -> Ok false
   | false ->
       match path with
       | false -> mkdir dir mode >>= fun () -> Ok true

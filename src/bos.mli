@@ -986,15 +986,19 @@ end
 
     val create :
       ?path:bool -> ?mode:int -> Fpath.t -> (bool, 'e) result
-    (** [create ~path ~mode dir] creates, if needed, the directory [dir] with
-        file permission [mode] (defaults [0o755] readable and traversable
-        by everyone, writeable by the user). If [path] is [true]
-        (default) intermediate directories are created with the same
-        [mode], otherwise missing intermediate directories lead to an
-        error. The result is [false] if [dir] already exists.
-
-        {b Note.} The mode of existing directories, including
-        [dir] if this is the case is kept unchanged. *)
+    (** [create ~path ~mode dir] creates, if needed, the directory
+        [dir] with file permission [mode] (defaults [0o755] readable
+        and traversable by everyone, writeable by the user). If [path]
+        is [true] (default) intermediate directories are created with
+        the same [mode], otherwise missing intermediate directories
+        lead to an error. The result is:
+        {ul
+        {- [Ok true] if [dir] did not exist and was created.}
+        {- [Ok false] if [dir] did exist as (possibly a symlink to) a
+           directory. In this case the mode of [dir] and any other
+           directory is kept unchanged.}
+        {- [Error _] otherwise and in particular if [dir] exists
+           as a non-directory.} *)
 
     val delete :
       ?must_exist:bool -> ?recurse:bool -> Fpath.t ->

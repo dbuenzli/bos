@@ -1,4 +1,7 @@
 
+- `OS.Dir.create` fix function result on existing files. It returned
+  non-sensical results. The function now errors as it should
+  be. Thanks to Léo Andrès for the report.
 - `OS.Dir.create` fix function returning `false` instead of 
   `true` when the directory is created with `~path:false`.
   Thanks to Léo Andrès for the report and patch.
