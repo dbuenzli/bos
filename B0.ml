@@ -110,15 +110,15 @@ let default =
        "org:erratique"]
     |> tag B0_opam.tag
     |> add B0_opam.Meta.depends
-      [ "ocaml", {|>= "4.01.0"|};
+      [ "ocaml", {|>= "4.08.0"|};
         "ocamlfind", {|build|};
         "ocamlbuild", {|build|};
         "topkg", {|build & >= "1.0.3"|};
         "base-unix", "";
-        "rresult", {|>= "0.4.0"|};
+        "rresult", {|>= "0.7.0"|};
         "astring", "";
         "fpath", "";
-        "fmt", {|>= "0.8.0"|};
+        "fmt", {|>= "0.8.10"|};
         "logs", "";
         "mtime", {|test|};
       ]
