@@ -266,7 +266,7 @@ let write ?mode file contents =
   R.join @@ with_oc ?mode file write contents
 
 let writef ?mode file fmt = (* FIXME avoid the kstrf  *)
-  Fmt.kstrf (fun content -> write ?mode file content) fmt
+  Fmt.kstr (fun content -> write ?mode file content) fmt
 
 let write_lines ?mode file lines =
   let rec write oc = function

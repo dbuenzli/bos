@@ -151,7 +151,7 @@ let err_not_found ?search cmd = match Bos_cmd.is_empty cmd with
     | Some dirs ->
         let pp_dir ppf d = Fmt.string ppf (Filename.quote @@ Fpath.to_string d)
         in
-        Fmt.(list ~sep:(Fmt.unit ",@ ") pp_dir) ppf dirs
+        Fmt.(list ~sep:(Fmt.any ",@ ") pp_dir) ppf dirs
     in
     let tool = List.hd @@ Bos_cmd.to_list cmd in
     R.error_msgf "%s: no such command in %a" tool pp_search search
