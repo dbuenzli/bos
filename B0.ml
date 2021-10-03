@@ -120,7 +120,7 @@ let default =
         "fpath", "";
         "fmt", {|>= "0.8.10"|};
         "logs", "";
-        "mtime", {|test|};
+        "mtime", {|with-test|};
       ]
     |> add B0_opam.Meta.build
       {|[["ocaml" "pkg/pkg.ml" "build" "--dev-pkg" "%{dev}%"]]|}
