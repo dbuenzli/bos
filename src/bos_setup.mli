@@ -33,9 +33,7 @@ correctly issue [M-x merlin-use bos.setup] in [emacs] or
 (** {1 Results} *)
 
 (** The type for results. *)
-type ('a, 'b) result = ('a, 'b) Rresult.result = Ok of 'a | Error of 'b
-
-open Result
+type ('a, 'b) result = ('a, 'b) Stdlib.result = Ok of 'a | Error of 'b
 
 val ( >>= ) : ('a, 'b) result -> ('a -> ('c, 'b) result) -> ('c, 'b) result
 (** [(>>=)] is {!R.( >>= )}. *)
@@ -49,7 +47,7 @@ end
 
 (** {1 Astring} *)
 
-val strf : ('a, Format.formatter, unit, string) Pervasives.format4 -> 'a
+val strf : ('a, Format.formatter, unit, string) Stdlib.format4 -> 'a
 (** [strf] is {!Astring.strf}. *)
 
 val (^) : string -> string -> string

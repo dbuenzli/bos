@@ -6,7 +6,7 @@
 
 module R = Rresult.R
 include R.Infix
-type ('a, 'b) result = ('a, 'b) Result.result = Ok of 'a | Error of 'b
+type ('a, 'b) result = ('a, 'b) Stdlib.result = Ok of 'a | Error of 'b
 
 let strf = Astring.strf
 let (^) = Astring.(^)

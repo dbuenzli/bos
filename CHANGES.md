@@ -1,4 +1,5 @@
 
+- Require OCaml 4.08.
 - `OS.Dir.create` fix function result on existing files. It returned
   non-sensical results. The function now errors as it should
   be. Thanks to Léo Andrès for the report.

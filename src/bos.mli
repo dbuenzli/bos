@@ -52,7 +52,7 @@ module Pat : sig
   val compare : t -> t -> int
   (** [compare p p'] is {!Pervasives.compare}[ p p']. *)
 
-  val of_string : string -> (t, [> R.msg]) Result.result
+  val of_string : string -> (t, [> R.msg]) result
   (** [of_string s] parses [s] according to the pattern syntax
       (i.e. a literal ['$'] must be represented by ["$$"] in [s]). *)
 
@@ -272,7 +272,7 @@ module OS : sig
       control over unix errors use the lower level functions in
       {!Bos.OS.U}. *)
 
-  type ('a, 'e) result = ('a, [> R.msg] as 'e) Result.result
+  type ('a, 'e) result = ('a, [> R.msg] as 'e) Stdlib.result
   (** The type for OS results. *)
 
   (** {1:env Environment variables and program arguments} *)
@@ -315,7 +315,7 @@ module OS : sig
 
         See the {{!examples}examples}. *)
 
-    type 'a parser = string -> ('a, R.msg) Result.result
+    type 'a parser = string -> ('a, R.msg) result
     (** The type for environment variable value parsers. *)
 
     val parser : string -> (string -> 'a option) -> 'a parser
@@ -410,14 +410,14 @@ let timeout : int option =
 
     val conv :
       ?docv:string ->
-      (string -> ('a, R.msg) Result.result) ->
+      (string -> ('a, R.msg) result) ->
       (Format.formatter -> 'a -> unit) -> 'a conv
     (** [conv ~docv parse print] is an argument converter parsing
         values with [parse] and printing them with [print]. [docv]
         is a documentation meta-variable used in the documentation
         to stand for the argument value, defaults to ["VALUE"]. *)
 
-    val conv_parser : 'a conv -> (string -> ('a, R.msg) Result.result)
+    val conv_parser : 'a conv -> (string -> ('a, R.msg) result)
     (** [conv_parser c] is [c]'s parser. *)
 
     val conv_printer : 'a conv -> (Format.formatter -> 'a -> unit)
@@ -428,7 +428,7 @@ let timeout : int option =
 
     val parser_of_kind_of_string :
       kind:string -> (string -> 'a option) ->
-      (string -> ('a, R.msg) Result.result)
+      (string -> ('a, R.msg) result)
     (** [parser_of_kind_of_string ~kind kind_of_string] is an argument
         parser using the [kind_of_string] function for parsing and
         [kind] for errors (e.g. could be ["an integer"] for an [int]
@@ -886,7 +886,7 @@ let main () = main ()
 
     val with_output :
       ?mode:int -> Fpath.t ->
-      (output -> 'a -> (('c, 'd) Result.result as 'b)) -> 'a ->
+      (output -> 'a -> (('c, 'd) result as 'b)) -> 'a ->
       ('b, 'e) result
     (** [with_output file f v] writes the contents of [file] using an
         output [o] given to [f] and returns [Ok (f o v)]. [file] is
@@ -896,7 +896,7 @@ let main () = main ()
 
     val with_oc :
       ?mode:int -> Fpath.t ->
-      (out_channel -> 'a -> (('c, 'd) Result.result as 'b)) ->
+      (out_channel -> 'a -> (('c, 'd) result as 'b)) ->
       'a -> ('b, 'e) result
     (** [with_oc file f v] opens [file] as a channel [oc] and returns
         [Ok (f oc v)]. After the function returns (normally or via an
@@ -1356,18 +1356,18 @@ let send_email mail =
 
     (** {1 Error handling} *)
 
-    type 'a result = ('a, [`Unix of Unix.error]) Result.result
+    type 'a result = ('a, [`Unix of Unix.error]) Stdlib.result
     (** The type for Unix results. *)
 
     val pp_error : Format.formatter -> [`Unix of Unix.error] -> unit
     (** [pp_error ppf e] prints [e] on [ppf]. *)
 
     val open_error :
-      'a result -> ('a, [> `Unix of Unix.error]) Result.result
+      'a result -> ('a, [> `Unix of Unix.error]) Stdlib.result
     (** [open_error r] allows to combine a closed unix error
         variant with other variants. *)
 
-    val error_to_msg : 'a result -> ('a, [> R.msg]) Result.result
+    val error_to_msg : 'a result -> ('a, [> R.msg]) Stdlib.result
     (** [error_to_msg r] converts unix errors in [r] to an error message. *)
 
     (** {1 Wrapping {!Unix} calls} *)

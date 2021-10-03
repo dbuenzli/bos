@@ -40,7 +40,7 @@ let get_line_exec = get_line_tool
 (* Predicates and comparison *)
 
 let equal l l' = l = l'
-let compare l l' = Pervasives.compare l l'
+let compare l l' = Stdlib.compare l l'
 
 (* Conversions and pretty printing *)
 

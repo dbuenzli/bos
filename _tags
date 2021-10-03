@@ -1,4 +1,4 @@
-true : bin_annot, safe_string, package(bytes), package(rresult), \
+true : bin_annot, safe_string, package(rresult), \
        package(astring), package(fpath), package(fmt), package(logs), \
        package(unix)
 

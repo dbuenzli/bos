@@ -23,7 +23,7 @@ let dom p =
   List.fold_left add String.Set.empty p
 
 let equal p p' = p = p'
-let compare p p' = Pervasives.compare p p'
+let compare p p' = Stdlib.compare p p'
 
 type parse_state = S_lit | S_dollar | S_var
 
