@@ -9,9 +9,9 @@ open Astring
 
 let default_dir_init =
   let from_env var ~absent =
-    match try Some (Sys.getenv var) with Not_found -> None with
-    | None -> absent
-    | Some v ->
+    match Sys.getenv var with
+    | exception Not_found -> absent
+    | v ->
         match Fpath.of_string v with
         | Error _ -> absent (* FIXME log something ? *)
         | Ok v -> v
