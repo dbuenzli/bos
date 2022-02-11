@@ -46,7 +46,7 @@ let rec contents ?(dotfiles = false) ?(rel = false) dir =
     match (try Some (Unix.readdir dh) with End_of_file -> None) with
     | None -> Ok acc
     | Some (".." | ".") -> readdir dh acc
-    | Some f when dotfiles || not (String.is_prefix "." f) ->
+    | Some f when dotfiles || not (String.is_prefix ~affix:"." f) ->
         begin match Fpath.of_string f with
         | Ok f ->
             readdir dh ((if rel then f else Fpath.(dir // f)) :: acc)

@@ -429,7 +429,7 @@ let fold
       (if is_dir p && do_traverse p then p :: to_traverse else to_traverse)
     in
     let dir_child d acc bname =
-      if not dotfiles && String.is_prefix "." bname then acc else
+      if not dotfiles && String.is_prefix ~affix:"." bname then acc else
       process_path Fpath.(d / bname) acc
     in
     let rec loop acc = function
@@ -443,7 +443,7 @@ let fold
     in
     let init acc p =
       let base = Fpath.(basename @@ normalize p) in
-      if not dotfiles && String.is_prefix "." base then acc else
+      if not dotfiles && String.is_prefix ~affix:"." base then acc else
       process_path p acc
     in
     let acc, to_traverse = List.fold_left init (acc, []) paths in
