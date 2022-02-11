@@ -4,7 +4,6 @@
   ---------------------------------------------------------------------------*)
 
 open Astring
-open Rresult
 
 let uerror = Unix.error_message
 
@@ -19,27 +18,27 @@ let create ?(path = true) ?(mode = 0o755) dir =
   | Unix.Unix_error (Unix.EEXIST, _, _) -> Ok ()
   | Unix.Unix_error (e, _, _) ->
       if d = dir
-      then R.error_msgf "create directory %a: %s" Fpath.pp d (uerror e)
-      else R.error_msgf "create directory %a: %a: %s"
+      then Fmt.error_msg "create directory %a: %s" Fpath.pp d (uerror e)
+      else Fmt.error_msg "create directory %a: %a: %s"
              Fpath.pp dir Fpath.pp d (uerror e)
   in
-  Bos_os_path.exists dir >>= function
-  | true -> must_exist dir >>= fun _ -> Ok false
+  Result.bind (Bos_os_path.exists dir) @@ function
+  | true -> Result.bind (must_exist dir) @@ fun _ -> Ok false
   | false ->
       match path with
-      | false -> mkdir dir mode >>= fun () -> Ok true
+      | false -> Result.bind (mkdir dir mode) @@ fun () -> Ok true
       | true ->
-          let rec dirs_to_create p acc = exists p >>= function
+          let rec dirs_to_create p acc = Result.bind (exists p) @@ function
           | true -> Ok acc
           | false -> dirs_to_create (Fpath.parent p) (p :: acc)
           in
           let rec create_them dirs () = match dirs with
-          | dir :: dirs -> mkdir dir mode >>= create_them dirs
+          | dir :: dirs -> Result.bind (mkdir dir mode) @@ create_them dirs
           | [] -> Ok ()
           in
-          dirs_to_create dir []
-          >>= fun dirs -> create_them dirs ()
-          >>= fun () -> Ok true
+          Result.bind (dirs_to_create dir []) @@ fun dirs ->
+          Result.bind (create_them dirs ()) @@ fun () ->
+          Ok true
 
 let rec contents ?(dotfiles = false) ?(rel = false) dir =
   let rec readdir dh acc =
@@ -51,7 +50,7 @@ let rec contents ?(dotfiles = false) ?(rel = false) dir =
         | Ok f ->
             readdir dh ((if rel then f else Fpath.(dir // f)) :: acc)
         | Error (`Msg m) ->
-            R.error_msgf
+            Fmt.error_msg
               "directory contents %a: cannot parse element to a path (%a)"
               Fpath.pp dir String.dump f
         end
@@ -63,19 +62,21 @@ let rec contents ?(dotfiles = false) ?(rel = false) dir =
   with
   | Unix.Unix_error (Unix.EINTR, _, _) -> contents ~rel dir
   | Unix.Unix_error (e, _, _) ->
-      R.error_msgf "directory contents %a: %s" Fpath.pp dir (uerror e)
+      Fmt.error_msg "directory contents %a: %s" Fpath.pp dir (uerror e)
 
 let fold_contents ?err ?dotfiles ?elements ?traverse f acc d =
-  contents d >>= Bos_os_path.fold ?err ?dotfiles ?elements ?traverse f acc
+  Result.bind (contents d) @@
+  Bos_os_path.fold ?err ?dotfiles ?elements ?traverse f acc
 
 (* User and current working directory *)
 
 let user () =
   let debug err = Bos_log.debug (fun m -> m "OS.Dir.user: %s" err) in
   let env_var_fallback () =
-    Bos_os_env.(parse "HOME" (some path) ~absent:None) >>= function
+    Result.bind (Bos_os_env.(parse "HOME" (some path) ~absent:None)) @@
+    function
     | Some p -> Ok p
-    | None -> R.error_msgf "cannot determine user home directory: \
+    | None -> Fmt.error_msg "cannot determine user home directory: \
                             HOME environment variable is undefined"
   in
   if Sys.os_type = "Win32" then env_var_fallback () else
@@ -100,28 +101,28 @@ let rec current () =
     match Fpath.of_string p with
     | Ok dir ->
         if Fpath.is_abs dir then Ok dir else
-        R.error_msgf "getcwd(3) returned a relative path: (%a)" Fpath.pp dir
+        Fmt.error_msg "getcwd(3) returned a relative path: (%a)" Fpath.pp dir
     | Error _ ->
-        R.error_msgf
+        Fmt.error_msg
           "get current working directory: cannot parse it to a path (%a)"
           String.dump p
   with
   | Unix.Unix_error (Unix.EINTR, _, _) -> current ()
   | Unix.Unix_error (e, _, _) ->
-      R.error_msgf "get current working directory: %s" (uerror e)
+      Fmt.error_msg "get current working directory: %s" (uerror e)
 
 let rec set_current dir = try Ok (Unix.chdir (Fpath.to_string dir)) with
 | Unix.Unix_error (Unix.EINTR, _, _) -> set_current dir
 | Unix.Unix_error (e, _, _) ->
-    R.error_msgf "set current working directory to %a: %s"
+    Fmt.error_msg "set current working directory to %a: %s"
       Fpath.pp dir (uerror e)
 
 let with_current dir f v =
-  current () >>= fun old ->
+  Result.bind (current ()) @@ fun old ->
   try
-    set_current dir >>= fun () ->
+    Result.bind (set_current dir) @@ fun () ->
     let ret = f v in
-    set_current old >>= fun () -> Ok ret
+    Result.bind (set_current old) @@ fun () -> Ok ret
   with
   | exn -> ignore (set_current old); raise exn
 
@@ -141,7 +142,7 @@ let default_tmp_mode = 0o700
 let tmp ?(mode = default_tmp_mode) ?dir pat =
   let dir = match dir with None -> Bos_os_tmp.default_dir () | Some d -> d in
   let err () =
-    R.error_msgf "create temporary directory %s in %a: \
+    Fmt.error_msg "create temporary directory %s in %a: \
                   too many failing attempts"
       (strf pat "XXXXXX") Fpath.pp dir
   in
@@ -152,7 +153,7 @@ let tmp ?(mode = default_tmp_mode) ?dir pat =
     | Unix.Unix_error (Unix.EEXIST, _, _) -> loop (count - 1)
     | Unix.Unix_error (Unix.EINTR, _, _) -> loop count
     | Unix.Unix_error (e, _, _) ->
-        R.error_msgf "create temporary directory %s in %a: %s"
+        Fmt.error_msg "create temporary directory %s in %a: %s"
           (strf pat "XXXXXX") Fpath.pp dir (uerror e)
   in
   match loop 10000 with
@@ -160,7 +161,7 @@ let tmp ?(mode = default_tmp_mode) ?dir pat =
   | Error _ as e -> e
 
 let with_tmp ?mode ?dir pat f v =
-  tmp ?mode ?dir pat >>= fun dir ->
+  Result.bind (tmp ?mode ?dir pat) @@ fun dir ->
   try
     let ret = f dir v in
     tmps_rem dir;

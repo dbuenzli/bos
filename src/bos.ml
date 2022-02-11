@@ -3,7 +3,7 @@
    Distributed under the ISC license, see terms at the end of the file.
   ---------------------------------------------------------------------------*)
 
-open Rresult
+
 
 (* Basic types *)
 
@@ -13,7 +13,7 @@ module Cmd = Bos_cmd
 (* OS interaction *)
 
 module OS = struct
-  type ('a, 'b) result = ('a, [> R.msg] as 'b) R.t
+  type ('a, 'b) result = ('a, [> `Msg of string] as 'b) Stdlib.result
   module Env = Bos_os_env
   module Arg = Bos_os_arg
   module Path = Bos_os_path

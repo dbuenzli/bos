@@ -3,12 +3,11 @@
    Distributed under the ISC license, see terms at the end of the file.
   ---------------------------------------------------------------------------*)
 
-open Rresult
-
-type 'a result = ('a, [`Unix of Unix.error]) Rresult.result
+type 'a result = ('a, [`Unix of Unix.error]) Stdlib.result
 let pp_error ppf (`Unix e ) = Fmt.string ppf (Unix.error_message e)
 let open_error = function Ok _ as r -> r | Error (`Unix _) as r -> r
-let error_to_msg r = R.error_to_msg ~pp_error r
+let error_to_msg = function
+| Ok _ as v -> v | Error e -> Error (`Msg (Format.asprintf "%a" pp_error e))
 
 let rec call f v = try Ok (f v) with
 | Unix.Unix_error (Unix.EINTR, _, _) -> call f v

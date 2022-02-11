@@ -4,7 +4,6 @@
   ---------------------------------------------------------------------------*)
 
 open Astring
-open Rresult
 
 let unix_buffer_size = 65536                      (* UNIX_BUFFER_SIZE 4.0.0 *)
 
@@ -19,8 +18,8 @@ let pp_process_status ppf = function
 (* Error messages *)
 
 let err_empty_line = "no command, empty command line"
-let err_file f e = R.error_msgf "%a: %a" Fpath.pp f pp_unix_error e
-let err_run cmd pp e = R.error_msgf "run %a: %a" Bos_cmd.dump cmd pp e
+let err_file f e = Fmt.error_msg "%a: %a" Fpath.pp f pp_unix_error e
+let err_run cmd pp e = Fmt.error_msg "run %a: %a" Bos_cmd.dump cmd pp e
 
 (* Primitives from Unix *)
 
@@ -143,7 +142,7 @@ let find_tool ?search cmd = match Bos_cmd.to_list cmd with
 | c :: _ -> _find_tool ?search c
 
 let err_not_found ?search cmd = match Bos_cmd.is_empty cmd with
-| true -> R.error_msg err_empty_line
+| true -> Error (`Msg err_empty_line)
 | false ->
     let pp_search ppf = function
     | None -> Fmt.string ppf "PATH"
@@ -153,7 +152,7 @@ let err_not_found ?search cmd = match Bos_cmd.is_empty cmd with
         Fmt.(list ~sep:(Fmt.any ",@ ") pp_dir) ppf dirs
     in
     let tool = List.hd @@ Bos_cmd.to_list cmd in
-    R.error_msgf "%s: no such command in %a" tool pp_search search
+    Fmt.error_msg "%s: no such command in %a" tool pp_search search
 
 let get_tool ?search cmd = match find_tool ?search cmd with
 | Ok (Some t) -> Ok t
@@ -187,7 +186,7 @@ let search_path_dirs ?(sep = default_path_sep) path =
       in
       if dir = "" then loop acc p else
       match Fpath.of_string dir with
-      | Error (`Msg m) -> R.error_msgf "search path value %S: %s" path m
+      | Error (`Msg m) -> Fmt.error_msg "search path value %S: %s" path m
       | Ok d -> loop (d :: acc) p
   in
   loop [] path
@@ -527,15 +526,18 @@ let do_in_string_out_fd s stdout o =
       Fds.close_all fds; err_run o.cmd pp_unix_error e
 
 let do_in_fd :
-  type a. Unix.file_descr -> run_out -> a _run_out -> (a, [> R.msg]) result =
-fun in_fd o ret -> match ret with
-| To_string -> do_in_fd_out_string in_fd o []
-| To_run_in -> do_in_fd_out_run_in in_fd o []
-| To_fd out_fd -> do_in_fd_out_fd in_fd out_fd o []
-| To_file (f, append) ->
-    write_fd_for_file ~append f >>= fun fd -> do_in_fd_out_fd in_fd fd o []
+  type a. Unix.file_descr -> run_out -> a _run_out ->
+  (a, [> `Msg of string]) result
+  =
+  fun in_fd o ret -> match ret with
+  | To_string -> do_in_fd_out_string in_fd o []
+  | To_run_in -> do_in_fd_out_run_in in_fd o []
+  | To_fd out_fd -> do_in_fd_out_fd in_fd out_fd o []
+  | To_file (f, append) ->
+      Result.bind (write_fd_for_file ~append f) @@
+      fun fd -> do_in_fd_out_fd in_fd fd o []
 
-let run_cmd : type a. run_out -> a _run_out -> (a, [> R.msg]) result =
+let run_cmd : type a. run_out -> a _run_out -> (a, [> `Msg of string]) result =
 fun o ret -> match o.run_in with
 | In_string s ->
     begin match ret with
@@ -543,7 +545,8 @@ fun o ret -> match o.run_in with
     | To_run_in -> do_in_string_out_run_in s o
     | To_fd out_fd -> do_in_string_out_fd s out_fd o
     | To_file (f, append) ->
-        write_fd_for_file ~append f >>= fun fd -> do_in_string_out_fd s fd o
+        Result.bind (write_fd_for_file ~append f) @@
+        fun fd -> do_in_string_out_fd s fd o
     end
 | In_run_out p ->
     begin match ret with
@@ -551,17 +554,18 @@ fun o ret -> match o.run_in with
     | To_run_in -> do_in_run_out_run_in p o
     | To_fd out_fd -> do_in_run_out_fd p out_fd o
     | To_file (f, append) ->
-        write_fd_for_file ~append f >>= fun fd -> do_in_run_out_fd p fd o
+        Result.bind (write_fd_for_file ~append f) @@
+        fun fd -> do_in_run_out_fd p fd o
     end
 | In_fd fd -> do_in_fd fd o ret
-| In_file f -> read_fd_for_file f >>= fun fd -> do_in_fd fd o ret
+| In_file f -> Result.bind (read_fd_for_file f) @@ fun fd -> do_in_fd fd o ret
 
 let out_string ?(trim = true) o = match run_cmd o To_string with
 | Ok (s, st) when trim -> Ok (String.trim s, st)
 | r -> r
 
 let out_lines ?trim o =
-  out_string ?trim o  >>= fun (s, st) ->
+  Result.bind (out_string ?trim o) @@ fun (s, st) ->
   Ok ((if s = "" then [] else String.cuts ~sep:"\n" s), st)
 
 let out_file ?(append = false) f o = run_cmd o (To_file (f, append))

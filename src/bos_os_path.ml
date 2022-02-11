@@ -4,7 +4,6 @@
   ---------------------------------------------------------------------------*)
 
 open Astring
-open Rresult
 
 let uerror = Unix.error_message
 
@@ -15,51 +14,51 @@ let rec file_exists file =
   | Unix.Unix_error (Unix.ENOENT, _, _) -> Ok false
   | Unix.Unix_error (Unix.EINTR, _, _) -> file_exists file
   | Unix.Unix_error (e, _, _) ->
-      R.error_msgf "file %a exists: %s" Fpath.pp file (uerror e)
+      Fmt.error_msg "file %a exists: %s" Fpath.pp file (uerror e)
 
 let rec dir_exists dir =
   try Ok (Unix.((stat @@ Fpath.to_string dir).st_kind = S_DIR)) with
   | Unix.Unix_error (Unix.ENOENT, _, _) -> Ok false
   | Unix.Unix_error (Unix.EINTR, _, _) -> dir_exists dir
   | Unix.Unix_error (e, _, _) ->
-      R.error_msgf "directory %a exists: %s" Fpath.pp dir (uerror e)
+      Fmt.error_msg "directory %a exists: %s" Fpath.pp dir (uerror e)
 
 let rec exists path =
   try Ok (ignore @@ Unix.stat (Fpath.to_string path); true) with
   | Unix.Unix_error ((Unix.ENOENT | Unix.ENOTDIR), _, _) -> Ok false
   | Unix.Unix_error (Unix.EINTR, _, _) -> exists path
   | Unix.Unix_error (e, _, _) ->
-      R.error_msgf "path %a exists: %s" Fpath.pp path (uerror e)
+      Fmt.error_msg "path %a exists: %s" Fpath.pp path (uerror e)
 
 let rec file_must_exist file =
   try match Unix.((stat @@ Fpath.to_string file).st_kind) with
   | Unix.S_REG -> Ok file
-  | _ -> R.error_msgf "%a: Not a file" Fpath.pp file
+  | _ -> Fmt.error_msg "%a: Not a file" Fpath.pp file
   with
   | Unix.Unix_error (Unix.ENOENT, _, _) ->
-      R.error_msgf "%a: No such file" Fpath.pp file
+      Fmt.error_msg "%a: No such file" Fpath.pp file
   | Unix.Unix_error (Unix.EINTR, _, _) -> file_must_exist file
   | Unix.Unix_error (e, _, _) ->
-      R.error_msgf "file %a must exist: %s" Fpath.pp file (uerror e)
+      Fmt.error_msg "file %a must exist: %s" Fpath.pp file (uerror e)
 
 let rec dir_must_exist dir =
   try match Unix.((stat @@ Fpath.to_string dir).st_kind) with
   | Unix.S_DIR -> Ok dir
-  | _ -> R.error_msgf "%a: Not a directory" Fpath.pp dir
+  | _ -> Fmt.error_msg "%a: Not a directory" Fpath.pp dir
   with
   | Unix.Unix_error (Unix.ENOENT, _, _) ->
-      R.error_msgf "%a: No such directory" Fpath.pp dir
+      Fmt.error_msg "%a: No such directory" Fpath.pp dir
   | Unix.Unix_error (Unix.EINTR, _, _) -> dir_must_exist dir
   | Unix.Unix_error (e, _, _) ->
-      R.error_msgf "directory  %a must exist: %s" Fpath.pp dir (uerror e)
+      Fmt.error_msg "directory  %a must exist: %s" Fpath.pp dir (uerror e)
 
 let rec must_exist path =
   try ignore @@ Unix.stat (Fpath.to_string path); Ok path with
   | Unix.Unix_error (Unix.ENOENT, _, _) ->
-      R.error_msgf "%a: No such path" Fpath.pp path
+      Fmt.error_msg "%a: No such path" Fpath.pp path
   | Unix.Unix_error (Unix.EINTR, _, _) -> must_exist path
   | Unix.Unix_error (e, _, _) ->
-      R.error_msgf "path %a must exist: %s" Fpath.pp path (uerror e)
+      Fmt.error_msg "path %a must exist: %s" Fpath.pp path (uerror e)
 
 (* Delete *)
 
@@ -67,10 +66,10 @@ let delete_file ?(must_exist = false) file =
   let rec unlink file = try Ok (Unix.unlink @@ Fpath.to_string file) with
   | Unix.Unix_error (Unix.ENOENT, _, _) ->
       if not must_exist then Ok () else
-      R.error_msgf "delete file %a: No such file" Fpath.pp file
+      Fmt.error_msg "delete file %a: No such file" Fpath.pp file
   | Unix.Unix_error (Unix.EINTR, _, _) -> unlink file
   | Unix.Unix_error (e, _, _) ->
-      R.error_msgf "delete file %a: %s" Fpath.pp file (uerror e)
+      Fmt.error_msg "delete file %a: %s" Fpath.pp file (uerror e)
   in
   unlink file
 
@@ -95,7 +94,7 @@ let delete_dir ?must_exist:(must = false) ?(recurse = false) dir =
                   Ok (file :: dirs)
               | Unix.Unix_error (Unix.EINTR, _, _) -> try_unlink file
               | Unix.Unix_error (e, _, _) ->
-                  R.error_msgf "%a: %s" Fpath.pp file (uerror e)
+                  Fmt.error_msg "%a: %s" Fpath.pp file (uerror e)
             in
             match try_unlink Fpath.(dir / file) with
             | Ok dirs -> delete_dir_files dh dirs
@@ -111,7 +110,7 @@ let delete_dir ?must_exist:(must = false) ?(recurse = false) dir =
       | Unix.Unix_error (Unix.ENOENT, _, _) -> delete_files to_rmdir todo
       | Unix.Unix_error (Unix.EINTR, _, _) -> delete_files to_rmdir dirs
       | Unix.Unix_error (e, _, _) ->
-          R.error_msgf "%a: %s" Fpath.pp dir (uerror e)
+          Fmt.error_msg "%a: %s" Fpath.pp dir (uerror e)
   in
   let rec delete_dirs = function
   | [] -> Ok ()
@@ -120,7 +119,7 @@ let delete_dir ?must_exist:(must = false) ?(recurse = false) dir =
       | Unix.Unix_error (Unix.ENOENT, _, _) -> Ok ()
       | Unix.Unix_error (Unix.EINTR, _, _) -> rmdir dir
       | Unix.Unix_error (e, _, _) ->
-          R.error_msgf "%a: %s" Fpath.pp dir (uerror e)
+          Fmt.error_msg "%a: %s" Fpath.pp dir (uerror e)
       in
       match rmdir dir with
       | Ok () -> delete_dirs dirs
@@ -131,19 +130,20 @@ let delete_dir ?must_exist:(must = false) ?(recurse = false) dir =
       let rec rmdir dir = try Ok (Unix.rmdir (Fpath.to_string dir)) with
       | Unix.Unix_error (Unix.ENOENT, _, _) -> Ok ()
       | Unix.Unix_error (Unix.EINTR, _, _) -> rmdir dir
-      | Unix.Unix_error (e, _, _) -> R.error_msgf "%s" (uerror e)
+      | Unix.Unix_error (e, _, _) -> Fmt.error_msg "%s" (uerror e)
       in
       rmdir dir
     else
-    delete_files [] [dir] >>= fun rmdirs ->
+    Result.bind (delete_files [] [dir]) @@ fun rmdirs ->
     delete_dirs rmdirs
   in
   begin
-    (if must then dir_must_exist dir else Ok dir)
-    >>= fun dir -> delete recurse dir
+    Result.bind (if must then dir_must_exist dir else Ok dir)
+    @@ fun dir -> delete recurse dir
   end
-  |> R.reword_error_msg ~replace:true
-    (fun msg -> R.msgf "delete directory %a: %s" Fpath.pp dir msg)
+  |> function
+  | Ok _ as v -> v
+  | Error (`Msg e) -> Fmt.error_msg "delete directory %a: %s" Fpath.pp dir e
 
 let rec delete ?(must_exist = false) ?(recurse = false) path =
   try match Unix.((stat (Fpath.to_string path)).st_kind) with
@@ -152,10 +152,10 @@ let rec delete ?(must_exist = false) ?(recurse = false) path =
   with
   | Unix.Unix_error (Unix.ENOENT, _, _) ->
       if not must_exist then Ok () else
-      R.error_msgf "delete path %a: No such path" Fpath.pp path
+      Fmt.error_msg "delete path %a: No such path" Fpath.pp path
   | Unix.Unix_error (Unix.EINTR, _, _) -> delete ~must_exist ~recurse path
   | Unix.Unix_error (e, _, _) ->
-      R.error_msgf "delete path %a: %s" Fpath.pp path (uerror e)
+      Fmt.error_msg "delete path %a: %s" Fpath.pp path (uerror e)
 
 (* Move, stat and mode *)
 
@@ -163,20 +163,20 @@ let move ?(force = false) src dst =
   let rename src dst =
     try Ok (Unix.rename (Fpath.to_string src) (Fpath.to_string dst)) with
     | Unix.Unix_error (e, _, _) ->
-        R.error_msgf "move %a to %a: %s"
+        Fmt.error_msg "move %a to %a: %s"
           Fpath.pp src Fpath.pp dst (uerror e)
   in
   if force then rename src dst else
-  exists dst >>= function
+  Result.bind (exists dst) @@ function
   | false -> rename src dst
   | true ->
-      R.error_msgf "move %a to %a: Destination exists"
+      Fmt.error_msg "move %a to %a: Destination exists"
         Fpath.pp src Fpath.pp dst
 
 let rec stat p = try Ok (Unix.stat (Fpath.to_string p)) with
 | Unix.Unix_error (Unix.EINTR, _, _) -> stat p
 | Unix.Unix_error (e, _, _) ->
-    R.error_msgf "stat %a: %s" Fpath.pp p (uerror e)
+    Fmt.error_msg "stat %a: %s" Fpath.pp p (uerror e)
 
 module Mode = struct
   type t = int
@@ -184,12 +184,12 @@ module Mode = struct
   let rec get p = try Ok (Unix.((stat (Fpath.to_string p)).st_perm)) with
   | Unix.Unix_error (Unix.EINTR, _, _) -> get p
   | Unix.Unix_error (e, _, _) ->
-      R.error_msgf "get mode %a: %s" Fpath.pp p (uerror e)
+      Fmt.error_msg "get mode %a: %s" Fpath.pp p (uerror e)
 
   let rec set p m = try Ok (Unix.chmod (Fpath.to_string p) m) with
   | Unix.Unix_error (Unix.EINTR, _, _) -> set p m
   | Unix.Unix_error (e, _, _) ->
-      R.error_msgf "set mode %a: %s" Fpath.pp p (uerror e)
+      Fmt.error_msg "set mode %a: %s" Fpath.pp p (uerror e)
 end
 
 (* Path links *)
@@ -202,25 +202,27 @@ let rec force_remove op target p =
   with
   | Unix.Unix_error (Unix.EINTR, _, _) -> force_remove op target p
   | Unix.Unix_error (e, _, _) ->
-      R.error_msgf "force %s %a to %a: %s" op Fpath.pp target Fpath.pp p
+      Fmt.error_msg "force %s %a to %a: %s" op Fpath.pp target Fpath.pp p
         (uerror e)
 
 let rec link ?(force = false) ~target p =
   try Ok (Unix.link (Fpath.to_string target) (Fpath.to_string p)) with
   | Unix.Unix_error (Unix.EEXIST, _, _) when force ->
-      force_remove "link" target p >>= fun () -> link ~force ~target p
+      Result.bind (force_remove "link" target p) @@
+      fun () -> link ~force ~target p
   | Unix.Unix_error (Unix.EINTR, _, _) -> link ~force ~target p
   | Unix.Unix_error (e, _, _) ->
-      R.error_msgf "link %a to %a: %s"
+      Fmt.error_msg "link %a to %a: %s"
         Fpath.pp target Fpath.pp p (uerror e)
 
 let rec symlink ?(force = false) ~target p =
   try Ok (Unix.symlink (Fpath.to_string target) (Fpath.to_string p)) with
   | Unix.Unix_error (Unix.EEXIST, _, _) when force ->
-      force_remove "symlink" target p >>= fun () -> symlink ~force ~target p
+      Result.bind (force_remove "symlink" target p) @@
+      fun () -> symlink ~force ~target p
   | Unix.Unix_error (Unix.EINTR, _, _) -> symlink ~force ~target p
   | Unix.Unix_error (e, _, _) ->
-      R.error_msgf "symlink %a to %a: %s"
+      Fmt.error_msg "symlink %a to %a: %s"
         Fpath.pp target Fpath.pp p (uerror e)
 
 let rec symlink_target p =
@@ -229,19 +231,19 @@ let rec symlink_target p =
     match Fpath.of_string l with
     | Ok l -> Ok l
     | Error _ ->
-        R.error_msgf "target of %a: could not read a path from %a"
+        Fmt.error_msg "target of %a: could not read a path from %a"
           Fpath.pp p String.dump l
   with
   | Unix.Unix_error (Unix.EINVAL, _, _) ->
-      R.error_msgf "target of %a: Not a symbolic link" Fpath.pp p
+      Fmt.error_msg "target of %a: Not a symbolic link" Fpath.pp p
   | Unix.Unix_error (Unix.EINTR, _, _) -> symlink_target p
   | Unix.Unix_error (e, _, _) ->
-      R.error_msgf "target of %a: %s" Fpath.pp p (uerror e)
+      Fmt.error_msg "target of %a: %s" Fpath.pp p (uerror e)
 
 let rec symlink_stat p = try Ok (Unix.lstat (Fpath.to_string p)) with
 | Unix.Unix_error (Unix.EINTR, _, _) -> symlink_stat p
 | Unix.Unix_error (e, _, _) ->
-    R.error_msgf "symlink stat %a: %s" Fpath.pp p (uerror e)
+    Fmt.error_msg "symlink stat %a: %s" Fpath.pp p (uerror e)
 
 (* Matching paths. *)
 
@@ -271,7 +273,7 @@ let rec match_segment dotfiles ~env acc path seg =
                 readdir dh ((p, m) :: acc)
             end
         | false ->
-            R.error_msgf
+            Fmt.error_msg
               "directory %a: cannot parse element to a path (%a)"
               Fpath.pp (Fpath.v path) String.dump e
   in
@@ -285,12 +287,10 @@ let rec match_segment dotfiles ~env acc path seg =
   | Unix.Unix_error (Unix.EINTR, _, _) ->
       match_segment dotfiles ~env acc path seg
   | Unix.Unix_error (e, _, _) ->
-      R.error_msgf "directory %a: %s" Fpath.pp (Fpath.v path) (uerror e)
+      Fmt.error_msg "directory %a: %s" Fpath.pp (Fpath.v path) (uerror e)
 
 let match_path ?(dotfiles = false) ~env p =
-  let err _ =
-    R.msgf "Unexpected error while matching `%a'" Fpath.pp p
-  in
+  let err () = Fmt.str "Unexpected error while matching `%a'" Fpath.pp p in
   let vol, start, segs =
     let vol, segs = Fpath.split_volume p in
     match Fpath.segs segs with
@@ -305,7 +305,7 @@ let match_path ?(dotfiles = false) ~env p =
       | [] -> Ok acc
       | (p, env) :: matches ->
           let r = try Ok (Unix.((stat p).st_kind = Unix.S_DIR)) with
-          | Unix.Unix_error (e, _, _) -> R.error_msgf "%s: %s" p (uerror e)
+          | Unix.Unix_error (e, _, _) -> Fmt.error_msg "%s: %s" p (uerror e)
           in
           match r with
           | Error _ as e -> e
@@ -348,15 +348,17 @@ let match_path ?(dotfiles = false) ~env p =
     let start = if start = "" then "." else start in
     exists (Fpath.v (vol ^ start))
   in
-  start_exists vol start >>= function
+  Result.bind (start_exists vol start) @@ function
   | false -> Ok []
   | true ->
       let start = if start = "" then vol else vol ^ start in
-      R.reword_error_msg err @@ match_segs [start, env] segs
+      match match_segs [start, env] segs with
+      | Ok _ as v -> v
+      | Error (`Msg e) -> Fmt.error_msg "%s\n%s" e (err ())
 
 let matches ?dotfiles p =
   let get_path acc (p, _) = (Fpath.v p) :: acc in
-  match_path ?dotfiles ~env:None p >>| List.fold_left get_path []
+  Result.map (List.fold_left get_path []) (match_path ?dotfiles ~env:None p)
 
 let query ?dotfiles ?(init = String.Map.empty) p =
   let env = Some init in
@@ -364,11 +366,11 @@ let query ?dotfiles ?(init = String.Map.empty) p =
   | None -> assert false
   | Some map -> (Fpath.v p, map) :: acc
   in
-  match_path ?dotfiles ~env p >>| List.fold_left unopt_map []
+  Result.map (List.fold_left unopt_map []) (match_path ?dotfiles ~env p)
 
 (* Folding over file system hierarchies *)
 
-type 'a res = ('a, R.msg) result
+type 'a res = ('a, [`Msg of string]) result
 type traverse = [ `Any | `None | `Sat of Fpath.t -> bool res ]
 type elements = [ `Any | `Files | `Dirs | `Sat of Fpath.t -> bool res ]
 type 'a fold_error = Fpath.t -> 'a res -> unit res
@@ -378,7 +380,7 @@ let log_fold_error ~level =
   | Error (`Msg e) -> Bos_log.msg level (fun m -> m "%s" e); Ok ()
   | Ok _ -> assert false
 
-exception Fold_stop of R.msg
+exception Fold_stop of [`Msg of string]
 
 let err_fun err f ~backup_value = (* handles path function errors in folds *)
   fun p -> match f p with
@@ -403,13 +405,13 @@ let is_element_fun err = function
 
 let is_dir_fun err =
   let is_dir p = try Ok (Sys.is_directory (Fpath.to_string p)) with
-  | Sys_error e -> R.error_msg e
+  | Sys_error e -> Error (`Msg e)
   in
   err_predicate_fun err is_dir
 
 let readdir_fun err =
   let readdir d = try Ok (Sys.readdir (Fpath.to_string d)) with
-  | Sys_error e -> R.error_msg e
+  | Sys_error e -> Error (`Msg e)
   in
   err_fun err readdir ~backup_value:[||]
 

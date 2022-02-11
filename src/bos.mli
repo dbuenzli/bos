@@ -12,7 +12,6 @@
 
 (** {1 Basic types} *)
 
-open Rresult
 open Astring
 
 (** Named string patterns.
@@ -49,7 +48,7 @@ module Pat : sig
   val compare : t -> t -> int
   (** [compare p p'] is {!Stdlib.compare}[ p p']. *)
 
-  val of_string : string -> (t, [> R.msg]) result
+  val of_string : string -> (t, [> `Msg of string]) result
   (** [of_string s] parses [s] according to the pattern syntax
       (i.e. a literal ['$'] must be represented by ["$$"] in [s]). *)
 
@@ -188,7 +187,7 @@ module Cmd : sig
 
   (** {1:convert Conversions and pretty printing} *)
 
-  val of_string : string -> (t, R.msg) result
+  val of_string : string -> (t, [> `Msg of string]) result
   (** [of_string s] tokenizes [s] into a command line. The tokens
       are recognized according to the [token] production of the following
       grammar which should be mostly be compatible with POSIX shell
@@ -265,11 +264,11 @@ module OS : sig
 
       The functions of this module never raise {!Sys_error} or
       {!Unix.Unix_error} instead they turn these errors into
-      {{!Rresult.R.msgs}error messages}. If you need fine grained
+      error messages. If you need fine grained
       control over unix errors use the lower level functions in
       {!Bos.OS.U}. *)
 
-  type ('a, 'e) result = ('a, [> R.msg] as 'e) Stdlib.result
+  type ('a, 'e) result = ('a, [> `Msg of string] as 'e) Stdlib.result
   (** The type for OS results. *)
 
   (** {1:env Environment variables and program arguments} *)
@@ -312,7 +311,7 @@ module OS : sig
 
         See the {{!examples}examples}. *)
 
-    type 'a parser = string -> ('a, R.msg) result
+    type 'a parser = string -> ('a, [`Msg of string]) result
     (** The type for environment variable value parsers. *)
 
     val parser : string -> (string -> 'a option) -> 'a parser
@@ -407,14 +406,14 @@ let timeout : int option =
 
     val conv :
       ?docv:string ->
-      (string -> ('a, R.msg) result) ->
+      (string -> ('a, [`Msg of string]) result) ->
       (Format.formatter -> 'a -> unit) -> 'a conv
     (** [conv ~docv parse print] is an argument converter parsing
         values with [parse] and printing them with [print]. [docv]
         is a documentation meta-variable used in the documentation
         to stand for the argument value, defaults to ["VALUE"]. *)
 
-    val conv_parser : 'a conv -> (string -> ('a, R.msg) result)
+    val conv_parser : 'a conv -> (string -> ('a, [`Msg of string]) result)
     (** [conv_parser c] is [c]'s parser. *)
 
     val conv_printer : 'a conv -> (Format.formatter -> 'a -> unit)
@@ -425,7 +424,7 @@ let timeout : int option =
 
     val parser_of_kind_of_string :
       kind:string -> (string -> 'a option) ->
-      (string -> ('a, R.msg) result)
+      (string -> ('a, [`Msg of string]) result)
     (** [parser_of_kind_of_string ~kind kind_of_string] is an argument
         parser using the [kind_of_string] function for parsing and
         [kind] for errors (e.g. could be ["an integer"] for an [int]
@@ -724,16 +723,20 @@ let main () = main ()
 
     (** {1:fold Folding over file system hierarchies} *)
 
-    type traverse = [ `Any | `None | `Sat of Fpath.t -> (bool, R.msg) result ]
+    type traverse =
+    [ `Any | `None | `Sat of Fpath.t -> (bool, [`Msg of string]) result ]
     (** The type for controlling directory traversals. The predicate
         of [`Sat] should only be called with directory paths, however this
         may not be the case due to OS races. *)
 
-    type elements = [ `Any | `Files | `Dirs
-                    | `Sat of Fpath.t -> (bool, R.msg) result ]
+    type elements =
+    [ `Any | `Files | `Dirs
+    | `Sat of Fpath.t -> (bool, [`Msg of string]) result ]
     (** The type for specifying elements being folded over. *)
 
-    type 'a fold_error = Fpath.t -> ('a, R.msg) result -> (unit, R.msg) result
+    type 'a fold_error =
+      Fpath.t -> ('a, [`Msg of string]) result ->
+      (unit, [`Msg of string]) result
     (** The type for managing fold errors.
 
         During the fold, errors may be generated at different points
@@ -1365,7 +1368,7 @@ let send_email mail =
     (** [open_error r] allows to combine a closed unix error
         variant with other variants. *)
 
-    val error_to_msg : 'a result -> ('a, [> R.msg]) Stdlib.result
+    val error_to_msg : 'a result -> ('a, [> `Msg of string]) Stdlib.result
     (** [error_to_msg r] converts unix errors in [r] to an error message. *)
 
     (** {1 Wrapping {!Unix} calls} *)

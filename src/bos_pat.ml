@@ -3,7 +3,6 @@
    Distributed under the ISC license, see terms at the end of the file.
   ---------------------------------------------------------------------------*)
 
-open Rresult
 open Astring
 
 (* Errors *)
@@ -29,7 +28,7 @@ type parse_state = S_lit | S_dollar | S_var
 let of_string s =
   let b = Buffer.create 255 in
   let flush b = let s = Buffer.contents b in (Buffer.clear b; s) in
-  let err () = R.error_msg (err_malformed_pat s) in
+  let err () = Error (`Msg (err_malformed_pat s)) in
   let push_lit b acc =
     if Buffer.length b <> 0 then Lit (flush b) :: acc else acc
   in
@@ -58,7 +57,7 @@ let of_string s =
   in
   loop [] S_lit 0
 
-let v s = R.error_msg_to_invalid_arg (of_string s)
+let v s = match of_string s with Ok v -> v | Error (`Msg e) -> invalid_arg e
 
 let to_string p =
   let b = Buffer.create 255 in

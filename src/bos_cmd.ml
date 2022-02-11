@@ -4,7 +4,6 @@
   ---------------------------------------------------------------------------*)
 
 open Astring
-open Rresult
 
 (* Command line fragments *)
 
@@ -108,7 +107,8 @@ let parse_cmdline s =
       loop (token :: acc) (skip_white s)
     in
     Ok (loop [] (skip_white (String.sub s)))
-  with Failure err -> R.error_msgf "command line %a:%s" String.dump s err
+  with Failure err ->
+    Error (`Msg (Fmt.str "command line %a:%s" String.dump s err))
 
 let of_string s = parse_cmdline s
 let to_string l = String.concat ~sep:" " (List.rev_map Filename.quote l)

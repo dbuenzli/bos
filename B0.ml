@@ -35,7 +35,7 @@ let bos_lib =
             `X (v "src/bos_top.ml");
             `X (v "src/bos_top_init.ml") ]
   in
-  let requires = [rresult; astring; fpath; fmt; unix; logs]
+  let requires = [astring; fpath; fmt; unix; logs]
   in
   B0_ocaml.lib bos ~doc:"The bos library" ~srcs ~requires
 

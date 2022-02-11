@@ -4,7 +4,6 @@
   ---------------------------------------------------------------------------*)
 
 open Astring
-open Rresult
 
 (* Error messages *)
 
@@ -29,7 +28,7 @@ let rec truncate p size =
   try Ok (Unix.truncate (Fpath.to_string p) size) with
   | Unix.Unix_error (Unix.EINTR, _, _) -> truncate p size
   | Unix.Unix_error (e, _, _) ->
-      R.error_msgf "truncate file %a: %s" Fpath.pp p (uerror e)
+      Fmt.error_msg "truncate file %a: %s" Fpath.pp p (uerror e)
 
 (* Executability *)
 
@@ -67,9 +66,9 @@ let with_input ?bytes file f v =
       if rc = 0 then None else Some (b, 0, rc)
     in
     try Ok (Bos_base.apply (f input) v ~finally:close ic) with
-    | Sys_error e -> R.error_msgf "%a: %s" Fpath.pp file e
+    | Sys_error e -> Fmt.error_msg "%a: %s" Fpath.pp file e
   with
-  | Sys_error e -> R.error_msg e
+  | Sys_error e -> Error (`Msg e)
 
 let with_ic file f v =
   try
@@ -77,10 +76,10 @@ let with_ic file f v =
     in
     let close ic = if is_dash file then () else close_in ic in
     try Ok (Bos_base.apply (f ic) v ~finally:close ic) with
-    | Sys_error e -> R.error_msgf "%a: %s" Fpath.pp file e
+    | Sys_error e -> Fmt.error_msg "%a: %s" Fpath.pp file e
   with
-  | End_of_file -> R.error_msgf "%a: unexpected end of file" Fpath.pp file
-  | Sys_error e -> R.error_msg e
+  | End_of_file -> Fmt.error_msg "%a: unexpected end of file" Fpath.pp file
+  | Sys_error e -> Error (`Msg e)
 
 let read file =
   let is_stream ic =
@@ -108,7 +107,7 @@ let read file =
       really_input ic s 0 len;
       Ok (Bytes.unsafe_to_string s)
     end else begin
-      R.error_msgf "read %a: file too large (%a, max supported size: %a)"
+      Fmt.error_msg "read %a: file too large (%a, max supported size: %a)"
         Fpath.pp file Fmt.byte_size len Fmt.byte_size Sys.max_string_length
     end
   in
@@ -128,7 +127,8 @@ let fold_lines f acc file =
   in
   with_ic file input acc
 
-let read_lines file = fold_lines (fun acc l -> l :: acc) [] file >>| List.rev
+let read_lines file =
+  Result.map List.rev (fold_lines (fun acc l -> l :: acc) [] file)
 
 (* Temporary files *)
 
@@ -147,7 +147,7 @@ let () = at_exit unlink_tmps
 
 let create_tmp_path mode dir pat =
   let err () =
-    R.error_msgf "create temporary file %s in %a: too many failing attempts"
+    Fmt.error_msg "create temporary file %s in %a: too many failing attempts"
       (strf pat "XXXXXX") Fpath.pp dir
   in
   let rec loop count =
@@ -159,7 +159,7 @@ let create_tmp_path mode dir pat =
     | Unix.Unix_error (Unix.EEXIST, _, _) -> loop (count - 1)
     | Unix.Unix_error (Unix.EINTR, _, _) -> loop count
     | Unix.Unix_error (e, _, _) ->
-        R.error_msgf "create temporary file %a: %s" Fpath.pp file (uerror e)
+        Fmt.error_msg "create temporary file %a: %s" Fpath.pp file (uerror e)
   in
   loop 10000
 
@@ -167,7 +167,7 @@ let default_tmp_mode = 0o600
 
 let tmp ?(mode = default_tmp_mode) ?dir pat =
   let dir = match dir with None -> Bos_os_tmp.default_dir () | Some d -> d in
-  create_tmp_path mode dir pat >>= fun (file, fd) ->
+  Result.bind (create_tmp_path mode dir pat) @@ fun (file, fd) ->
   let rec close fd = try Unix.close fd with
   | Unix.Unix_error (Unix.EINTR, _, _) -> close fd
   | Unix.Unix_error (e, _, _) -> ()
@@ -177,18 +177,18 @@ let tmp ?(mode = default_tmp_mode) ?dir pat =
 let with_tmp_oc ?(mode = default_tmp_mode) ?dir pat f v =
   try
     let dir = match dir with None -> Bos_os_tmp.default_dir () | Some d -> d in
-    create_tmp_path mode dir pat >>= fun (file, fd) ->
+    Result.bind (create_tmp_path mode dir pat) @@ fun (file, fd) ->
     let oc = Unix.out_channel_of_descr fd in
     let delete_close oc = tmps_rem file; close_out oc in
     tmps_add file;
     try Ok (Bos_base.apply (f file oc) v ~finally:delete_close oc) with
-    | Sys_error e -> R.error_msgf "%a: %s" Fpath.pp file e
-  with Sys_error e -> R.error_msg e
+    | Sys_error e -> Fmt.error_msg "%a: %s" Fpath.pp file e
+  with Sys_error e -> Error (`Msg e)
 
 let with_tmp_output ?(mode = default_tmp_mode) ?dir pat f v =
   try
     let dir = match dir with None -> Bos_os_tmp.default_dir () | Some d -> d in
-    create_tmp_path mode dir pat >>= fun (file, fd) ->
+    Result.bind (create_tmp_path mode dir pat) @@ fun (file, fd) ->
     let oc = Unix.out_channel_of_descr fd in
     let oc_valid = ref true in
     let delete_close oc = oc_valid := false; tmps_rem file; close_out oc in
@@ -200,8 +200,8 @@ let with_tmp_output ?(mode = default_tmp_mode) ?dir pat f v =
     in
     tmps_add file;
     try Ok (Bos_base.apply (f file output) v ~finally:delete_close oc) with
-    | Sys_error e -> R.error_msgf "%a: %s" Fpath.pp file e
-  with Sys_error e -> R.error_msg e
+    | Sys_error e -> Fmt.error_msg "%a: %s" Fpath.pp file e
+  with Sys_error e -> Error (`Msg e)
 
 (* Output *)
 
@@ -213,7 +213,7 @@ let rec rename src dst =
   try Unix.rename (Fpath.to_string src) (Fpath.to_string dst); Ok () with
   | Unix.Unix_error (Unix.EINTR, _, _) -> rename src dst
   | Unix.Unix_error (e, _, _) ->
-      R.error_msgf "rename %a to %a: %s"
+      Fmt.error_msg "rename %a to %a: %s"
         Fpath.pp src Fpath.pp dst (uerror e)
 
 let stdout_with_output f v =
@@ -227,7 +227,7 @@ let stdout_with_output f v =
       | None -> flush stdout
     in
     Ok (Bos_base.apply (f output) v ~finally:close ())
-  with Sys_error e -> R.error_msg e
+  with Sys_error e -> Error (`Msg e)
 
 let with_output ?(mode = default_mode) file f v =
   if is_dash file then stdout_with_output f v else
@@ -262,7 +262,7 @@ let with_oc ?(mode = default_mode) file f v =
 
 let write ?mode file contents =
   let write oc contents = output_string oc contents; Ok () in
-  R.join @@ with_oc ?mode file write contents
+  Result.join @@ with_oc ?mode file write contents
 
 let writef ?mode file fmt = (* FIXME avoid the kstrf  *)
   Fmt.kstr (fun content -> write ?mode file content) fmt
@@ -274,7 +274,7 @@ let write_lines ?mode file lines =
       output_string oc l;
       if ls <> [] then (output_char oc '\n'; write oc ls) else Ok ()
   in
-  R.join @@ with_oc ?mode file write lines
+  Result.join @@ with_oc ?mode file write lines
 
 (*---------------------------------------------------------------------------
    Copyright (c) 2015 The bos programmers

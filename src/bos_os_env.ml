@@ -3,7 +3,6 @@
    Distributed under the ISC license, see terms at the end of the file.
   ---------------------------------------------------------------------------*)
 
-open Rresult
 open Astring
 
 (* Process environment *)
@@ -17,15 +16,15 @@ let current () =
     | Error _ as e -> e
     | Ok m ->
         match String.cut ~sep:"=" assign with
-        | Some (var, value) -> R.ok (String.Map.add var value m)
+        | Some (var, value) -> Ok (String.Map.add var value m)
         | None ->
-            R.error_msgf
+            Fmt.error_msg
               "could not parse process environment variable (%S)" assign
     in
-    Array.fold_left add (R.ok String.Map.empty) env
+    Array.fold_left add (Ok String.Map.empty) env
   with
   | Unix.Unix_error (e, _, _) ->
-      R.error_msgf
+      Fmt.error_msg
         "could not get process environment: %s" (Unix.error_message e)
 
 let to_array env =
@@ -37,21 +36,22 @@ let to_array env =
 let var name = try Some (Unix.getenv name) with Not_found -> None
 let set_var name v =
   let v = match v with None -> "" | Some v -> v in
-  try R.ok (Unix.putenv name v) with
+  try Ok (Unix.putenv name v) with
   | Unix.Unix_error (e, _, _) ->
-      R.error_msgf "set environment variable %s: %s" name (Unix.error_message e)
+      Fmt.error_msg
+        "set environment variable %s: %s" name (Unix.error_message e)
 
 let opt_var name ~absent = try Unix.getenv name with Not_found -> absent
 let req_var name = try Ok (Unix.getenv name) with
-| Not_found -> R.error_msgf "environment variable %s: undefined" name
+| Not_found -> Fmt.error_msg "environment variable %s: undefined" name
 
 (* Typed lookup *)
 
-type 'a parser = string -> ('a, R.msg) result
+type 'a parser = string -> ('a, [`Msg of string]) result
 
 let parser kind k_of_string =
   fun s -> match k_of_string s with
-  | None -> R.error_msgf "could not parse %s value from %a" kind String.dump s
+  | None -> Fmt.error_msg "could not parse %s value from %a" kind String.dump s
   | Some v -> Ok v
 
 let bool =
@@ -66,7 +66,7 @@ let string = fun s -> Ok s
 let path = Fpath.of_string
 let cmd = fun s -> match Bos_cmd.of_string s with
 | Error _ as err -> err
-| Ok cmd when Bos_cmd.is_empty cmd -> R.error_msgf "command line is empty"
+| Ok cmd when Bos_cmd.is_empty cmd -> Error (`Msg "command line is empty")
 | Ok _ as cmd -> cmd
 
 let some p = fun s -> match p s with Ok v -> Ok (Some v) | Error _ as e -> e
@@ -74,9 +74,9 @@ let some p = fun s -> match p s with Ok v -> Ok (Some v) | Error _ as e -> e
 let parse name p ~absent = match var name with
 | None -> Ok absent
 | Some s ->
-    p s
-    |> R.reword_error_msg ~replace:true
-      (fun err -> R.msgf "environment variable %s: %s" name err)
+    match p s with
+    | Ok _ as r -> r
+    | Error (`Msg e) -> Fmt.error_msg "environment variable %s: %s" name e
 
 let value ?(log = Logs.Error) name p ~absent =
   Bos_log.on_error_msg ~level:log ~use:(fun () -> absent) (parse name p ~absent)

@@ -4,7 +4,6 @@
   ---------------------------------------------------------------------------*)
 
 open Astring
-open Rresult
 
 (* Errors *)
 
@@ -12,14 +11,16 @@ let quote pp ppf v = Fmt.pf ppf "`%a'" pp v
 
 let err_done = "Bos.OS.Arg.parse_opts or Bos.OS.Arg.parse already called"
 let err_no_name = "names list cannot be empty"
-let err_env v msg = R.msgf "environment variable %s: %s" v msg
-let err_repeat n = R.msgf "option %a cannot be repeated" (quote Fmt.string) n
+let err_env v msg = `Msg (Fmt.str  "environment variable %s: %s" v msg)
+let err_repeat n =
+  `Msg (Fmt.str  "option %a cannot be repeated" (quote Fmt.string) n)
+
 let err_need_argument n =
-  R.msgf "option %a needs an argument" (quote Fmt.string) n
+  `Msg (Fmt.str "option %a needs an argument" (quote Fmt.string) n)
 
 let err_dupe n n' =
-  R.msgf "options %a and %a cannot be present at the same time"
-    (quote Fmt.string) n (quote Fmt.string) n'
+  `Msg (Fmt.str "options %a and %a cannot be present at the same time"
+          (quote Fmt.string) n (quote Fmt.string) n')
 
 let err_unknown_opt ppf l =
   Fmt.pf ppf "unknown option %a." (quote Fmt.string) l
@@ -37,7 +38,7 @@ let exec = match Array.length Sys.argv with
 (* Argument converters *)
 
 type 'a conv =
-  { parse : string -> ('a, Rresult.R.msg) Rresult.result;
+  { parse : string -> ('a, [`Msg of string]) result;
     print : Format.formatter -> 'a -> unit;
     docv : string }
 
@@ -48,7 +49,7 @@ let conv_docv c = c.docv
 let conv_with_docv conv ~docv = { conv with docv }
 
 let err_invalid s kind =
-  R.msgf "invalid value %a, expected %s" (quote Fmt.string) s kind
+  `Msg (Fmt.str "invalid value %a, expected %s" (quote Fmt.string) s kind)
 
 let parser_of_kind_of_string ~kind k_of_string =
   fun s -> match k_of_string s with
@@ -65,7 +66,7 @@ let some ?(none = "") c =
 
 (* Parsing *)
 
-type parse = Done | Perror of R.msg | Line of string list
+type parse = Done | Perror of [`Msg of string] | Line of string list
 
 let raw_args = match Array.to_list Sys.argv with
 | [] -> []
@@ -389,7 +390,7 @@ let parse_opts ?(doc = undocumented) ?usage () =
 
 let parse_pos_args parse ps =
   let rec loop acc = function
-  | p :: ps -> parse p >>= fun p -> loop (p :: acc) ps
+  | p :: ps -> Result.bind (parse p) (fun p -> loop (p :: acc) ps)
   | [] -> Ok (List.rev acc)
   in
   loop [] ps
@@ -419,7 +420,7 @@ let kconv ?docv ~kind k_of_string print =
 
 let string = conv ~docv:"STRING" (fun s -> Ok s) Fmt.string
 let path =
-  let parse s = R.to_option (Fpath.of_string s) in
+  let parse s = Result.to_option (Fpath.of_string s) in
   kconv ~docv:"PATH" ~kind:"a path" parse Fpath.pp
 
 let bin = conv ~docv:"EXEC" (fun s -> Ok (Bos_cmd.v s)) Bos_cmd.pp
@@ -471,7 +472,7 @@ let enum enum =
 
 let parse_split ?(sep = ",") s parse =
   let rec loop acc = function
-  | s :: ss -> parse s >>= fun v -> loop (v :: acc) ss
+  | s :: ss -> Result.bind (parse s) @@ fun v -> loop (v :: acc) ss
   | [] -> Ok (List.rev acc)
   in
   loop [] (String.cuts ~sep:"," s)
@@ -493,8 +494,8 @@ let pair ?(sep = ",") l r =
   let parse s = match String.cut ~sep s with
   | None -> Error (err_invalid s (strf "a separator `%s' in the string" sep))
   | Some (ls, rs) ->
-      l.parse ls >>= fun l ->
-      r.parse rs >>= fun r ->
+      Result.bind (l.parse ls) @@ fun l ->
+      Result.bind (r.parse rs) @@ fun r ->
       Ok (l, r)
   in
   let print = Fmt.pair ~sep:Fmt.(const string sep) l.print r.print in
