@@ -1258,7 +1258,7 @@ contents d >>= Path.fold err dotfiles elements traverse f acc
     (** [out_null o] is [out_file File.null o]. *)
 
     val out_stdout : run_out -> (unit * run_status, 'e) result
-    (** [to_stdout o] redirects the standard output [o] to the current
+    (** [out_stdout o] redirects the standard output [o] to the current
         process standard output. *)
 
     (** {3:success Extracting success}
