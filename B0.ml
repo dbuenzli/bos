@@ -75,13 +75,13 @@ let test =
 let test_arg =
   let srcs = Fpath.[ `File (v "test/test_arg.ml")] in
   let meta = B0_meta.(empty |> tag test) in
-  let requires = [ astring; fmt; fpath; logs_fmt; bos ] in
+  let requires = [ astring; fmt; fpath; logs; logs_fmt; bos ] in
   B0_ocaml.exe "test-arg" ~doc:"Test argument parsing" ~srcs ~meta ~requires
 
 let test_arg_pos =
   let srcs = Fpath.[ `File (v "test/test_arg_pos.ml")] in
   let meta = B0_meta.(empty |> tag test) in
-  let requires = [ fmt; logs_fmt; bos ] in
+  let requires = [ fmt; logs; logs_fmt; bos ] in
   B0_ocaml.exe "test-arg-pos" ~doc:"Test argument parsing" ~srcs ~meta ~requires
 
 let watch =
