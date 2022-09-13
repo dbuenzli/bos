@@ -8,6 +8,11 @@
   when the file is `Fpath.dash` (#65). Thanks to Hezekiah M. Carty for
   the report.
 - Add `OS.Path.[exists_]realpath` (#49).
+- Tweak `OS.Dir.user` (#77, #96). On Windows with MSVC++ or MinGW, only
+  `USERPROFILE` is consulted. On Windows with Cygwin and other operating 
+  systems, `HOME` is consulted first; previously, `getpwnam` was consulted 
+  first. Thanks to Favonia for the patch.
+- Add `OS.Dir.expand_tilde` (#96), Thanks to Favonia for the patch.
 
 v0.2.1 2021-10-04 Zagreb
 ------------------------
