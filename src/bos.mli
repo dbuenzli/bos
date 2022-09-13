@@ -1030,10 +1030,21 @@ contents d >>= Path.fold err dotfiles elements traverse f acc
     (** {1:user_current User and current working directory} *)
 
     val user : unit -> (Fpath.t, 'e) result
-    (** [user ()] is the home directory of the user executing
-        the process. Determined by consulting the [passwd] database
-        with the user id of the process. If this fails or on Windows
-        falls back to parse a path from the [HOME] environment variable. *)
+    (** [user ()] is the home directory of the user executing the process.
+        On Windows with MSVC++ or MinGW, [USERPROFILE] is consulted.
+        On other operating systems and Windows with Cygwin, [HOME] is
+        consulted first, and then the [passwd] database is looked up
+        with the user ID of the process. *)
+
+    val expand_tilde : Fpath.t -> (Fpath.t, 'e) result
+    (** [expand_tilde p] expands a tilde-prefixed path [p] according to the
+        {{:https://pubs.opengroup.org/onlinepubs/9699919799/utilities/V3_chap02.html#tag_18_06_01}POSIX standard},
+        for example expanding [~] to the result of [user ()]. It returns [p]
+        unchanged if [p] is not tilde-prefixed.
+
+        On Windows with MSVC++ or MinGW, [~] will still be expanded using
+        the result of [user ()] (which would be the value of [USERPROFILE]),
+        but [~user] is unsupported and will lead to an error. *)
 
     val current : unit -> (Fpath.t, 'e) result
     (** [current ()] is the current working directory. The resulting
