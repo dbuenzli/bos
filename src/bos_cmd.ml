@@ -16,7 +16,8 @@ let ( % ) l a = a :: l
 let ( %% ) l0 l1 = List.rev_append (List.rev l1) l0
 let add_arg l a = l % a
 let add_args l a = l %% a
-let on bool l = if bool then l else []
+let if' bool l = if bool then l else []
+let on = if'
 let p = Fpath.to_string
 
 (* Command lines *)

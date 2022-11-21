@@ -149,7 +149,14 @@ module Cmd : sig
   val add_args : t -> t -> t
   (** [add_args l frag] is [l %% frag]. *)
 
+  val if' : bool -> t -> t
+  (** [if bool line] is [line] if [bool] is [true] and {!empty}
+      otherwise. *)
+
   val on : bool -> t -> t
+  [@@ocaml.deprecated "use Bos.Cmd.if' instead."]
+  (** @deprecated use {!if'} instead. *)
+
   (** [on bool line] is [line] if [bool] is [true] and {!empty}
       otherwise. *)
 
