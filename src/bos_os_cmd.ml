@@ -129,7 +129,8 @@ let _find_tool ?search tool = match tool with
     match exe_is_path tool with
     | true ->
         begin match Fpath.of_string tool with
-        | Ok t -> Ok (Some t)
+        | Ok t when Bos_os_file.is_executable t -> Ok (Some t)
+        | Ok _ -> Ok None
         | Error (`Msg _) as e -> e
         end
     | false ->
