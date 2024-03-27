@@ -85,7 +85,8 @@ let watch =
   let srcs = Fpath.[`File (v "test/watch.ml")] in
   let meta = B0_meta.(empty |> tag test) in
   let requires =
-    [ logs_fmt; fmt_tty; mtime; mtime_clock_os; rresult; fpath; bos; bos_setup ]
+    [ unix; logs_fmt; fmt_tty; mtime; mtime_clock_os; rresult; fpath; bos;
+      bos_setup ]
   in
   B0_ocaml.exe "watch" ~doc:"Watch files for changes." ~srcs ~meta ~requires
 
