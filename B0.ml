@@ -18,7 +18,7 @@ let logs = B0_ocaml.libname "logs"
 let logs_fmt = B0_ocaml.libname "logs.fmt"
 let logs_top = B0_ocaml.libname "logs.top"
 let mtime = B0_ocaml.libname "mtime"
-let mtime_clock_os = B0_ocaml.libname "mtime.clock.os"
+let mtime_clock = B0_ocaml.libname "mtime.clock"
 
 let bos = B0_ocaml.libname "bos"
 let bos_setup = B0_ocaml.libname "bos.setup"
@@ -85,7 +85,7 @@ let watch =
   let srcs = Fpath.[`File (v "test/watch.ml")] in
   let meta = B0_meta.(empty |> tag test) in
   let requires =
-    [ unix; logs_fmt; fmt_tty; mtime; mtime_clock_os; rresult; fpath; bos;
+    [ unix; logs_fmt; fmt_tty; mtime; mtime_clock; rresult; fpath; bos;
       bos_setup ]
   in
   B0_ocaml.exe "watch" ~doc:"Watch files for changes." ~srcs ~meta ~requires
