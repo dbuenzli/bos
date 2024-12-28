@@ -13,6 +13,8 @@ let rec call f v = try Ok (f v) with
 | Unix.Unix_error (Unix.EINTR, _, _) -> call f v
 | Unix.Unix_error (e, _, _) -> Error (`Unix e)
 
+let getcwd () = Fpath.of_string (Unix.getcwd ())
+
 let mkdir p m = try Ok (Unix.mkdir (Fpath.to_string p) m) with
 | Unix.Unix_error (e, _, _) -> Error (`Unix e)
 
