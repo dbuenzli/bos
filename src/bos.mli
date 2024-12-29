@@ -345,7 +345,7 @@ module OS : sig
         {!Cmd.of_string}. *)
 
     val some : 'a parser -> 'a option parser
-    (** [some p] is wraps [p]'s parse result in [Some]. *)
+    (** [some p] wraps [p]'s parse result in [Some]. *)
 
     val parse :
       string -> 'a parser -> absent:'a -> ('a, 'e) result
