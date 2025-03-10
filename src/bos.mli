@@ -154,8 +154,7 @@ module Cmd : sig
       otherwise. *)
 
   val on : bool -> t -> t
-  [@@ocaml.deprecated "use Bos.Cmd.if' instead."]
-  (** @deprecated use {!if'} instead. *)
+  (** Deprecated use {!if'} instead. *)
 
   (** [on bool line] is [line] if [bool] is [true] and {!empty}
       otherwise. *)
