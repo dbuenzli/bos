@@ -119,9 +119,9 @@ let read file =
 let fold_lines f acc file =
   let input ic acc =
     let rec loop acc =
-      match try Some (input_line ic) with End_of_file -> None with
-      | None -> acc
-      | Some line -> loop (f acc line)
+      match input_line ic with
+      | exception End_of_file -> acc
+      | line -> loop (f acc line)
     in
     loop acc
   in
