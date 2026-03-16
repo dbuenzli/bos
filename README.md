@@ -1,3 +1,13 @@
+## Installation Guide
+
+To install and run the project:
+
+1. Clone the repository
+2. Install required dependencies
+3. Run the application
+
+This section helps contributors quickly set up the project environment.
+
 Bos — Basic OS interaction for OCaml
 -------------------------------------------------------------------------------
 %%VERSION%%
