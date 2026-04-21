@@ -848,19 +848,20 @@ let main () = main ()
 
     val with_ic :
       Fpath.t -> (in_channel -> 'a -> 'b) -> 'a -> ('b, 'e) result
-    (** [with_ic file f v] opens [file] as a channel [ic] and returns
-        [Ok (f ic v)]. After the function returns (normally or via an
-        exception), [ic] is ensured to be closed.  If [file] is
-        {!dash}, [ic] is {!Stdlib.stdin} and not closed when the
-        function returns. [End_of_file] exceptions raised by [f] are
-        turned it into an error message. *)
+    (** [with_ic file f v] opens [file] as a binary mode channel [ic] and
+        returns [Ok (f ic v)]. After the function returns (normally or
+        via an exception), [ic] is ensured to be closed.  If [file] is
+        {!dash}, [ic] is {!Stdlib.stdin} put in binary mode and not
+        closed when the function returns (the original binary mode
+        status is restored when the function returns). [End_of_file]
+        exceptions raised by [f] are turned it into an error message. *)
 
     val read : Fpath.t -> (string, 'e) result
     (** [read file] is [file]'s content as a string. *)
 
     val read_lines : Fpath.t -> (string list, 'e) result
-    (** [read_lines file] is [file]'s content, split at each
-        ['\n'] character. *)
+    (** [read_lines file] is like [Result.map (String.split_on_char '\n')
+        (read file)]. *)
 
     val fold_lines :
       ('a -> string -> 'a) -> 'a -> Fpath.t -> ('a, 'e) result
@@ -904,12 +905,13 @@ let main () = main ()
       ?mode:int -> Fpath.t ->
       (out_channel -> 'a -> (('c, 'd) result as 'b)) ->
       'a -> ('b, 'e) result
-    (** [with_oc file f v] opens [file] as a channel [oc] and returns
-        [Ok (f oc v)]. After the function returns (normally or via an
-        exception) [oc] is closed. [file] is not written if [f]
+    (** [with_oc file f v] opens [file] as a binary mode channel [oc] and
+        returns [Ok (f oc v)]. After the function returns (normally or
+        via an exception) [oc] is closed. [file] is not written if [f]
         returns an error. If [file] is {!dash}, [oc] is
-        {!Stdlib.stdout} and not closed when the function
-        returns. *)
+        {!Stdlib.stdout} put in binary mode and not closed when
+        function returns (the original binary mode status is restored
+        when the function returns). *)
 
     val write :
       ?mode:int -> Fpath.t -> string -> (unit, 'e) result

@@ -4,6 +4,9 @@
 - Add `Cmd.if'` and deprecate `Cmd.on`.
 - `bos` library. Drop dependency on `rresult`. The package still
   depends on it because of the `bos.setup` library.
+- `OS.File.{read,write,with_ic,with_oc,write_lines}` avoid newline translation
+  when the file is `Fpath.dash` (#65). Thanks to Hezekiah M. Carty for
+  the report.
 
 v0.2.1 2021-10-04 Zagreb
 ------------------------

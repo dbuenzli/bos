@@ -72,10 +72,16 @@ let with_input ?bytes file f v =
 
 let with_ic file f v =
   try
-    let ic = if is_dash file then stdin else open_in_bin (Fpath.to_string file)
+    let ic, finally =
+      if is_dash file then begin
+        let binary_mode = In_channel.is_binary_mode stdin in
+        let finally ic = In_channel.set_binary_mode ic binary_mode in
+        In_channel.set_binary_mode stdin true;
+        stdin, finally
+      end else
+      open_in_bin (Fpath.to_string file), (fun ic -> close_in ic)
     in
-    let close ic = if is_dash file then () else close_in ic in
-    try Ok (Bos_base.apply (f ic) v ~finally:close ic) with
+    try Ok (Bos_base.apply (f ic) v ~finally ic) with
     | Sys_error e -> Fmt.error_msg "%a: %s" Fpath.pp file e
   with
   | End_of_file -> Fmt.error_msg "%a: unexpected end of file" Fpath.pp file
@@ -245,20 +251,27 @@ let with_output ?(mode = default_mode) file f v =
   | Error _ as e -> e
 
 let with_oc ?(mode = default_mode) file f v =
-  if is_dash file
-  then Ok (Bos_base.apply (f stdout) v ~finally:(fun () -> ()) ())
-  else
-  let do_write tmp tmp_oc v = match f tmp_oc v with
-  | Error _ as v -> Ok v
-  | Ok _ as v ->
-      match rename tmp file with
-      | Error _ as e -> e
-      | Ok () -> Ok v
-  in
-  match with_tmp_oc ~mode ~dir:(Fpath.parent file) "bos-%s.tmp" do_write v with
-  | Ok (Ok _ as r) -> r
-  | Ok (Error _ as e) -> e
-  | Error _ as e -> e
+  try
+    if is_dash file then begin
+      let binary_mode = Out_channel.is_binary_mode stdout in
+      let finally () = Out_channel.set_binary_mode stdout binary_mode in
+      Out_channel.set_binary_mode stdout true;
+      Ok (Bos_base.apply (f stdout) v ~finally ())
+    end else
+    let do_write tmp tmp_oc v = match f tmp_oc v with
+    | Error _ as v -> Ok v
+    | Ok _ as v ->
+        match rename tmp file with
+        | Error _ as e -> e
+        | Ok () -> Ok v
+    in
+    match with_tmp_oc ~mode ~dir:(Fpath.parent file) "bos-%s.tmp" do_write v
+    with
+    | Ok (Ok _ as r) -> r
+    | Ok (Error _ as e) -> e
+    | Error _ as e -> e
+  with
+  | Sys_error e -> Error (`Msg e)
 
 let write ?mode file contents =
   let write oc contents = output_string oc contents; Ok () in
