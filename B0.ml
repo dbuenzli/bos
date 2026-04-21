@@ -27,30 +27,20 @@ let bos_top = B0_ocaml.libname "bos.top"
 (* Libraries *)
 
 let bos_lib =
-  let srcs =
-    Fpath.[ `Dir (v "src");
-            `X (v "src/bos_setup.ml");
-            `X (v "src/bos_setup.mli");
-            `X (v "src/bos_top.ml");
-            `X (v "src/bos_top_init.ml") ]
-  in
-  let requires = [astring; fpath; fmt; unix; logs]
-  in
+  let srcs = [ `Dir ~/"src" ] in
+  let requires = [astring; fpath; fmt; unix; logs] in
   B0_ocaml.lib bos ~doc:"The bos library" ~srcs ~requires
 
 let bos_setup_lib =
-  let srcs = Fpath.[ `File (v "src/bos_setup.ml");
-                     `File (v "src/bos_setup.mli") ]
-  in
-  let requires = [rresult; fmt_tty; logs_fmt; astring; fpath; logs; fmt; bos]
-  in
+  let srcs = [`Dir ~/"src/setup"] in
+  let requires = [rresult; fmt_tty; logs_fmt; astring; fpath; logs; fmt; bos] in
   B0_ocaml.lib bos_setup ~doc:"The bos.setup library" ~srcs ~requires
 
 let bos_top_lib =
-  let srcs = Fpath.[ `File (v "src/bos_top.ml") ] in
+  let srcs = [`Dir ~/"src/top"; `X ~/"src/top/bos_top_init.ml"] in
   let requires =
     [ rresult_top; astring_top; fpath_top; fmt_top; logs_top;
-      compiler_libs_toplevel]
+      bos; compiler_libs_toplevel]
   in
   B0_ocaml.lib bos_top ~doc:"The bos.top library" ~srcs ~requires
 
@@ -58,56 +48,51 @@ let bos_top_lib =
 
 let test =
   let srcs =
-    Fpath.[ `File (v "test/testing.mli");
-            `File (v "test/testing.ml");
-            `File (v "test/test.ml");
-            `File (v "test/test_cmd.ml");
-            `File (v "test/test_os_cmd.ml");
-            `File (v "test/test_pat.ml"); ]
+    [ `File ~/"test/testing.mli";
+      `File ~/"test/testing.ml";
+      `File ~/"test/test_cmd.ml";
+      `File ~/"test/test_os_cmd.ml";
+      `File ~/"test/test_pat.ml"; ]
   in
-  let meta = B0_meta.(empty |> tag test) in
   let requires = [ rresult; astring; fpath; logs_fmt; bos] in
-  B0_ocaml.exe "test" ~doc:"Test suite" ~srcs ~meta ~requires
+  B0_ocaml.test ~/"test/test.ml" ~doc:"Test suite" ~srcs ~requires
 
 let test_arg =
-  let srcs = Fpath.[ `File (v "test/test_arg.ml")] in
-  let meta = B0_meta.(empty |> tag test) in
+  let doc = "Test argument parsing" in
   let requires = [ astring; fmt; fpath; logs; logs_fmt; bos ] in
-  B0_ocaml.exe "test-arg" ~doc:"Test argument parsing" ~srcs ~meta ~requires
+  B0_ocaml.test ~/"test/test_arg.ml" ~doc ~requires ~run:false
 
 let test_arg_pos =
-  let srcs = Fpath.[ `File (v "test/test_arg_pos.ml")] in
-  let meta = B0_meta.(empty |> tag test) in
+  let doc = "Test argument parsing" in
   let requires = [ fmt; logs; logs_fmt; bos ] in
-  B0_ocaml.exe "test-arg-pos" ~doc:"Test argument parsing" ~srcs ~meta ~requires
+  B0_ocaml.test ~/"test/test_arg_pos.ml" ~doc ~requires ~run:false
 
 let watch =
   let srcs = Fpath.[`File (v "test/watch.ml")] in
-  let meta = B0_meta.(empty |> tag test) in
   let requires =
     [ unix; logs_fmt; fmt_tty; mtime; mtime_clock; rresult; fpath; bos;
       bos_setup ]
   in
-  B0_ocaml.exe "watch" ~doc:"Watch files for changes." ~srcs ~meta ~requires
+  let doc = "Watch files for changes." in
+  B0_ocaml.test ~/"test/watch.ml" ~doc ~srcs ~requires ~run:false
 
 (* Packs *)
 
 let default =
   let meta =
     B0_meta.empty
-    |> B0_meta.(add authors) ["The bos programmers"]
-    |> B0_meta.(add maintainers)
-       ["Daniel Bünzli <daniel.buenzl i@erratique.ch>"]
-    |> B0_meta.(add homepage) "https://erratique.ch/software/bos"
-    |> B0_meta.(add online_doc) "https://erratique.ch/software/bos/doc"
-    |> B0_meta.(add licenses) ["ISC"]
-    |> B0_meta.(add repo) "git+https://erratique.ch/repos/bos.git"
-    |> B0_meta.(add issues) "https://github.com/dbuenzli/bos/issues"
-    |> B0_meta.(add description_tags)
+    |> ~~ B0_meta.authors ["The bos programmers"]
+    |> ~~ B0_meta.maintainers ["Daniel Bünzli <daniel.buenzl i@erratique.ch>"]
+    |> ~~ B0_meta.homepage "https://erratique.ch/software/bos"
+    |> ~~ B0_meta.online_doc "https://erratique.ch/software/bos/doc"
+    |> ~~ B0_meta.licenses ["ISC"]
+    |> ~~ B0_meta.repo "git+https://erratique.ch/repos/bos.git"
+    |> ~~ B0_meta.issues "https://github.com/dbuenzli/bos/issues"
+    |> ~~ B0_meta.description_tags
       ["os"; "system"; "cli"; "command"; "file"; "path"; "log"; "unix";
        "org:erratique"]
     |> B0_meta.tag B0_opam.tag
-    |> B0_meta.add B0_opam.depends
+    |> ~~ B0_opam.depends
       [ "ocaml", {|>= "4.14.0"|};
         "ocamlfind", {|build|};
         "ocamlbuild", {|build|};
@@ -120,7 +105,7 @@ let default =
         "logs", "";
         "mtime", {|with-test|};
       ]
-    |> B0_meta.add B0_opam.build
+    |> ~~ B0_opam.build
       {|[["ocaml" "pkg/pkg.ml" "build" "--dev-pkg" "%{dev}%"]]|}
   in
   B0_pack.make "default" ~doc:"bos package" ~meta ~locked:true @@

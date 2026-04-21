@@ -23,7 +23,7 @@ package "top" (
   directory = "top"
   description = "The bos.top library"
   version = "%%VERSION_NUM%%"
-  requires = "rresult.top astring.top fpath.top fmt.tty logs.top"
+  requires = "rresult.top astring.top fpath.top fmt.tty logs.top bos"
   archive(byte) = "bos_top.cma"
   archive(native) = "bos_top.cmxa"
   plugin(byte) = "bos_top.cma"

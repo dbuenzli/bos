@@ -6,10 +6,7 @@ open Topkg
 let () =
   Pkg.describe "bos" @@ fun c ->
   Ok [ Pkg.mllib ~api:["Bos"] "src/bos.mllib";
-       Pkg.mllib "src/bos_setup.mllib";
-       Pkg.mllib ~api:[] "src/bos_top.mllib";
-       Pkg.lib "src/bos_top_init.ml";
-       Pkg.test "test/test";
-       Pkg.test ~run:false "test/test_arg";
-       Pkg.test ~run:false "test/test_arg_pos";
-       Pkg.test ~run:false "test/watch"; ]
+       Pkg.mllib "src/setup/bos_setup.mllib" ~dst_dir:"setup";
+       Pkg.mllib ~api:[] "src/top/bos_top.mllib" ~dst_dir:"top";
+       Pkg.lib "src/top/bos_top_init.ml";
+       Pkg.lib "src/top/bos_top_init.ml" ~dst:"top/bos_top_init_ml" ]
