@@ -17,6 +17,8 @@
   to XDG conventions (#93). Thanks to Favonia for suggesting.
 - More subtle (internal) uninterruptible `Unix.close` function (#72).
   Thanks to Tom Ridge for reporting.
+- Fix an (internal) catch all exception handler in an implementation
+  of an "`Unix.close_noerr`" function.
 - Move to one directory per library convention.
 
 v0.2.1 2021-10-04 Zagreb

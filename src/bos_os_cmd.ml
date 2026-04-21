@@ -49,8 +49,7 @@ let rec openfile fn mode perm = try Unix.openfile fn mode perm with
 | Unix.Unix_error (Unix.EINTR, _, _) -> openfile fn mode perm
 
 let close = Bos_os_file.close_fd
-
-let close_no_err fd = try close fd with e -> ()
+let close_no_err fd = try close fd with Unix.Unix_error _ -> ()
 
 let rec select r w e t = try Unix.select r w e t with
 | Unix.Unix_error (Unix.EINTR, _, _) -> select r w e t
