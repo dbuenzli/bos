@@ -12,6 +12,18 @@ let err_invalid_input = "input no longer valid, did it escape its scope ?"
 let err_invalid_output = "output no longer valid, did it escape its scope ?"
 let uerror = Unix.error_message
 
+(* Fd tools *)
+
+let close_fd fd =
+  (* Platform may differ as whether an EINTR results in a closed fd
+     or not, so this loop ignores an EBADF after an EINTR *)
+  let rec loop ~had_eintr fd = try Unix.close fd with
+  | Unix.Unix_error (EINTR, _, _) -> loop ~had_eintr:true fd
+  | Unix.Unix_error (EBADF, _, _) when had_eintr -> ()
+  | Unix.Unix_error (EINPROGRESS, _, _) -> ()
+  in
+  loop ~had_eintr:false fd
+
 (* Famous file paths *)
 
 let null = Fpath.v (if Sys.os_type = "Win32" then "NUL" else "/dev/null")
@@ -29,6 +41,7 @@ let rec truncate p size =
   | Unix.Unix_error (Unix.EINTR, _, _) -> truncate p size
   | Unix.Unix_error (e, _, _) ->
       Fmt.error_msg "truncate file %a: %s" Fpath.pp p (uerror e)
+
 
 (* Executability *)
 
@@ -174,11 +187,7 @@ let default_tmp_mode = 0o600
 let tmp ?(mode = default_tmp_mode) ?dir pat =
   let dir = match dir with None -> Bos_os_tmp.default_dir () | Some d -> d in
   Result.bind (create_tmp_path mode dir pat) @@ fun (file, fd) ->
-  let rec close fd = try Unix.close fd with
-  | Unix.Unix_error (Unix.EINTR, _, _) -> close fd
-  | Unix.Unix_error (e, _, _) -> ()
-  in
-  close fd; tmps_add file; Ok file
+  close_fd fd; tmps_add file; Ok file
 
 let with_tmp_oc ?(mode = default_tmp_mode) ?dir pat f v =
   try

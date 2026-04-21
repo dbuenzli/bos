@@ -48,8 +48,7 @@ let rec clear_close_on_exec fd = try Unix.clear_close_on_exec fd with
 let rec openfile fn mode perm = try Unix.openfile fn mode perm with
 | Unix.Unix_error (Unix.EINTR, _, _) -> openfile fn mode perm
 
-let rec close fd = try Unix.close fd with
-| Unix.Unix_error (Unix.EINTR, _, _) -> close fd
+let close = Bos_os_file.close_fd
 
 let close_no_err fd = try close fd with e -> ()
 

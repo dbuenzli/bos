@@ -15,6 +15,8 @@
 - Add `OS.Dir.expand_tilde` (#96), Thanks to Favonia for the patch.
 - Add `OS.Dir.{config,data,cache,runtime,state}` looked up according
   to XDG conventions (#93). Thanks to Favonia for suggesting.
+- More subtle (internal) uninterruptible `Unix.close` function (#72).
+  Thanks to Tom Ridge for reporting.
 - Move to one directory per library convention.
 
 v0.2.1 2021-10-04 Zagreb
