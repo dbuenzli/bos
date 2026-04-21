@@ -5,23 +5,28 @@ archive(byte) = "bos.cma"
 archive(native) = "bos.cmxa"
 plugin(byte) = "bos.cma"
 plugin(native) = "bos.cmxs"
-
-package "top" (
-  description = "Bos toplevel support"
-  version = "%%VERSION_NUM%%"
-  requires = "astring.top fpath.top fmt.top logs.top bos"
-  archive(byte) = "bos_top.cma"
-  archive(native) = "bos_top.cmxa"
-  plugin(byte) = "bos_top.cma"
-  plugin(native) = "bos_top.cmxs"
-)
+exists_if = "bos.cma bos.cmxa"
 
 package "setup" (
-  description = "Bos quick setup for simple programs"
+  directory = "setup"
+  description = "The bos.setup library"
   version = "%%VERSION_NUM%%"
-  requires = "rresult fmt.tty logs.fmt bos"
+  requires = "rresult fmt.tty logs.fmt astring fpath logs fmt bos"
   archive(byte) = "bos_setup.cma"
   archive(native) = "bos_setup.cmxa"
   plugin(byte) = "bos_setup.cma"
   plugin(native) = "bos_setup.cmxs"
+  exists_if = "bos_setup.cma bos_setup.cmxa"
+)
+
+package "top" (
+  directory = "top"
+  description = "The bos.top library"
+  version = "%%VERSION_NUM%%"
+  requires = "rresult.top astring.top fpath.top fmt.tty logs.top"
+  archive(byte) = "bos_top.cma"
+  archive(native) = "bos_top.cmxa"
+  plugin(byte) = "bos_top.cma"
+  plugin(native) = "bos_top.cmxs"
+  exists_if = "bos_top.cma bos_top.cmxa"
 )

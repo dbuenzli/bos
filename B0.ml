@@ -108,7 +108,7 @@ let default =
        "org:erratique"]
     |> B0_meta.tag B0_opam.tag
     |> B0_meta.add B0_opam.depends
-      [ "ocaml", {|>= "4.08.0"|};
+      [ "ocaml", {|>= "4.14.0"|};
         "ocamlfind", {|build|};
         "ocamlbuild", {|build|};
         "topkg", {|build & >= "1.1.0"|};

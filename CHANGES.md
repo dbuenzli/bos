@@ -1,7 +1,9 @@
 
 
+- Require OCaml >= 4.14.
 - Add `Cmd.if'` and deprecate `Cmd.on`.
-- `bos` library. Drop dependency on `rresult`.
+- `bos` library. Drop dependency on `rresult`. The package still
+  depends on it because of the `bos.setup` library.
 
 v0.2.1 2021-10-04 Zagreb
 ------------------------
