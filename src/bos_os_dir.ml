@@ -68,82 +68,7 @@ let fold_contents ?err ?dotfiles ?elements ?traverse f acc d =
   Result.bind (contents d) @@
   Bos_os_path.fold ?err ?dotfiles ?elements ?traverse f acc
 
-(* User and current working directory *)
-
-let user_from_passwd entry =
-  let home = entry.Unix.pw_dir in
-  match Fpath.of_string home with
-  | Ok p -> Ok p
-  | Error _ ->
-      Fmt.error_msg
-        "could not parse path (%a) from passwd entry"
-        String.dump home
-
-let user () =
-  let debug err = Bos_log.debug (fun m -> m "OS.Dir.user: %s" err) in
-  let env_var var_name =
-    Result.bind (Bos_os_env.(parse var_name (some path) ~absent:None)) @@
-    function
-    | Some p -> Ok p
-    | None -> Fmt.error_msg "cannot determine user home directory: \
-                            %s environment variable is undefined"
-                            var_name
-  in
-  if Sys.os_type = "Win32" then
-    (* We should check USERPROFILE exclusively (without HOME) because otherwise it could break
-       a Windows setup with MSVC++ or MinGW. See the discussion at https://github.com/dbuenzli/bos/pull/96.
-
-       On Windows with Cygwin, [Sys.os_type] would be ["Cygwin"], triggering the logic below.
-
-       XXX One could use FOLDERID_Profile (or CSIDL_PROFILE for XP) to query the directory
-       instead of (only) relying on the environment variables. *)
-    env_var "USERPROFILE"
-  else
-    match env_var "HOME" with
-    | Ok p -> Ok p
-    | Error _ as err ->
-        try
-          let uid = Unix.getuid () in
-          match user_from_passwd (Unix.getpwuid uid) with
-          | Ok p -> Ok p
-          | Error (`Msg msg) -> debug msg; err
-        with
-        | Unix.Unix_error (e, _, _) -> (* should not happen *)
-            debug (uerror e); err
-        | Not_found ->
-            err
-
-let expand_tilde p =
-  let p_str = Fpath.to_string p in
-  if String.head p_str <> Some '~' then
-    Ok p
-  else (* the first character is ['~'] *)
-    match Fpath.segs p with
-    | [] -> assert false
-    | first_seg :: _ -> 
-      let login_name = String.with_index_range ~first:1 first_seg in
-      Result.bind
-        begin
-          if login_name = "" then user ()
-          else
-            try
-              (* XXX The currently code just gives up on Windows. *)
-              if Sys.os_type = "Win32" then raise Not_found
-              else user_from_passwd (Unix.getpwnam login_name)
-            with
-            | Unix.Unix_error (e, _, _) -> (* should not happen *)
-                Fmt.error_msg "get passwd entry by name %s: %s" login_name (uerror e)
-            | Not_found ->
-                Fmt.error_msg "cannot determine user home directory of %s" login_name
-        end @@ fun home ->
-      let remaining_p = String.with_index_range ~first:(String.length first_seg) p_str in
-      let expanded = Fpath.to_string home ^ remaining_p in
-      match Fpath.of_string expanded with
-      | Ok p -> Ok p
-      | Error _ ->
-          Fmt.error_msg
-            "could not parse the expanded path (%a)"
-            String.dump expanded
+(* Current working directory *)
 
 let rec current () =
   try
@@ -224,6 +149,84 @@ let default_tmp = Bos_os_tmp.default_dir
 let set_default_tmp = Bos_os_tmp.set_default_dir
 
 (* Base directories *)
+
+let user_from_passwd entry =
+  let home = entry.Unix.pw_dir in
+  match Fpath.of_string home with
+  | Ok p -> Ok p
+  | Error _ ->
+      Fmt.error_msg "could not parse path (%a) from passwd entry"
+        String.dump home
+
+let user () =
+  let debug err = Bos_log.debug (fun m -> m "OS.Dir.user: %s" err) in
+  let env_var var_name =
+    Result.bind (Bos_os_env.(parse var_name (some path) ~absent:None)) @@
+    function
+    | Some p -> Ok p
+    | None -> Fmt.error_msg "cannot determine user home directory: \
+                            %s environment variable is undefined"
+                            var_name
+  in
+  if Sys.os_type = "Win32" then
+    (* We should check USERPROFILE exclusively (without HOME) because
+       otherwise it could break a Windows setup with MSVC++ or MinGW.
+       See the discussion at https://github.com/dbuenzli/bos/pull/96.
+
+       On Windows with Cygwin, [Sys.os_type] would be ["Cygwin"],
+       triggering the logic below.
+
+       XXX One could use FOLDERID_Profile (or CSIDL_PROFILE for XP) to
+       query the directory instead of (only) relying on the environment
+       variables. *)
+    env_var "USERPROFILE"
+  else match env_var "HOME" with
+  | Ok p -> Ok p
+  | Error _ as err ->
+      try
+        let uid = Unix.getuid () in
+        match user_from_passwd (Unix.getpwuid uid) with
+        | Ok p -> Ok p
+        | Error (`Msg msg) -> debug msg; err
+      with
+      | Unix.Unix_error (e, _, _) -> (* should not happen *)
+          debug (uerror e); err
+      | Not_found ->
+          err
+
+let expand_tilde p =
+  let p_str = Fpath.to_string p in
+  if String.head p_str <> Some '~' then Ok p else
+  (* the first character is ['~'] *)
+  match Fpath.segs p with
+  | [] -> assert false
+  | first_seg :: _ ->
+      let login_name = String.with_index_range ~first:1 first_seg in
+      Result.bind
+        begin
+          if login_name = "" then user ()
+          else
+          try
+            (* XXX The currently code just gives up on Windows. *)
+            if Sys.os_type = "Win32" then raise Not_found
+            else user_from_passwd (Unix.getpwnam login_name)
+          with
+          | Unix.Unix_error (e, _, _) -> (* should not happen *)
+              Fmt.error_msg "get passwd entry by name %s: %s"
+                login_name (uerror e)
+          | Not_found ->
+              Fmt.error_msg "cannot determine user home directory of %s"
+                login_name
+        end @@ fun home ->
+      let remaining_p =
+        String.with_index_range ~first:(String.length first_seg) p_str
+      in
+      let expanded = Fpath.to_string home ^ remaining_p in
+      match Fpath.of_string expanded with
+      | Ok p -> Ok p
+      | Error _ ->
+          Fmt.error_msg "could not parse the expanded path (%a)"
+            String.dump expanded
 
 let err_dir dir fmt = Fmt.error_msg ("%s directory: " ^^ fmt) dir
 let fpath_of_env_var dir var = match Bos_os_env.var var with
