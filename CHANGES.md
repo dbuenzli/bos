@@ -7,6 +7,7 @@
 - `OS.File.{read,write,with_ic,with_oc,write_lines}` avoid newline translation
   when the file is `Fpath.dash` (#65). Thanks to Hezekiah M. Carty for
   the report.
+- Add `OS.Path.[exists_]realpath` (#49).
 
 v0.2.1 2021-10-04 Zagreb
 ------------------------

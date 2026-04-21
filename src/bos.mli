@@ -671,6 +671,18 @@ let main () = main ()
       (** [set p m] sets [p]'s permission mode to [m]. *)
     end
 
+    (** {1:resolving Resolving} *)
+
+    val realpath : Fpath.t -> (Fpath.t, 'e) result
+    (** [realpath p] expands all symbolic links, resolves all references
+        to [.] and [..] segments and returns an absolute path on the file
+        system that corresponds to [p]. The function errors with an
+        error mesage that mentions [p] if [p] does not exist. *)
+
+    val exists_realpath : Fpath.t -> (Fpath.t option, 'e) result
+    (** [exists_realpath] is like {!realpth} but returns [None] if
+        the path does not exist. *)
+
     (** {1:link Path links} *)
 
     val link :

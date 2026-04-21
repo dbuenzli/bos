@@ -192,6 +192,37 @@ module Mode = struct
       Fmt.error_msg "set mode %a: %s" Fpath.pp p (uerror e)
 end
 
+(* Resolving *)
+
+let err_realpath_path p rp =
+  Fmt.error_msg "realpath %a: could not convert a path from %s" Fpath.pp p rp
+
+let rec realpath p =
+  try
+    let rp = Unix.realpath (Fpath.to_string p) in
+    match Fpath.of_string rp with
+    | Ok _ as rp -> rp
+    | Error _ -> err_realpath_path p rp
+  with
+  | Unix.Unix_error (EINTR, _, _) -> realpath p
+  | Unix.Unix_error (ENOTDIR, _, _) ->
+      Fmt.error_msg
+        "realpath %a: A segment of the path is not a directory" Fpath.pp p
+  | Unix.Unix_error (e, _, _) ->
+      Fmt.error_msg "realpath %a: %s" Fpath.pp p (uerror e)
+
+let rec exists_realpath p =
+  try
+    let rp = Unix.realpath (Fpath.to_string p) in
+    match Fpath.of_string rp with
+    | Ok rp -> Ok (Some rp)
+    | Error _ -> err_realpath_path p rp
+  with
+  | Unix.Unix_error (EINTR, _, _) -> exists_realpath p
+  | Unix.Unix_error ((ENOENT|ENOTDIR), _, _) -> Ok None
+  | Unix.Unix_error (e, _, _) ->
+      Fmt.error_msg "realpath %a: %s" Fpath.pp p (uerror e)
+
 (* Path links *)
 
 let rec force_remove op target p =
