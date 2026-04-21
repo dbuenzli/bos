@@ -1047,24 +1047,8 @@ contents d >>= Path.fold err dotfiles elements traverse f acc
 ]}
         For more details see {!Path.section-fold}. *)
 
-    (** {1:user_current User and current working directory} *)
 
-    val user : unit -> (Fpath.t, 'e) result
-    (** [user ()] is the home directory of the user executing the process.
-        On Windows with MSVC++ or MinGW, [USERPROFILE] is consulted.
-        On other operating systems and Windows with Cygwin, [HOME] is
-        consulted first, and then the [passwd] database is looked up
-        with the user ID of the process. *)
-
-    val expand_tilde : Fpath.t -> (Fpath.t, 'e) result
-    (** [expand_tilde p] expands a tilde-prefixed path [p] according to the
-        {{:https://pubs.opengroup.org/onlinepubs/9699919799/utilities/V3_chap02.html#tag_18_06_01}POSIX standard},
-        for example expanding [~] to the result of [user ()]. It returns [p]
-        unchanged if [p] is not tilde-prefixed.
-
-        On Windows with MSVC++ or MinGW, [~] will still be expanded using
-        the result of [user ()] (which would be the value of [USERPROFILE]),
-        but [~user] is unsupported and will lead to an error. *)
+    (** {1:cwd Current working directory (cwd)} *)
 
     val current : unit -> (Fpath.t, 'e) result
     (** [current ()] is the current working directory. The resulting
@@ -1077,6 +1061,66 @@ contents d >>= Path.fold err dotfiles elements traverse f acc
     (** [with_current dir f v] is [f v] with the current working directory
         bound to [dir]. After the function returns the current working
         directory is back to its initial value. *)
+
+    (** {1:base Base directories}
+
+        The directories returned by these functions are not guaranteed
+        to exist. *)
+
+    val expand_tilde : Fpath.t -> (Fpath.t, 'e) result
+    (** [expand_tilde p] expands a tilde-prefixed path [p] according to the
+        {{:https://pubs.opengroup.org/onlinepubs/9699919799/utilities/V3_chap02.html#tag_18_06_01}POSIX standard},
+        for example expanding [~] to the result of [user ()]. It returns [p]
+        unchanged if [p] is not tilde-prefixed.
+
+        On Windows with MSVC++ or MinGW, [~] will still be expanded using
+        the result of [user ()] (which would be the value of [USERPROFILE]),
+        but [~user] is unsupported and will lead to an error. *)
+
+    val user : unit -> (Fpath.t, 'e) result
+    (** [user ()] is the home directory of the user executing the process.
+        On Windows with MSVC++ or MinGW, [USERPROFILE] is consulted.
+        On other operating systems and Windows with Cygwin, [HOME] is
+        consulted first, and then the [passwd] database is looked up
+        with the user ID of the process. *)
+
+    val config : unit -> (Fpath.t, 'e) result
+    (** [config ()] is the directory used to store user-specific program
+        configurations. This is in order:
+        {ol
+        {- If set the value of [XDG_CONFIG_HOME].}
+        {- If set and on Windows® the value of [APPDATA].}
+        {- If [user ()] is [Ok home], [Fpath.(home / ".config")].}} *)
+
+    val data : unit -> (Fpath.t, 'e) result
+    (** [data ()] is the directory used to store user-specific program
+        data. This is in order:
+        {ol
+        {- If set the value of [XDG_DATA_HOME].}
+        {- If set and on Windows® the value of [APPDATA].}
+        {- If [user ()] is [Ok home], [Fpath.(home / ".local" / "share")].}} *)
+
+    val cache : unit -> (Fpath.t, 'e) result
+    (** [cache ()] is the directory used to store user-specific
+        non-essential data. This is in order:
+        {ol
+        {- If set the value of [XDG_CACHE_HOME].}
+      {- If set and on Windows® the value of [%TEMP%]}
+        {- If [user ()] is [Ok home], [Fpath.(home / ".cache")]}} *)
+
+    val runtime : unit -> (Fpath.t, 'e) result
+    (** [runtime ()] is the directory used to store user-specific runtime
+        files. This is in order:
+        {ol
+        {- If set the value of [XDG_RUNTIME_DIR].}
+        {- The value of {!default_tmp}.}} *)
+
+    val state : unit -> (Fpath.t, 'e) result
+    (** [state ()] is the directory used to store user-specific state data
+        files. This is in order:
+        {ol
+        {- If set the value of [XDG_STATE_DIR].}
+        {- If [user ()] is [Ok home], [Fpath.(home / ".local" / "state")]}} *)
 
     (** {1:tmpdirs Temporary directories} *)
 

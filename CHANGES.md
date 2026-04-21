@@ -13,6 +13,8 @@
   systems, `HOME` is consulted first; previously, `getpwnam` was consulted 
   first. Thanks to Favonia for the patch.
 - Add `OS.Dir.expand_tilde` (#96), Thanks to Favonia for the patch.
+- Add `OS.Dir.{config,data,cache,runtime,state}` looked up according
+  to XDG conventions (#93). Thanks to Favonia for suggesting.
 
 v0.2.1 2021-10-04 Zagreb
 ------------------------

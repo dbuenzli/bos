@@ -223,6 +223,61 @@ let with_tmp ?mode ?dir pat f v =
 let default_tmp = Bos_os_tmp.default_dir
 let set_default_tmp = Bos_os_tmp.set_default_dir
 
+(* Base directories *)
+
+let err_dir dir fmt = Fmt.error_msg ("%s directory: " ^^ fmt) dir
+let fpath_of_env_var dir var = match Bos_os_env.var var with
+| None | Some "" -> None
+| Some p ->
+    match Fpath.of_string p with
+    | Error (`Msg e) -> Some (err_dir dir "%s environment variable: %s" var e)
+    | Ok _ as v -> Some v
+
+let base_dir dir var var_alt fallback = match fpath_of_env_var dir var with
+| Some r -> r
+| None ->
+    match Option.bind var_alt (fpath_of_env_var dir) with
+    | Some r -> r
+    | None -> fallback ()
+
+let home_fallback dir sub = match user () with
+| Error (`Msg e) -> err_dir dir "%s" e
+| Ok home -> Ok Fpath.(home // sub)
+
+let config_dir = "configuration"
+let config_var = "XDG_CONFIG_HOME"
+let config_var_alt = if Sys.win32 then Some "%APPDATA%" else None
+let config_fallback () = home_fallback config_dir (Fpath.v ".config")
+let config () =
+  base_dir config_dir config_var config_var_alt config_fallback
+
+let data_dir = "data"
+let data_var = "XDG_DATA_HOME"
+let data_var_alt = if Sys.win32 then Some "%APPDATA%" else None
+let data_fallback () = home_fallback data_dir (Fpath.v ".local/share")
+let data () =
+  base_dir data_dir data_var data_var_alt data_fallback
+
+let cache_dir = "cache"
+let cache_var = "XDG_CACHE_HOME"
+let cache_var_alt = if Sys.win32 then Some "%TEMP%" else None
+let cache_fallback () = home_fallback cache_dir (Fpath.v ".cache")
+let cache () =
+  base_dir cache_dir cache_var cache_var_alt cache_fallback
+
+let runtime_dir = "runtime"
+let runtime_var = "XDG_RUNTIME_DIR"
+let runtime_var_alt = None
+let runtime_fallback () = Ok (default_tmp ())
+let runtime () =
+  base_dir runtime_dir runtime_var runtime_var_alt runtime_fallback
+
+let state_dir = "state"
+let state_var = "XDG_STATE_DIR"
+let state_var_alt = None
+let state_fallback () = home_fallback state_dir (Fpath.v ".local/state")
+let state () = base_dir state_dir state_var state_var_alt state_fallback
+
 (*---------------------------------------------------------------------------
    Copyright (c) 2015 The bos programmers
 
