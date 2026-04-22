@@ -1,27 +1,31 @@
+v0.3.0 2026-04-22 La Forclaz (VS)
+---------------------------------
 
-
-- Fix sporadic deadlocks in `OS.Cmd.run_io` (#105). Thanks to arvidj for the
-  report and the fix.
 - Require OCaml >= 4.14.
+- Move to one directory per library install convention.
+- `bos` library: drop dependency on `rresult`. But the `bos` package
+  still depends on it because of the `bos.setup` library.
+
+- Fix sporadic deadlocks in `OS.Cmd.run_io` (#105). Thanks to arvidj
+  for the report and the fix.
+- Fix `OS.File.{read,write,with_ic,with_oc,write_lines}` performing
+  newline translation when the file is `Fpath.dash` (#65). Thanks to
+  Hezekiah M. Carty for the report.
+
 - Add `Cmd.if'` and deprecate `Cmd.on`.
-- `bos` library. Drop dependency on `rresult`. The package still
-  depends on it because of the `bos.setup` library.
-- `OS.File.{read,write,with_ic,with_oc,write_lines}` avoid newline translation
-  when the file is `Fpath.dash` (#65). Thanks to Hezekiah M. Carty for
-  the report.
 - Add `OS.Path.[exists_]realpath` (#49).
+- Add `OS.Dir.expand_tilde` (#96), Thanks to Favonia for the patch.
+- Add `OS.Dir.{config,data,cache,runtime,state}` looked up according
+  to XDG conventions (#93). Thanks to Favonia for suggesting.
 - Tweak `OS.Dir.user` (#77, #96). On Windows with MSVC++ or MinGW, only
   `USERPROFILE` is consulted. On Windows with Cygwin and other operating 
   systems, `HOME` is consulted first; previously, `getpwnam` was consulted 
   first. Thanks to Favonia for the patch.
-- Add `OS.Dir.expand_tilde` (#96), Thanks to Favonia for the patch.
-- Add `OS.Dir.{config,data,cache,runtime,state}` looked up according
-  to XDG conventions (#93). Thanks to Favonia for suggesting.
-- More subtle (internal) uninterruptible `Unix.close` function (#72).
+ 
+- Internal. More subtle uninterruptible `Unix.close` function (#72).
   Thanks to Tom Ridge for reporting.
-- Fix an (internal) catch all exception handler in an implementation
-  of an "`Unix.close_noerr`" function.
-- Move to one directory per library convention.
+- Internal. Remove a catch all exception handler in the implementation
+  of a "`Unix.close_noerr`" function.
 
 v0.2.1 2021-10-04 Zagreb
 ------------------------

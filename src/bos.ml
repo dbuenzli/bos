@@ -3,8 +3,6 @@
    Distributed under the ISC license, see terms at the end of the file.
   ---------------------------------------------------------------------------*)
 
-
-
 (* Basic types *)
 
 module Pat = Bos_pat

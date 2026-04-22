@@ -1,6 +1,5 @@
 Bos — Basic OS interaction for OCaml
 -------------------------------------------------------------------------------
-%%VERSION%%
 
 Bos provides support for basic and robust interaction with the
 operating system in OCaml. It has functions to access the process
