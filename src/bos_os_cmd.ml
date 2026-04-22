@@ -230,9 +230,7 @@ let string_of_fd_async fd =
   let rec step fd store b () =
     try match Unix.read fd b 0 len with
     | 0 -> `Ok (Buffer.contents buf)
-    | n ->
-        Buffer.add_subbytes buf b 0 n;
-        step fd store b ()
+    | n -> Buffer.add_subbytes buf b 0 n; `Await (step fd store b)
     with
     | Unix.Unix_error (Unix.EPIPE, _, _) when Sys.win32 ->
         (* That's the Windows way to say end, see
@@ -253,7 +251,7 @@ let string_to_fd_async s fd =
   let rec step fd s first len () =
     try match Unix.single_write_substring fd s first len with
     | c when c = len -> `Ok ()
-    | c -> step fd s (first + c) (len - c) ()
+    | c -> `Await (step fd s (first + c) (len - c))
     with
     | Unix.Unix_error (Unix.EINTR, _, _) -> step fd s first len ()
     | Unix.Unix_error ((Unix.EWOULDBLOCK | Unix.EAGAIN), _, _) ->

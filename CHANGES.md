@@ -1,5 +1,7 @@
 
 
+- Fix sporadic deadlocks in `OS.Cmd.run_io` (#105). Thanks to arvidj for the
+  report and the fix.
 - Require OCaml >= 4.14.
 - Add `Cmd.if'` and deprecate `Cmd.on`.
 - `bos` library. Drop dependency on `rresult`. The package still
