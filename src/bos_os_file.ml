@@ -106,7 +106,7 @@ let read file =
     | Unix.Unix_error (Unix.ESPIPE, _, _) -> true
   in
   let input_stream ic =
-    let bsize = 65536 (* IO_BUFFER_SIZE *) in
+    let bsize = io_buffer_size in
     let buf = Buffer.create bsize in
     let b = Bytes.create bsize in
     let rec loop () =
