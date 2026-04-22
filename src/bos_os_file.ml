@@ -42,7 +42,6 @@ let rec truncate p size =
   | Unix.Unix_error (e, _, _) ->
       Fmt.error_msg "truncate file %a: %s" Fpath.pp p (uerror e)
 
-
 (* Executability *)
 
 let _is_executable file = try Unix.access file [Unix.X_OK]; true with
@@ -112,9 +111,9 @@ let read file =
     let b = Bytes.create bsize in
     let rec loop () =
       let rc = input ic b 0 bsize in
-      if rc = 0 then Ok (Buffer.contents buf) else
-(* FIXME After 4.01  (Buffer.add_subbytes buf b 0 rc; loop ()) *)
-      (Buffer.add_substring buf (Bytes.unsafe_to_string b) 0 rc; loop ())
+      if rc = 0
+      then Ok (Buffer.contents buf)
+      else (Buffer.add_subbytes buf b 0 rc; loop ())
     in
     loop ()
   in

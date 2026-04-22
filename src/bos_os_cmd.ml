@@ -231,8 +231,7 @@ let string_of_fd_async fd =
     try match Unix.read fd b 0 len with
     | 0 -> `Ok (Buffer.contents buf)
     | n ->
-        (* FIXME After 4.01 Buffer.add_subbytes buf b 0 n; step fd store b () *)
-        Buffer.add_substring buf (Bytes.unsafe_to_string b) 0 n;
+        Buffer.add_subbytes buf b 0 n;
         step fd store b ()
     with
     | Unix.Unix_error (Unix.EPIPE, _, _) when Sys.win32 ->
@@ -252,9 +251,7 @@ let string_of_fd fd =
 
 let string_to_fd_async s fd =
   let rec step fd s first len () =
-(* FIXME After 4.01 try match Unix.single_write_substring fd s first len with *)
-    let b = Bytes.unsafe_of_string s in
-    try match Unix.single_write fd b first len with
+    try match Unix.single_write_substring fd s first len with
     | c when c = len -> `Ok ()
     | c -> step fd s (first + c) (len - c) ()
     with
