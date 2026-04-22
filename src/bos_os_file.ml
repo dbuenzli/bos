@@ -86,10 +86,12 @@ let with_ic file f v =
   try
     let ic, finally =
       if is_dash file then begin
+        (* This would need >= 5.2
         let binary_mode = In_channel.is_binary_mode stdin in
         let finally ic = In_channel.set_binary_mode ic binary_mode in
+        *)
         In_channel.set_binary_mode stdin true;
-        stdin, finally
+        stdin, (fun _ic -> ())
       end else
       open_in_bin (Fpath.to_string file), (fun ic -> close_in ic)
     in
@@ -261,10 +263,11 @@ let with_output ?(mode = default_mode) file f v =
 let with_oc ?(mode = default_mode) file f v =
   try
     if is_dash file then begin
+      (* This would need OCaml > 5.2
       let binary_mode = Out_channel.is_binary_mode stdout in
-      let finally () = Out_channel.set_binary_mode stdout binary_mode in
+      let finally () = Out_channel.set_binary_mode stdout binary_mode in *)
       Out_channel.set_binary_mode stdout true;
-      Ok (Bos_base.apply (f stdout) v ~finally ())
+      Ok (Bos_base.apply (f stdout) v ~finally:(fun () -> ()) ())
     end else
     let do_write tmp tmp_oc v = match f tmp_oc v with
     | Error _ as v -> Ok v

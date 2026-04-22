@@ -865,7 +865,7 @@ let main () = main ()
         via an exception), [ic] is ensured to be closed.  If [file] is
         {!dash}, [ic] is {!Stdlib.stdin} put in binary mode and not
         closed when the function returns (the original binary mode
-        status is restored when the function returns). [End_of_file]
+        is not restored when the function returns). [End_of_file]
         exceptions raised by [f] are turned it into an error message. *)
 
     val read : Fpath.t -> (string, 'e) result
@@ -922,7 +922,7 @@ let main () = main ()
         via an exception) [oc] is closed. [file] is not written if [f]
         returns an error. If [file] is {!dash}, [oc] is
         {!Stdlib.stdout} put in binary mode and not closed when
-        function returns (the original binary mode status is restored
+        function returns (the original binary mode is not restored
         when the function returns). *)
 
     val write :
