@@ -68,7 +68,7 @@ let test_arg_pos =
   B0_ocaml.test ~/"test/test_arg_pos.ml" ~doc ~requires ~run:false
 
 let watch =
-  let srcs = Fpath.[`File (v "test/watch.ml")] in
+  let srcs = Filepath.[`File (v "test/watch.ml")] in
   let requires =
     [ unix; logs_fmt; fmt_tty; mtime; mtime_clock; rresult; fpath; bos;
       bos_setup ]
