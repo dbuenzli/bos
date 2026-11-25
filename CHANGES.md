@@ -1,3 +1,8 @@
+
+- Fix OS.Dir.fold_contents always skipping dotfiles at the root
+  despite calling with `~dotfiles:true` (#110). Thanks to Alkan-Meph
+  for fix.
+
 v0.3.0 2026-04-22 La Forclaz (VS)
 ---------------------------------
 
