@@ -65,7 +65,7 @@ let rec contents ?(dotfiles = false) ?(rel = false) dir =
       Fmt.error_msg "directory contents %a: %s" Fpath.pp dir (uerror e)
 
 let fold_contents ?err ?dotfiles ?elements ?traverse f acc d =
-  Result.bind (contents d) @@
+  Result.bind (contents d ?dotfiles) @@
   Bos_os_path.fold ?err ?dotfiles ?elements ?traverse f acc
 
 (* Current working directory *)
